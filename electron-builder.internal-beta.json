@@ -1,0 +1,75 @@
+{
+  "appId": "com.MOMusic.beat.internal",
+  "productName": "MoMusic",
+  "directories": {
+    "output": "dist-internal-beta",
+    "buildResources": "build"
+  },
+  "afterPack": "build/after-pack.js",
+  "toolsets": {
+    "winCodeSign": "1.1.0"
+  },
+  "extraMetadata": {
+    "name": "MOMusic-beat-internal",
+    "productName": "MoMusic",
+    "version": "1.1.2",
+    "MOMusic": {
+      "internalBeta": true,
+      "runtimeName": "MOMusic_Beat",
+      "appUserModelId": "com.MOMusic.beat.internal",
+      "update": {
+        "disabled": true,
+        "provider": "none",
+        "preview": false,
+        "preferMirrors": false,
+        "mirrors": []
+      }
+    }
+  },
+  "files": [
+    "desktop/**/*",
+    "public/**/*",
+    "build/**/*",
+    "cuefield/**/*",
+    "server.js",
+    "*-api.js",
+    "qishui-audio-decryptor/**/*",
+    "dj-analyzer.js",
+    "LICENSE",
+    "NOTICE.md",
+    "docs/THIRD_PARTY_PORTS.md",
+    "package.json",
+    "!public/index.*.html",
+    "public/index.html"
+  ],
+  "asar": true,
+  "win": {
+    "executableName": "MoMusic",
+    "icon": "build/icon.ico",
+    "signAndEditExecutable": false,
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "MoMusic",
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "installerSidebar": "build/installerSidebar.bmp",
+    "uninstallerSidebar": "build/installerSidebar.bmp",
+    "installerHeader": "build/installerHeader.bmp",
+    "include": "build/installer-internal-beta.nsh",
+    "artifactName": "MoMusic-${version}-Setup.${ext}"
+  },
+  "publish": null
+}

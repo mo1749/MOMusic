@@ -1,0 +1,118 @@
+{
+  "name": "MOMusic",
+  "productName": "MoMusic",
+  "version": "1.0.0",
+  "description": "MOMusic - 多平台音乐聚合播放器，支持QQ音乐、网易云音乐、酷狗音乐、汽水音乐，融合桌面模式、歌词舞台、粒子视觉和3D歌单架，支持一起听功能。",
+  "author": "MOMusic",
+  "license": "GPL-3.0-only",
+  "main": "desktop/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win nsis --publish never",
+    "build:win:dir": "electron-builder --win dir",
+    "build:win:internal-beta": "electron-builder --config electron-builder.internal-beta.json --win nsis --publish never"
+  },
+  "build": {
+    "appId": "com.MOMusic.desktop",
+    "productName": "MoMusic",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "afterPack": "build/after-pack.js",
+    "toolsets": {
+      "winCodeSign": "1.1.0"
+    },
+    "files": [
+      "desktop/**/*",
+      "public/**/*",
+      "build/**/*",
+      "cuefield/**/*",
+      "server.js",
+      "listen-together.js",
+      "*-api.js",
+      "qishui-audio-decryptor/**/*",
+      "dj-analyzer.js",
+      "LICENSE",
+      "NOTICE.md",
+      "docs/THIRD_PARTY_PORTS.md",
+      "package.json",
+      "!desktop/wallpaper-preload.js",
+      "!public/wallpaper.html",
+      "!public/index.*.html",
+      "public/index.html"
+    ],
+    "asar": false,
+    "win": {
+      "executableName": "MOMusic",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MoMusic",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/installerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "include": "build/installer.nsh",
+      "artifactName": "MoMusic-${version}-Setup.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MO1749",
+        "repo": "MOMusic"
+      }
+    ]
+  },
+  "momusic": {
+    "update": {
+      "provider": "github",
+      "owner": "MO1749",
+      "repo": "MOMusic",
+      "preview": false,
+      "preferMirrors": true,
+      "mirrors": [
+        "https://gh.llkk.cc/",
+        "https://ghfast.top/",
+        "https://gh-proxy.com/"
+      ]
+    }
+  },
+  "listenTogether": {
+    "enabled": true,
+    "websocketPort": 9527
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "mpg123-decoder": "^1.0.3",
+    "NeteaseCloudMusicApi": "^4.32.0",
+    "ws": "^8.16.0"
+  },
+  "overrides": {
+    "axios": "1.18.1",
+    "body-parser": "1.20.6",
+    "music-metadata": "11.14.0"
+  },
+  "devDependencies": {
+    "electron": "^42.4.1",
+    "electron-builder": "^26.15.3",
+    "rcedit": "^5.0.2"
+  }
+}

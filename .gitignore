@@ -1,0 +1,12 @@
+node_modules/
+dist/
+updates/
+.DS_Store
+*.log
+.cookie
+.qq-cookie
+.163-cookie
+.kugou-cookie
+.qishui-cookie
+.spotify-cookie
+.env
