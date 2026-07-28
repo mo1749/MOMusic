@@ -1,4 +1,4 @@
-// ====================================================================
+﻿// ====================================================================
 //  粒子音乐可视化播放器 — Server v2
 //  - 网易云搜索 / 歌曲URL / 封面/音频代理
 //  - 扫码登录 (login_qr_*) + cookie 持久化 (./.cookie)
@@ -163,7 +163,7 @@ const CUEFIELD_FEEDBACK_FILE = process.env.CUEFIELD_FEEDBACK_FILE || path.join(_
 const LISTEN_SYNC_JOURNAL_FILE = process.env.MOMusic_LISTEN_SYNC_FILE || path.join(__dirname, 'data', 'listen-sync-journal.json');
 const LISTEN_SYNC_JOURNAL_LIMIT = 600;
 const APP_PACKAGE = readPackageInfo();
-const APP_VERSION = process.env.MOMusic_VERSION || APP_PACKAGE.version || '2.0.2';
+const APP_VERSION = process.env.MOMusic_VERSION || APP_PACKAGE.version || '1.0.0';
 const UPDATE_CONFIG = readUpdateConfig(APP_PACKAGE);
 const PATCH_MAX_BYTES = 12 * 1024 * 1024;
 const PATCH_ALLOWED_ROOTS = new Set(['public', 'desktop', 'build']);
@@ -426,6 +426,9 @@ function serveStatic(res, filePath) {
   const ext = path.extname(filePath);
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not Found'); return; }
+    if (filePath.endsWith('index.html')) {
+      data = data.toString('utf8').replace('</head>', '<script>window.__APP_VERSION__="' + APP_VERSION.replace(/"/g,'') + '";</script></head>');
+    }
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'text/plain',
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
