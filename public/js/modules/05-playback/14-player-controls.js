@@ -543,10 +543,16 @@ async function togglePlay() {
     forcePlaybackControlsInteractive();
     if ((!audio || !audio.src) && playQueue.length && currentIdx >= 0) {
       await playQueueAt(currentIdx, { manual: true });
+      // 一起听：房主广播切歌+播放
+      safePlaybackStep('lt-broadcast-track', function () { if (window._ltBroadcastTrackChange) window._ltBroadcastTrackChange(); });
+      safePlaybackStep('lt-broadcast-play', function () { if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('play'); });
       return;
     }
     if (audio && audio.src && playQueue.length && currentIdx >= 0 && !playbackMediaMatchesCurrentQueueItem(audio)) {
       await playQueueAt(currentIdx, { manual: true, suppressPlayFailureNotice: true });
+      // 一起听：房主广播切歌+播放
+      safePlaybackStep('lt-broadcast-track', function () { if (window._ltBroadcastTrackChange) window._ltBroadcastTrackChange(); });
+      safePlaybackStep('lt-broadcast-play', function () { if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('play'); });
       return;
     }
     if ((!audio || !audio.src) && currentLocalSong && (currentLocalSong.localMissing || !currentLocalSong.localUrl)) {
@@ -556,6 +562,8 @@ async function togglePlay() {
     if (!audio) return;
     if (audio.paused || audio.ended) {
       await attemptAudioPlay({ manual: true });
+      // 一起听：房主广播播放状态
+      safePlaybackStep('lt-broadcast-play', function () { if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('play'); });
     } else {
       if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting && typeof resetCuefieldAutoMix === 'function') {
         resetCuefieldAutoMix('manual-pause');
@@ -575,6 +583,8 @@ async function togglePlay() {
       forcePlaybackControlsInteractive();
       safePlaybackStep('sync-pause-state', function () { syncPlaybackStateFromAudioEvent('manual-pause'); });
       safePlaybackStep('pause-controls-hide', function () { scheduleControlsHide(520); });
+      // 一起听：房主广播暂停状态
+      safePlaybackStep('lt-broadcast-pause', function () { if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('pause'); });
     }
   } catch (err) {
     console.warn('[TogglePlay]', err);
@@ -647,16 +657,22 @@ function nextTrack(userInitiated) {
   else currentIdx = (currentIdx + 1) % playQueue.length;
   var opts = userInitiated ? { manual: true, suppressPlayFailureNotice: true } : { suppressPlayFailureNotice: true };
   if (playMode === 'shuffle') opts.skipShuffleOrder = true;
-  Promise.resolve(playQueueAt(currentIdx, opts)).finally(forcePlaybackControlsInteractive);
+  Promise.resolve(playQueueAt(currentIdx, opts)).then(function () {
+    // 一起听：房主广播切歌
+    safePlaybackStep('lt-broadcast-track', function () { if (window._ltBroadcastTrackChange) window._ltBroadcastTrackChange(); });
+  }).finally(forcePlaybackControlsInteractive);
 }
 function prevTrack(userInitiated) {
   if (!playQueue.length) return;
   playToggleBusy = false;
   forcePlaybackControlsInteractive();
   currentIdx = (currentIdx - 1 + playQueue.length) % playQueue.length;
-  var opts = userInitiated ? { manual: true, suppressPlayFailureNotice: true } : { suppressPlayFailureNotice: true };
-  if (playMode === 'shuffle') opts.skipShuffleOrder = true;
-  Promise.resolve(playQueueAt(currentIdx, opts)).finally(forcePlaybackControlsInteractive);
+  var prevOpts = userInitiated ? { manual: true, suppressPlayFailureNotice: true } : { suppressPlayFailureNotice: true };
+  if (playMode === 'shuffle') prevOpts.skipShuffleOrder = true;
+  Promise.resolve(playQueueAt(currentIdx, prevOpts)).then(function () {
+    // 一起听：房主广播切歌
+    safePlaybackStep('lt-broadcast-track', function () { if (window._ltBroadcastTrackChange) window._ltBroadcastTrackChange(); });
+  }).finally(forcePlaybackControlsInteractive);
 }
 function shuffleQueue() {
   reorderQueueForShufflePlaybackOrder(currentIdx, { reason: 'shuffle-queue' });

@@ -57,11 +57,25 @@
 
   // ====== 内部方法 ======
   function getWsUrl() {
-    const host = window.location.hostname || '127.0.0.1';
-    const port = window.location.port || '3000';
-    const ltPort = (typeof momusicConfig !== 'undefined' && momusicConfig.listenTogether && momusicConfig.listenTogether.websocketPort) ? momusicConfig.listenTogether.websocketPort : 9527;
-    return ws://${host}:${ltPort}/listen-together;
-  }:${port}/listen-together`;
+    // 优先使用用户配置的公网服务器地址
+    var saved = '';
+    try { saved = localStorage.getItem('lt_server_url') || ''; } catch (_) {}
+    saved = saved.trim();
+    if (saved) {
+      // 补全协议
+      if (saved.indexOf('ws://') !== 0 && saved.indexOf('wss://') !== 0) {
+        saved = 'ws://' + saved;
+      }
+      // 补全 path
+      if (saved.indexOf('/listen-together') === -1) {
+        saved = saved.replace(/\/$/, '') + '/listen-together';
+      }
+      return saved;
+    }
+    // 回退：连接页面同源（本地桌面端/浏览器预览）
+    var host = window.location.hostname || '127.0.0.1';
+    var port = window.location.port || '3000';
+    return 'ws://' + host + ':' + port + '/listen-together';
   }
 
   function send(data) {

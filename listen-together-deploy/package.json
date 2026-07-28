@@ -1,0 +1,15 @@
+{
+  "name": "momusic-listen-together-server",
+  "version": "1.0.0",
+  "description": "MOMusic Listen Together WebSocket Server",
+  "main": "listen-together-server.js",
+  "scripts": {
+    "start": "node listen-together-server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

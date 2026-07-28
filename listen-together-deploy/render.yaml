@@ -1,0 +1,12 @@
+# Render 部署配置
+services:
+  - type: web
+    name: momusic-listen-together
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node listen-together-server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production

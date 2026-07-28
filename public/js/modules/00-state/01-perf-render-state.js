@@ -1,4 +1,4 @@
-function markAppPerf(name) {
+﻿function markAppPerf(name) {
   try {
     var value = performance.now();
     appPerfMarks.push({ name: name, value: Math.round(value) });
@@ -66,8 +66,8 @@ var updatePreviewState = {
   installerPath: '',
   installerOpened: false,
   cached: false,
-  currentVersion: '2.0.2',
-  version: '2.0.2',
+  currentVersion: '1.0.0',
+  version: '1.0.0',
   configured: false,
   preview: true,
   updateAvailable: false,
@@ -88,9 +88,9 @@ var updatePreviewState = {
   message: '',
   restartRequired: false,
   patchFallbackTried: false,
-  hero: '当前版本，更新检测已就绪。',
+  hero: '当前版本，更新检测已就绪�?,
   notes: [
-    '安装包文字对比修复',
+    '安装包文字对比修�?,
     '安装目录可自由选择',
     '单实例与快捷方式修复'
   ]

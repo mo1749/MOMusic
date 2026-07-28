@@ -419,6 +419,8 @@ function commitProgressSeek(targetTime, resumeAfterSeek) {
   renderProgressPreview(targetTime, durationSec);
   syncBeatMapPlaybackCursor(targetTime, true);
   saveLastPlaybackSnapshot(true, 'seek');
+  // 一起听：房主广播 seek 操作
+  if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('seek', targetTime);
   waitForProgressSeekReady(media, targetTime, serial, 1800).then(function (ready) {
     if (serial !== progressDragState.commitSerial || !progressSeekMediaStillCurrent(media, mediaSrc)) return false;
     if (ready) return true;

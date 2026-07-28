@@ -1867,18 +1867,26 @@
       <div style="margin:12px auto;width:64px;height:64px;border-radius:50%;background:rgba(80,140,240,.12);display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#8ab4f8" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
       </div>
-      <button class="lt-connect-btn" type="button" onclick="ListenTogether.connect()">连接服务器</button>
+      <div style="margin-bottom:12px">
+        <input id="lt-server-url-input" class="lt-input" type="text" placeholder="服务器地址（留空=本地）" style="width:80%;text-align:center;font-size:11px" onkeydown="if(event.key==='Enter')ListenTogether.connect()">
+        <div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:3px">输入公网地址如 your-server.com:9527</div>
+      </div>
+      <button class="lt-connect-btn" type="button" onclick="handleLtConnect()">连接服务器</button>
       <div id="lt-status-bar" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.35)">就绪</div>
     </div>
     <div id="lt-room-view" style="display:none">
       <div style="margin-bottom:12px;display:flex;gap:8px">
         <input id="lt-nickname-input" class="lt-input" type="text" placeholder="你的昵称" maxlength="16" style="flex:1">
-        <button class="home-platform-recommend-actions" type="button" onclick="handleLtCreateRoom()" style="width:auto;white-space:nowrap">创建房间</button>
+      </div>
+      <div style="margin-bottom:8px;display:flex;gap:8px">
+        <input id="lt-room-name-input" class="lt-input" type="text" placeholder="房间名称（可选）" maxlength="20" style="flex:1">
+        <input id="lt-room-password-input" class="lt-input" type="text" placeholder="密码（可选）" maxlength="20" style="flex:1;max-width:120px">
+        <button class="lt-connect-btn" type="button" onclick="handleLtCreateRoom()" style="width:auto;white-space:nowrap">创建房间</button>
       </div>
       <div style="margin-bottom:12px;display:flex;gap:8px">
         <input id="lt-join-id-input" class="lt-input" type="text" placeholder="房间 ID（6位代码）" maxlength="6" style="text-transform:uppercase;flex:1">
         <input id="lt-join-password-input" class="lt-input" type="text" placeholder="密码（可选）" maxlength="20" style="flex:1;max-width:120px">
-        <button class="home-platform-recommend-actions" type="button" onclick="handleLtJoinRoom()" style="width:auto;white-space:nowrap">加入</button>
+        <button class="lt-connect-btn" type="button" onclick="handleLtJoinRoom()" style="width:auto;white-space:nowrap">加入</button>
       </div>
       <div id="lt-room-name-display" style="font-size:12px;color:rgba(255,255,255,.3);display:none"></div>
     </div>
@@ -1889,6 +1897,11 @@
         <span id="lt-host-badge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,180,80,.15);color:rgba(255,180,80,.8)">房主</span>
       </div>
       <div class="lt-members" id="lt-members-list" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:60px;overflow-y:auto"></div>
+      <div id="lt-current-track" style="display:none;background:rgba(80,140,240,.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid rgba(80,140,240,.15)">
+        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px">🎵 当前播放</div>
+        <div id="lt-track-title" style="font-size:12px;color:rgba(255,255,255,.85);font-weight:600">-</div>
+        <div id="lt-track-artist" style="font-size:10px;color:rgba(255,255,255,.4)">-</div>
+      </div>
       <div style="background:rgba(0,0,0,.25);border-radius:10px;border:1px solid rgba(255,255,255,.05);overflow:hidden">
         <div id="lt-chat-messages" style="height:100px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:11px"></div>
         <div style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid rgba(255,255,255,.05)">
@@ -1903,6 +1916,12 @@
 <script src="js/listen-together-client.js"></script>
   <script src="js/listen-together-ui.js"></script>
   <script src="js/index-loader.js"></script>
+  <script>
+    // 初始化一起听 UI（必须在 index-loader 加载完所有模块后，依赖 playQueue/audio 等全局变量）
+    if (typeof initListenTogetherUI === 'function') {
+      try { initListenTogetherUI(); } catch (e) { console.warn('[LT-UI] 初始化失败:', e); }
+    }
+  </script>
 </body>
 
 </html>
