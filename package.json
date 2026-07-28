@@ -76,7 +76,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "MO1749",
+        "owner": "mo1749",
         "repo": "MOMusic"
       }
     ]
@@ -84,7 +84,7 @@
   "momusic": {
     "update": {
       "provider": "github",
-      "owner": "MO1749",
+      "owner": "mo1749",
       "repo": "MOMusic",
       "preview": false,
       "preferMirrors": true,
