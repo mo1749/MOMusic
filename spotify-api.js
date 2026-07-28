@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const fs = require('fs');
 const https = require('https');
@@ -20,7 +20,7 @@ const DEFAULT_SPOTIFY_SCOPES = [
   'playlist-modify-public',
 ];
 const SPOTIFY_LIKED_PLAYLIST_ID = 'spotify-liked';
-const SPOTIFY_UA = 'MOMusic/2.0.2 (Spotify Web API bridge)';
+const SPOTIFY_UA = 'MOMusic/1.0.0 (Spotify Web API bridge)';
 const SPOTIFY_SEARCH_LIMIT_MAX = 10;
 const SPOTIFY_PLAYLIST_PAGE_LIMIT = 50;
 
