@@ -9,6 +9,7 @@
   'use strict';
 
   // ====== 配置 ======
+  const DEFAULT_SERVER = '115.29.197.112:9527';
   const RECONNECT_DELAY = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -57,25 +58,20 @@
 
   // ====== 内部方法 ======
   function getWsUrl() {
-    // 优先使用用户配置的公网服务器地址
+    // 优先使用用户自定义地址，否则使用内置默认公网服务器
     var saved = '';
     try { saved = localStorage.getItem('lt_server_url') || ''; } catch (_) {}
     saved = saved.trim();
-    if (saved) {
-      // 补全协议
-      if (saved.indexOf('ws://') !== 0 && saved.indexOf('wss://') !== 0) {
-        saved = 'ws://' + saved;
-      }
-      // 补全 path
-      if (saved.indexOf('/listen-together') === -1) {
-        saved = saved.replace(/\/$/, '') + '/listen-together';
-      }
-      return saved;
+    if (!saved) saved = DEFAULT_SERVER;
+    // 补全协议
+    if (saved.indexOf('ws://') !== 0 && saved.indexOf('wss://') !== 0) {
+      saved = 'ws://' + saved;
     }
-    // 回退：连接页面同源（本地桌面端/浏览器预览）
-    var host = window.location.hostname || '127.0.0.1';
-    var port = window.location.port || '3000';
-    return 'ws://' + host + ':' + port + '/listen-together';
+    // 补全 path
+    if (saved.indexOf('/listen-together') === -1) {
+      saved = saved.replace(/\/$/, '') + '/listen-together';
+    }
+    return saved;
   }
 
   function send(data) {

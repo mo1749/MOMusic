@@ -405,7 +405,6 @@ function renderHomeDashboardHero() {
       '<button id="home-listen-together-btn" type="button" onclick="toggleListenTogether()">🎧 一起听 <span id="home-listen-together-duration" class="lt-duration-badge">0m</span></button>' +
       '<button id="home-dashboard-video-choose" type="button" onclick="openHomeDashboardVideoPicker()">选择 MP4</button>' +
       '<button id="home-dashboard-video-clear" type="button" onclick="clearHomeDashboardVideo()" hidden>移除视频</button>' +
-      '<button type="button" onclick="openHomePlayerConsole()">展开播放器控制台</button>' +
       '</div></div>' +
       '<input id="home-dashboard-video-input" type="file" accept=".mp4,video/mp4" hidden aria-hidden="true">';
     homeDashboardVideoControlsBound = false;

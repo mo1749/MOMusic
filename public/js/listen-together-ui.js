@@ -260,11 +260,15 @@ function initListenTogetherUI() {
   LT.on('connected', function () {
     setStatus('已连接 ✓');
     showView('lt-room-view');
+    var nickInput = document.getElementById('lt-nickname-input');
+    if (nickInput) nickInput.focus();
   });
 
   LT.on('disconnected', function () {
-    setStatus('已断开');
+    setStatus('已断开，点击重试');
     showView('lt-connect-view');
+    var btn = document.querySelector('#lt-connect-view button');
+    if (btn) { btn.textContent = '开始一起听'; btn.disabled = false; }
     stopListenTogetherDurationTracking();
     stopLtProgressSync();
   });
@@ -394,13 +398,8 @@ function stopLtProgressSync() {
 // ── 全局 UI 操作函数 ──
 
 function handleLtConnect() {
-  var input = document.getElementById('lt-server-url-input');
-  var url = input && input.value.trim() || '';
-  // 保存到 localStorage，getWsUrl() 会读取
-  try {
-    if (url) localStorage.setItem('lt_server_url', url);
-    else localStorage.removeItem('lt_server_url');
-  } catch (_) {}
+  var btn = event && event.target ? event.target.closest('button') : null;
+  if (btn) { btn.textContent = '连接中…'; btn.disabled = true; }
   window.ListenTogether.connect();
 }
 
@@ -418,27 +417,23 @@ function toggleListenTogether() {
 
 function handleLtCreateRoom() {
   var name = document.getElementById('lt-room-name-input');
-  var password = document.getElementById('lt-room-password-input');
   var nickname = document.getElementById('lt-nickname-input');
   var nVal = nickname && nickname.value.trim() || '';
-  var pVal = password && password.value.trim() || '';
   var nameVal = name && name.value.trim() || '';
-  window.ListenTogether.createRoom(nameVal || undefined, pVal || undefined, nVal || undefined);
+  window.ListenTogether.createRoom(nameVal || undefined, undefined, nVal || undefined);
 }
 
 function handleLtJoinRoom() {
   var roomId = document.getElementById('lt-join-id-input');
-  var password = document.getElementById('lt-join-password-input');
   var nickname = document.getElementById('lt-nickname-input');
   var idVal = roomId && roomId.value.trim().toUpperCase() || '';
   if (idVal.length < 4) {
     var sb = document.getElementById('lt-status-bar');
-    if (sb) sb.textContent = '请输入正确的房间ID';
+    if (sb) sb.textContent = '请输入正确的房间号';
     return;
   }
   var nVal = nickname && nickname.value.trim() || '';
-  var pVal = password && password.value.trim() || '';
-  window.ListenTogether.joinRoom(idVal, pVal || undefined, nVal || undefined);
+  window.ListenTogether.joinRoom(idVal, undefined, nVal || undefined);
 }
 
 function handleLtSendChat() {

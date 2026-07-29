@@ -4753,7 +4753,7 @@ body.home-controls-locked #bottom-bar {
   align-self: center;
   width: calc(100% - clamp(86px, 10vw, 156px));
   height: 4px;
-  margin: 4px auto 1px;
+  margin: 1px auto 4px;
   background: rgba(255, 255, 255, 0.095);
   border-radius: 999px;
   cursor: pointer;

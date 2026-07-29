@@ -189,7 +189,6 @@
               <button type="button" onclick="homeDashboardNextReview()">换一条</button>
               <button id="home-dashboard-video-choose" type="button" onclick="openHomeDashboardVideoPicker()">选择 MP4</button>
               <button id="home-dashboard-video-clear" type="button" onclick="clearHomeDashboardVideo()" hidden>移除视频</button>
-              <button type="button" onclick="openHomePlayerConsole()">展开播放器控制台</button>
             </div>
           </div>
           <input id="home-dashboard-video-input" type="file" accept=".mp4,video/mp4" hidden aria-hidden="true">
@@ -1232,10 +1231,6 @@
         </div>
         <div id="mini-queue-list" class="mini-queue-list"></div>
       </div>
-      <div id="progress-bar">
-        <div id="progress-fill"></div>
-        <div id="progress-thumb" aria-hidden="true"></div>
-      </div>
       <div id="controls">
         <div class="control-cluster actions">
           <div class="control-track">
@@ -1373,6 +1368,10 @@
           <div id="time-display">0:00 / 0:00</div>
           <button id="bottom-bar-hide-btn" class="ctrl-btn" onclick="toggleBottomBarCollapse()" title="隐藏播放栏" aria-label="隐藏播放栏"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>
         </div>
+      </div>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+        <div id="progress-thumb" aria-hidden="true"></div>
       </div>
     </div>
 
@@ -1863,53 +1862,58 @@
       </div>
       <button class="home-platform-recommend-close" type="button" onclick="toggleListenTogether()">×</button>
     </div>
-    <div id="lt-connect-view" style="text-align:center;padding:24px 0">
-      <div style="margin:12px auto;width:64px;height:64px;border-radius:50%;background:rgba(80,140,240,.12);display:flex;align-items:center;justify-content:center">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#8ab4f8" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    <div id="lt-connect-view" style="text-align:center;padding:20px 0">
+      <div style="margin:0 auto 16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,rgba(80,140,240,.2),rgba(120,80,240,.15));display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#8ab4f8" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       </div>
-      <div style="margin-bottom:12px">
-        <input id="lt-server-url-input" class="lt-input" type="text" placeholder="服务器地址（留空=本地）" style="width:80%;text-align:center;font-size:11px" onkeydown="if(event.key==='Enter')ListenTogether.connect()">
-        <div style="font-size:9px;color:rgba(255,255,255,.25);margin-top:3px">输入公网地址如 your-server.com:9527</div>
-      </div>
-      <button class="lt-connect-btn" type="button" onclick="handleLtConnect()">连接服务器</button>
-      <div id="lt-status-bar" style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.35)">就绪</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px">与朋友实时同步听歌</div>
+      <button class="lt-connect-btn" type="button" onclick="handleLtConnect()" style="font-size:14px;padding:10px 32px">开始一起听</button>
+      <div id="lt-status-bar" style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.35)">就绪</div>
     </div>
     <div id="lt-room-view" style="display:none">
-      <div style="margin-bottom:12px;display:flex;gap:8px">
-        <input id="lt-nickname-input" class="lt-input" type="text" placeholder="你的昵称" maxlength="16" style="flex:1">
+      <div style="margin-bottom:14px">
+        <input id="lt-nickname-input" class="lt-input" type="text" placeholder="输入你的昵称" maxlength="16" style="width:100%;text-align:center;font-size:13px;padding:8px 10px" onkeydown="if(event.key==='Enter')document.getElementById('lt-room-name-input').focus()">
       </div>
-      <div style="margin-bottom:8px;display:flex;gap:8px">
-        <input id="lt-room-name-input" class="lt-input" type="text" placeholder="房间名称（可选）" maxlength="20" style="flex:1">
-        <input id="lt-room-password-input" class="lt-input" type="text" placeholder="密码（可选）" maxlength="20" style="flex:1;max-width:120px">
-        <button class="lt-connect-btn" type="button" onclick="handleLtCreateRoom()" style="width:auto;white-space:nowrap">创建房间</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="lt-room-name-input" class="lt-input" type="text" placeholder="房间名称（可选）" maxlength="20" style="flex:1" onkeydown="if(event.key==='Enter')handleLtCreateRoom()">
+        <button class="lt-connect-btn" type="button" onclick="handleLtCreateRoom()" style="width:auto;white-space:nowrap;padding:8px 16px">🎵 创建房间</button>
       </div>
-      <div style="margin-bottom:12px;display:flex;gap:8px">
-        <input id="lt-join-id-input" class="lt-input" type="text" placeholder="房间 ID（6位代码）" maxlength="6" style="text-transform:uppercase;flex:1">
-        <input id="lt-join-password-input" class="lt-input" type="text" placeholder="密码（可选）" maxlength="20" style="flex:1;max-width:120px">
-        <button class="lt-connect-btn" type="button" onclick="handleLtJoinRoom()" style="width:auto;white-space:nowrap">加入</button>
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0">
+        <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
+        <span style="font-size:10px;color:rgba(255,255,255,.25)">或</span>
+        <div style="flex:1;height:1px;background:rgba(255,255,255,.08)"></div>
       </div>
-      <div id="lt-room-name-display" style="font-size:12px;color:rgba(255,255,255,.3);display:none"></div>
+      <div style="display:flex;gap:8px">
+        <input id="lt-join-id-input" class="lt-input" type="text" placeholder="房间号" maxlength="6" style="flex:1;text-transform:uppercase;letter-spacing:2px;text-align:center;font-size:14px" onkeydown="if(event.key==='Enter')handleLtJoinRoom()">
+        <button class="lt-connect-btn" type="button" onclick="handleLtJoinRoom()" style="width:auto;white-space:nowrap;padding:8px 16px">加入</button>
+      </div>
     </div>
     <div id="lt-room-active-view" style="display:none">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <strong id="lt-active-room-name" style="color:rgba(80,140,240,.9)">房间</strong>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <strong id="lt-active-room-name" style="color:rgba(80,140,240,.9);font-size:14px">房间</strong>
         <span style="font-size:11px;color:rgba(255,255,255,.4);flex:1">👥 <span id="lt-member-count">0</span></span>
-        <span id="lt-host-badge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,180,80,.15);color:rgba(255,180,80,.8)">房主</span>
+        <span id="lt-host-badge" style="display:none;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(255,180,80,.15);color:rgba(255,180,80,.8)">👑 房主</span>
       </div>
-      <div class="lt-members" id="lt-members-list" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;max-height:60px;overflow-y:auto"></div>
-      <div id="lt-current-track" style="display:none;background:rgba(80,140,240,.08);border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid rgba(80,140,240,.15)">
-        <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:2px">🎵 当前播放</div>
-        <div id="lt-track-title" style="font-size:12px;color:rgba(255,255,255,.85);font-weight:600">-</div>
-        <div id="lt-track-artist" style="font-size:10px;color:rgba(255,255,255,.4)">-</div>
+      <div class="lt-members" id="lt-members-list" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;max-height:50px;overflow-y:auto"></div>
+      <div id="lt-current-track" style="display:none;background:linear-gradient(135deg,rgba(80,140,240,.1),rgba(120,80,240,.06));border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(80,140,240,.12)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:32px;height:32px;border-radius:6px;background:rgba(80,140,240,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#8ab4f8" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div id="lt-track-title" style="font-size:12px;color:rgba(255,255,255,.9);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">-</div>
+            <div id="lt-track-artist" style="font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">-</div>
+          </div>
+        </div>
       </div>
       <div style="background:rgba(0,0,0,.25);border-radius:10px;border:1px solid rgba(255,255,255,.05);overflow:hidden">
-        <div id="lt-chat-messages" style="height:100px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:11px"></div>
+        <div id="lt-chat-messages" style="height:110px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:4px;font-size:11px"></div>
         <div style="display:flex;gap:6px;padding:8px 10px;border-top:1px solid rgba(255,255,255,.05)">
-          <input id="lt-chat-input" class="lt-input" type="text" placeholder="输入消息..." maxlength="200" onkeydown="if(event.key==="Enter")handleLtSendChat()" style="flex:1">
+          <input id="lt-chat-input" class="lt-input" type="text" placeholder="发条消息..." maxlength="200" onkeydown="if(event.key==='Enter')handleLtSendChat()" style="flex:1;font-size:11px">
           <button class="home-platform-recommend-actions" type="button" onclick="handleLtSendChat()" style="width:auto;white-space:nowrap;padding:5px 10px;font-size:11px">发送</button>
         </div>
       </div>
-      <button class="home-platform-recommend-actions" type="button" onclick="handleLtLeaveRoom()" style="margin-top:8px;width:auto;display:inline-block">离开房间</button>
+      <button class="home-platform-recommend-actions" type="button" onclick="handleLtLeaveRoom()" style="margin-top:10px;width:auto;display:inline-block;font-size:11px">离开房间</button>
     </div>
   </div>
 </div>

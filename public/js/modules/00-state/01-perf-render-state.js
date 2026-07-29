@@ -88,9 +88,9 @@ var updatePreviewState = {
   message: '',
   restartRequired: false,
   patchFallbackTried: false,
-  hero: '当前版本，更新检测已就绪�?,
+  hero: '当前版本，更新检测已就绪',
   notes: [
-    '安装包文字对比修�?,
+    '安装包文字对比修复',
     '安装目录可自由选择',
     '单实例与快捷方式修复'
   ]
