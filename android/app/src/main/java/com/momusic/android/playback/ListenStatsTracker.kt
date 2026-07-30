@@ -139,7 +139,10 @@ class ListenStatsTracker private constructor(private val app: MOMusicApp) {
     }
 
     private fun createSessionId(): String =
-        "mr-" + System.currentTimeMillis().toString(36) + "-" + (Math.random().toString(36).substring(2, 10))
+        "mr-" + System.currentTimeMillis().toString(36) + "-" + buildString {
+            val chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+            repeat(8) { append(chars.random()) }
+        }
 
     private fun dayKey(date: Date): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(date)

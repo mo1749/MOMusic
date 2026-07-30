@@ -1,12 +1,14 @@
 package com.momusic.android.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
 import com.momusic.android.ui.account.LoginScreen
 import com.momusic.android.ui.account.UserScreen
 import com.momusic.android.ui.collection.LocalCollectionScreen

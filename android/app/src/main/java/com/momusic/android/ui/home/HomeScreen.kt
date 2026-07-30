@@ -158,9 +158,12 @@ fun HomeScreen(
                 item {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         items(state.discover.playlists) { pl ->
-                            PlaylistCard(playlist = pl) {
-                                navController.navigate(Screen.PlaylistDetail.create(pl.id, pl.provider))
-                            }
+                            PlaylistCard(
+                                playlist = pl,
+                                onClick = {
+                                    navController.navigate(Screen.PlaylistDetail.create(pl.id, pl.provider))
+                                },
+                            )
                         }
                     }
                 }

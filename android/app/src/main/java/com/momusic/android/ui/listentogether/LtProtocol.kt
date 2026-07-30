@@ -94,7 +94,7 @@ object LtProtocol {
         val path = if (slashIdx >= 0) rest.substring(slashIdx) else ""
         val (host, portStr) = authority.split(':', limit = 2)
             .let { it.getOrNull(0).orEmpty() to it.getOrNull(1) }
-        val port = portStr.toIntOrNull()
+        val port = portStr?.toIntOrNull()
         // 3000 -> 9527，其它端口保留；无端口时附加 9527
         val finalPort = when {
             port == null -> 9527

@@ -118,7 +118,7 @@ fun DesktopShell(
                 )
 
                 // FX 浮层面板（占位，由 visual 子 agent 接入完整设置面板）
-                AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                     visible = showFxPanel,
                     enter = fadeIn(),
                     exit = fadeOut(),
@@ -128,7 +128,7 @@ fun DesktopShell(
                 }
 
                 // 左侧面板（占位，由其他 subagent 接入队列/歌单面板）
-                AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                     visible = showLeftPanel,
                     enter = fadeIn(),
                     exit = fadeOut(),

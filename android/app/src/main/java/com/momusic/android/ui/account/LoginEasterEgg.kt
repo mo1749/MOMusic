@@ -262,14 +262,13 @@ private fun EyeBox(
     val color = if (isActive) MaterialTheme.colorScheme.primary
     else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color)
-            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-            .clickable(onClick = onClick),
-        contentDescription = label,
-    )
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(color)
+                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                .clickable(onClick = onClick),
+        )
 }
 
 @Composable

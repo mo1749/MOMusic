@@ -152,8 +152,9 @@ fun PlaylistDetailScreen(
                 }
             }
 
-            if (!state.loading && state.tracks.isEmpty() && state.error != null) {
-                item { EmptyState(title = "加载失败", subtitle = state.error) }
+            val error = state.error
+            if (!state.loading && state.tracks.isEmpty() && error != null) {
+                item { EmptyState(title = "加载失败", subtitle = error) }
             }
 
             itemsIndexed(state.tracks) { index, song ->

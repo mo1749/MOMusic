@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.4.1
+
+- 修复：安卓版 19 处 Kotlin 编译错误
+  - PlayerManager: suspendCoroutine import 包名错误
+  - MOMusicAppRoot: 缺失 tween/navArgument import
+  - FilamentEngine: Filament 1.51.0 API 不兼容（setHdrEnabled/setQuality/LightManager.Builder）
+  - DesktopShell: AnimatedVisibility 作用域解析错误
+  - HomeScreen: PlaylistCard 调用签名不匹配
+  - 3 个详情页: state.error smart cast 失败
+  - ListenTogetherScreen/LtProtocol: 类型推断/nullable 问题
+  - CustomLyricScreen: weight 修饰符 internal 访问
+  - MyPlaylistsScreen: 挂起函数调用上下文
+  - LoginEasterEgg/LoginScreen: 参数/import 缺失
+  - ListenStatsTracker: Double.toString(radix) 误用
+  - CustomLyricScreen: 签名参数加默认值
+
 ## v1.4.0
 
 - 修复：安卓版 8 个 UI 文件缺失 `collectAsStateWithLifecycle` import 导致编译失败

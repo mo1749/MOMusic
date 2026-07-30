@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
@@ -63,10 +62,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomLyricScreen(
-    songId: String,
-    songName: String,
-    songDuration: Long,
-    originalLrc: String,
+    songId: String = "",
+    songName: String = "",
+    songDuration: Long = 0L,
+    originalLrc: String = "",
     navController: NavHostController,
 ) {
     val context = LocalContext.current

@@ -99,11 +99,11 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val result = mutableListOf<Playlist>()
             val providers = listOf(
-                MusicProvider.NETEASE to { runCatching { api.userPlaylists("") }.getOrDefault(emptyList()) },
-                MusicProvider.QQ to { runCatching { api.qqUserPlaylists() }.getOrDefault(emptyList()) },
-                MusicProvider.KUGOU to { runCatching { api.kugouUserPlaylists() }.getOrDefault(emptyList()) },
-                MusicProvider.QISHUI to { runCatching { api.qishuiUserPlaylists() }.getOrDefault(emptyList()) },
-                MusicProvider.SPOTIFY to { runCatching { api.spotifyUserPlaylists() }.getOrDefault(emptyList()) },
+                MusicProvider.NETEASE to suspend { runCatching { api.userPlaylists("") }.getOrDefault(emptyList()) },
+                MusicProvider.QQ to suspend { runCatching { api.qqUserPlaylists() }.getOrDefault(emptyList()) },
+                MusicProvider.KUGOU to suspend { runCatching { api.kugouUserPlaylists() }.getOrDefault(emptyList()) },
+                MusicProvider.QISHUI to suspend { runCatching { api.qishuiUserPlaylists() }.getOrDefault(emptyList()) },
+                MusicProvider.SPOTIFY to suspend { runCatching { api.spotifyUserPlaylists() }.getOrDefault(emptyList()) },
             )
             providers.forEach { (provider, loader) ->
                 runCatching { loader() }.getOrDefault(emptyList()).let { list ->

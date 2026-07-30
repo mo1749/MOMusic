@@ -103,12 +103,6 @@ class FilamentEngine private constructor() {
             vw.setSampleCount(0)
         }
         try {
-            // HDR
-            vw.setHdrEnabled(true)
-        } catch (t: Throwable) {
-            // TODO: HDR 不可用时忽略
-        }
-        try {
             // 抗锯齿(FXAA)
             vw.setAntiAliasing(View.AntiAliasing.FXAA)
         } catch (t: Throwable) { /* 占位 */ }
@@ -126,10 +120,6 @@ class FilamentEngine private constructor() {
         } catch (t: Throwable) {
             // TODO: DynamicResolutionOptions 构造在不同版本签名不同，失败时降级
         }
-        try {
-            vw.setQuality(View.QualityLevel.HIGH)
-        } catch (t: Throwable) { /* 占位 */ }
-
         // ===== 相机 =====
         cameraEntity = EntityManager.get().create()
         val cam = eng.createCamera(cameraEntity)
@@ -151,12 +141,13 @@ class FilamentEngine private constructor() {
     private fun setupLights(eng: Engine, sc: Scene) {
         // 方向光（太阳光）：从右上方斜射
         try {
-            sunLight = LightManager.Builder(LightManager.Type.DIRECTIONAL)
+            sunLight = EntityManager.get().create()
+            LightManager.Builder(LightManager.Type.DIRECTIONAL)
                 .color(1.0f, 0.98f, 0.92f)
                 .intensity(12000.0f)
                 .direction(-0.5f, -1.0f, -0.3f)
                 .castShadows(false)
-                .build(eng)
+                .build(eng, sunLight)
             sc.addEntity(sunLight)
         } catch (t: Throwable) {
             // TODO: 方向光创建失败时回退到纯环境光

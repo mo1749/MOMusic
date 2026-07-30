@@ -145,8 +145,9 @@ fun AlbumDetailScreen(
                 }
             }
 
-            if (!state.loading && state.error != null && state.album == null) {
-                item { EmptyState(title = "加载失败", subtitle = state.error) }
+            val error = state.error
+            if (!state.loading && error != null && state.album == null) {
+                item { EmptyState(title = "加载失败", subtitle = error) }
             }
 
             state.album?.songs?.let { songs ->

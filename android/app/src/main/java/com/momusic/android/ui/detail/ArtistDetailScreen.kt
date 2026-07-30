@@ -153,8 +153,9 @@ fun ArtistDetailScreen(
                 }
             }
 
-            if (!state.loading && state.error != null && state.artist == null) {
-                item { EmptyState(title = "加载失败", subtitle = state.error) }
+            val error = state.error
+            if (!state.loading && error != null && state.artist == null) {
+                item { EmptyState(title = "加载失败", subtitle = error) }
             }
         }
     }
