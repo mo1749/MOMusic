@@ -949,13 +949,14 @@ sz = clamp(depthSize * (0.90 + ringDrive * 0.62), 1.05, 3.90);
 var fs = `
 precision highp float;
 uniform sampler2D uDotTex;
-uniform float uAlpha, uPreset, uParticleDim;
+uniform float uAlpha, uPreset, uParticleDim, uTime;
 varying vec3 vColor;
 varying float vBright, vRipple, vEdgeBoost, vAlpha, vSourceLum;
 
 void main(){
   vec4 tex = texture2D(uDotTex, gl_PointCoord);
   if (tex.a < 0.02) discard;
+
   vec3 col = vColor * vBright;
   col = mix(col, col * 1.3 + vec3(0.05), vEdgeBoost * 0.35);
   col = mix(col, col * 1.2, vRipple * 0.4);
@@ -1137,6 +1138,7 @@ function updateBackgroundStarRiverState(dt, immediate) {
   backgroundStarRiverParticles.visible = backgroundStarRiverUniforms.uAlpha.value > 0.006;
 }
 console.log('v7 shell loaded, JS pending');
+
 
 // ============================================================
 //  浮空粒子层 (独立 Points)

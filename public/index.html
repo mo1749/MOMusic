@@ -133,6 +133,7 @@
           <button id="search-mode-kugou" type="button" onclick="setSearchMode('kugou')" aria-selected="false">KG</button>
           <button id="search-mode-qishui" type="button" onclick="setSearchMode('qishui')" aria-selected="false">QS</button>
           <button id="search-mode-spotify" type="button" onclick="setSearchMode('spotify')" aria-selected="false">SP</button>
+          <button id="search-mode-ls" type="button" onclick="setSearchMode('ls')" aria-selected="false">LS</button>
           <button id="search-mode-podcast" type="button" onclick="setSearchMode('podcast')"
             aria-selected="false">Podcast</button>
         </div>
@@ -1104,6 +1105,8 @@
       <div id="pl-pane" style="display:none">
         <div class="queue-toolbar">
           <div class="queue-chip">登录后显示网易云 / QQ 歌单</div>
+          <button class="fx-mini-btn ghost" onclick="createLocalPlaylist()"
+            style="height:26px;padding:0 10px;font-size:11px">+ 新建歌单</button>
           <button class="fx-mini-btn ghost" onclick="refreshUserPlaylists(true)"
             style="height:26px;padding:0 10px;font-size:11px">刷新</button>
         </div>

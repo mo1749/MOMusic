@@ -5,9 +5,9 @@ function makeShelfManager() {
   var renderedStart = -1;
   var SHELF_VISIBLE_RADIUS = 5;
   var SHELF_MAX_RENDER = SHELF_VISIBLE_RADIUS * 2 + 1;
-  var shelfPane = 'mine';       // mine | fav
+  var shelfPane = 'mine';       // mine | fav | local
   var collectionReveal = 0;     // 滚轮阻尼累积，用于打开/返回收藏歌单
-  var paneMemory = { mine: 0, fav: 0 };
+  var paneMemory = { mine: 0, fav: 0, local: 0 };
   var paneSwitchAt = -10;
   var paneSwitchDir = 1;
   var mode = 'side';
@@ -26,21 +26,23 @@ function makeShelfManager() {
   var openCardIdx = -1;       // 已打开内容框的卡片 (-1 表示无)
   var contentList = null;     // 二级 PSP 滚动列表 manager
   var connectorParticles = null;
-  var playlistPaneCache = { revision: -1, source: null, mine: [], fav: [] };
+  var playlistPaneCache = { revision: -1, source: null, mine: [], fav: [], local: [] };
 
   // 一次性返回完整 items 数组 (不只 5 张, 全部参与 PSP 滚动)
   function splitPlaylists() {
     if (playlistPaneCache.revision === playlistCatalogRevision && playlistPaneCache.source === userPlaylists) {
-      return { mine: playlistPaneCache.mine, fav: playlistPaneCache.fav };
+      return { mine: playlistPaneCache.mine, fav: playlistPaneCache.fav, local: playlistPaneCache.local };
     }
-    var mine = [], fav = [];
+    var mine = [], fav = [], local = [];
     userPlaylists.forEach(function (pl) {
       var pane = pl && (pl.shelfPane || pl.shelf_pane);
-      if (pane === 'mine' || pane === 'fav') (pane === 'fav' ? fav : mine).push(pl);
-      else (pl.subscribed ? fav : mine).push(pl);
+      var provider = pl && pl.provider;
+      if (pane === 'local' || (!pane && provider === 'local')) local.push(pl);
+      else if (pane === 'fav' || (!pane && pl.subscribed)) fav.push(pl);
+      else mine.push(pl);
     });
-    playlistPaneCache = { revision: playlistCatalogRevision, source: userPlaylists, mine: mine, fav: fav };
-    return { mine: mine, fav: fav };
+    playlistPaneCache = { revision: playlistCatalogRevision, source: userPlaylists, mine: mine, fav: fav, local: local };
+    return { mine: mine, fav: fav, local: local };
   }
 
   function shelfShowsPodcasts() {
@@ -53,10 +55,12 @@ function makeShelfManager() {
 
   function activePlaylists() {
     var panes = splitPlaylists();
-    if (shelfMergesCollections()) return panes.mine.concat(panes.fav);
-    var source = (shelfPane === 'fav') ? panes.fav : panes.mine;
-    if (!source.length && shelfPane === 'mine' && panes.fav.length) source = panes.fav;
-    if (!source.length && shelfPane === 'fav' && panes.mine.length) source = panes.mine;
+    if (shelfMergesCollections()) return panes.mine.concat(panes.local, panes.fav);
+    var source = (shelfPane === 'fav') ? panes.fav : (shelfPane === 'local' ? panes.local : panes.mine);
+    if (!source.length && shelfPane === 'mine' && panes.local.length) source = panes.local;
+    else if (!source.length && shelfPane === 'mine' && panes.fav.length) source = panes.fav;
+    else if (!source.length && shelfPane === 'local' && panes.mine.length) source = panes.mine;
+    else if (!source.length && shelfPane === 'fav' && panes.mine.length) source = panes.mine;
     return source;
   }
 
@@ -64,12 +68,15 @@ function makeShelfManager() {
     if (hasAnyPlatformLogin() && (userPlaylists.length || myPodcastCollections.length)) {
       var source = activePlaylists();
       var items = source.map(function (pl) {
-        var provider = pl.provider === 'qq' ? 'qq' : (pl.provider === 'kugou' ? 'kugou' : (pl.provider === 'qishui' ? 'qishui' : (pl.provider === 'spotify' ? 'spotify' : 'netease')));
-        var sourceLabel = provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : 'NE')));
+        var provider = pl.provider === 'qq' ? 'qq' : (pl.provider === 'kugou' ? 'kugou' : (pl.provider === 'qishui' ? 'qishui' : (pl.provider === 'spotify' ? 'spotify' : (pl.provider === 'local' ? 'local' : 'netease'))));
+        var sourceLabel = provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : (provider === 'local' ? 'LC' : 'NE'))));
         if (provider === 'spotify' && String(pl.id || '').indexOf('spotify:') !== 0) pl = Object.assign({}, pl, { id: 'spotify:' + pl.id });
+        var pane = pl.shelfPane || pl.shelf_pane;
+        var tag = pane === 'local' || provider === 'local' ? '本地收藏' : (pane === 'fav' || (!pane && pl.subscribed) ? '收藏歌单' : (provider === 'qishui' ? '汽水歌单' : '我的歌单'));
+        var idPrefix = provider === 'qq' ? 'qq:' : (provider === 'kugou' ? 'kugou:' : (provider === 'qishui' ? 'qishui:' : (provider === 'spotify' ? 'spotify:' : (provider === 'local' ? 'local:' : ''))));
         return {
           type: 'playlist', title: pl.name, sub: sourceLabel + ' · ' + (pl.trackCount || 0) + ' 首 · 播放 ' + compactCount(pl.playCount || 0),
-          cover: pl.cover || '', tag: (pl.shelfPane || pl.shelf_pane) === 'fav' || (!(pl.shelfPane || pl.shelf_pane) && pl.subscribed) ? '收藏歌单' : (provider === 'qishui' ? '汽水歌单' : '我的歌单'), playlistId: (provider === 'qq' ? 'qq:' : (provider === 'kugou' ? 'kugou:' : (provider === 'qishui' ? 'qishui:' : ''))) + pl.id, provider: provider
+          cover: pl.cover || '', tag: tag, playlistId: idPrefix + pl.id, provider: provider
         };
       });
       if (shelfShowsPodcasts() && (shelfPane === 'mine' || shelfMergesCollections()) && myPodcastCollections.length) {
@@ -623,22 +630,25 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
   function switchPane(nextPane) {
     if (shelfMergesCollections()) return false;
     if (nextPane === shelfPane) return false;
+    if (nextPane !== 'mine' && nextPane !== 'fav' && nextPane !== 'local') return false;
     paneMemory[shelfPane] = Math.max(0, Math.round(centerTarget));
     shelfPane = nextPane;
     collectionReveal = 0;
     var targetList = activePlaylists();
     var remembered = paneMemory[nextPane] || 0;
     centerTarget = Math.max(0, Math.min(Math.max(0, targetList.length - 1), remembered));
-    centerSmooth = centerTarget + (nextPane === 'fav' ? 1.85 : -1.85);
+    var paneOrder = { mine: 0, local: 1, fav: 2 };
+    var dirSign = (paneOrder[nextPane] || 0) >= (paneOrder[shelfPane] || 0) ? 1 : -1;
+    centerSmooth = centerTarget + (dirSign > 0 ? 1.85 : -1.85);
     centerIdx = centerTarget;
     paneSwitchAt = uniforms.uTime.value;
-    paneSwitchDir = nextPane === 'fav' ? 1 : -1;
+    paneSwitchDir = dirSign;
     shelfOpenAnimAt = uniforms.uTime.value;
     if (contentList) contentList.close();
     selectedIdx = Math.round(centerTarget);
     playShelfSelectTick(paneSwitchDir, 'card');
     rebuild();
-    showToast(nextPane === 'fav' ? '收藏歌单' : '我的歌单');
+    showToast(nextPane === 'fav' ? '收藏歌单' : (nextPane === 'local' ? '本地收藏' : '我的歌单'));
     return true;
   }
 
@@ -659,12 +669,35 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
     var atEnd = centerTarget >= allItems.length - 1 && direction > 0;
     var atStart = centerTarget <= 0 && direction < 0;
     if (!shelfMergesCollections()) {
-      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'mine' && atEnd && panes.fav.length) {
+      // 向下滚动: mine → local → fav
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'mine' && atEnd && panes.local.length) {
+        collectionReveal += Math.min(1.5, Math.abs(direction));
+        if (collectionReveal >= 3) switchPane('local');
+        return;
+      }
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'local' && atEnd && panes.fav.length) {
         collectionReveal += Math.min(1.5, Math.abs(direction));
         if (collectionReveal >= 3) switchPane('fav');
         return;
       }
-      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'fav' && atStart && panes.mine.length) {
+      // 向上滚动: fav → local → mine
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'fav' && atStart && panes.local.length) {
+        collectionReveal += Math.min(1.5, Math.abs(direction));
+        if (collectionReveal >= 3) switchPane('local');
+        return;
+      }
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'local' && atStart && panes.mine.length) {
+        collectionReveal += Math.min(1.5, Math.abs(direction));
+        if (collectionReveal >= 3) switchPane('mine');
+        return;
+      }
+      // 兼容旧逻辑: mine 没有 local 时直接切 fav
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'mine' && atEnd && panes.fav.length && !panes.local.length) {
+        collectionReveal += Math.min(1.5, Math.abs(direction));
+        if (collectionReveal >= 3) switchPane('fav');
+        return;
+      }
+      if (hasAnyPlatformLogin() && userPlaylists.length && shelfPane === 'fav' && atStart && panes.mine.length && !panes.local.length) {
         collectionReveal += Math.min(1.5, Math.abs(direction));
         if (collectionReveal >= 3) switchPane('mine');
         return;

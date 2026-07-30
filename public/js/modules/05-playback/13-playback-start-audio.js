@@ -1078,6 +1078,7 @@ async function playQueueAt(idx, opts) {
       var isKugouPlayback = playbackProvider === 'kugou';
       var isQishuiPlayback = playbackProvider === 'qishui';
       var isSpotifyPlayback = playbackProvider === 'spotify';
+      var isLsPlayback = playbackProvider === 'ls';
       var requestedQuality = normalizePlaybackQualityForProvider(opts.qualityOverride || getProviderPlaybackQuality(playbackProvider), playbackProvider);
       if (playbackProvider === 'netease' && requestedQuality === 'jymaster' && !hasProviderSvip('netease', loginStatus)) requestedQuality = 'hires';
       var runtimeQualityCap = playbackQualityCapValue(song, playbackProvider);
@@ -1111,6 +1112,9 @@ async function playQueueAt(idx, opts) {
           '&spotifyId=' + encodeURIComponent(song.spotifyId || '') +
           '&uri=' + encodeURIComponent(song.spotifyUri || song.uri || '') +
           qualityParam, { timeoutMs: 9000 });
+      } else if (isLsPlayback) {
+        data = await apiJson('/api/ls/song/url?songId=' + encodeURIComponent(song.songmid || song.mid || song.id || '') +
+          '&source=' + encodeURIComponent(song.lxSource || 'tx') + qualityParam, { timeoutMs: 9000 });
       } else {
         data = await apiJson('/api/song/url?id=' + encodeURIComponent(song.id || '') + neteasePlaybackMatchQuery(song) + qualityParam, { timeoutMs: 14000 });
       }

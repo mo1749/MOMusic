@@ -1771,6 +1771,18 @@ body.empty-home-active.diy-mode #search-area:not(.has-results) #search-mode-tabs
   background: rgba(30, 215, 96, .085)
 }
 
+.tag-source.ls {
+  color: #c9e8ff;
+  border-color: rgba(120, 198, 255, .30);
+  background: rgba(120, 198, 255, .075)
+}
+
+.tag-source.local {
+  color: #fff5c9;
+  border-color: rgba(255, 209, 102, .30);
+  background: rgba(255, 209, 102, .075)
+}
+
 .search-result.qq-source:hover {
   background: rgba(191, 214, 107, .052)
 }
@@ -1785,6 +1797,10 @@ body.empty-home-active.diy-mode #search-area:not(.has-results) #search-mode-tabs
 
 .search-result.spotify-source:hover {
   background: rgba(30, 215, 96, .052)
+}
+
+.search-result.ls-source:hover {
+  background: rgba(120, 198, 255, .052)
 }
 
 .search-result.netease-source:hover {

@@ -295,10 +295,8 @@
     ws.onopen = () => {
       console.log('[ListenTogether] WebSocket 已打开');
       reconnectAttempts = 0;
-      // 连接建立后自动认证（如果有保存的 token）
-      if (authToken && loginMethod !== 'guest') {
-        send({ type: MSG.AUTH_TOKEN, payload: { token: authToken } });
-      }
+      // 不自动发送旧 token 认证，由 UI 层决定
+      // 先以游客身份连接，UI 层会根据情况引导用户登录
     };
 
     ws.onmessage = (event) => {
@@ -387,9 +385,12 @@
       loginMethod = 'guest';
       return send({
         type: MSG.GUEST_LOGIN,
-        payload: { nickname },
+        payload: { nickname: nickname || '' },
       });
     },
+
+    /** 清理认证状态（本地存储 + 内存） */
+    clearAuth: clearAuth,
 
     /** 登出 */
     logout() {

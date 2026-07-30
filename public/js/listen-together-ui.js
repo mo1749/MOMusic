@@ -392,20 +392,18 @@ function initListenTogetherUI() {
   // ====== 事件绑定 ======
   LT.on('connected', function () {
     setStatus('已连接 ✓');
+    // 重置连接按钮状态
+    var btn = document.querySelector('#lt-connect-view button');
+    if (btn) { btn.disabled = false; btn.textContent = '开始一起听'; }
     // 自动填充昵称
     var nickInput = document.getElementById('lt-nickname-input');
     var savedNick = loadNickname();
     if (nickInput && savedNick) nickInput.value = savedNick;
     // 初始化房间模式
     setRoomMode(getRoomMode());
-    // 如果有保存的登录信息，等认证完成后自动跳转到房间视图
-    // 如果没有保存的登录信息，显示登录页
-    if (!LT.hasSavedLogin() && !LT.isLoggedIn) {
-      showView('lt-login-view');
-    }
-    // 有保存的登录信息时，等 authSuccess 事件触发后自动跳转
+    // 直接进入房间视图，不自动用旧 token 认证
+    showView('lt-room-view');
     updateLoginButtonState();
-    if (nickInput && !savedNick) nickInput.focus();
   });
 
   LT.on('disconnected', function () {
@@ -449,6 +447,20 @@ function initListenTogetherUI() {
   LT.on('error', function (data) {
     var msg = data.error || data.message || '操作失败';
     setStatus(msg);
+    // token 过期提示：清理认证状态，回到首页
+    if (msg.includes('登录已过期') || msg.includes('token') || msg.includes('Token')) {
+      if (window.ListenTogether && window.ListenTogether.clearAuth) {
+        window.ListenTogether.clearAuth();
+      }
+      if (typeof showToast === 'function') {
+        showToast('登录已过期，请重新登录');
+      }
+      updateLoginButtonState();
+      return;
+    }
+    // 其他错误也要重置按钮
+    var btn = document.querySelector('#lt-connect-view button');
+    if (btn && btn.disabled) { btn.disabled = false; btn.textContent = '开始一起听'; }
     if (typeof showToast === 'function') showToast('一起听：' + msg);
   });
 
@@ -632,7 +644,15 @@ function stopLtProgressSync() {
 
 // ── 全局 UI 操作函数 ──
 
-function handleLtSetMode(mode) { setRoomMode(mode); }
+function handleLtSetMode(mode) {
+  try { localStorage.setItem('lt_room_mode', mode); } catch (_) {}
+  var dualBtn = document.getElementById('lt-mode-dual');
+  var multiBtn = document.getElementById('lt-mode-multi');
+  if (dualBtn && multiBtn) {
+    dualBtn.classList.toggle('active', mode === 'dual');
+    multiBtn.classList.toggle('active', mode === 'multi');
+  }
+}
 
 function handleLtConnect() {
   var btn = event && event.target ? event.target.closest('button') : null;
@@ -655,7 +675,23 @@ function toggleListenTogether() {
 // ====== 登录操作 ======
 
 function handleLtShowLogin() {
-  showLoginForm('email');
+  // 直接显示登录视图，默认邮箱标签
+  var views = ['lt-connect-view', 'lt-room-view', 'lt-room-active-view'];
+  views.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  var loginView = document.getElementById('lt-login-view');
+  if (loginView) loginView.style.display = 'block';
+  // 默认显示邮箱表单
+  ['email', 'phone', 'wechat', 'qq'].forEach(function (m) {
+    var el = document.getElementById('lt-login-form-' + m);
+    if (el) el.style.display = m === 'email' ? 'block' : 'none';
+  });
+  var tabs = document.querySelectorAll('#lt-login-view .lt-seg-tab');
+  tabs.forEach(function (tab) {
+    tab.classList.toggle('active', tab.getAttribute('data-method') === 'email');
+  });
 }
 
   function handleLtSwitchLoginTab(method) {
@@ -760,8 +796,9 @@ function handleLtGuestLogin() {
 
 function handleLtLogout() {
   var LT = window.ListenTogether;
-  LT.logout();
-  showLoginForm('email');
+  if (LT && LT.logout) LT.logout();
+  // 直接显示登录视图
+  handleLtShowLogin();
   var userBadge = document.getElementById('lt-user-badge');
   if (userBadge) userBadge.style.display = 'none';
   var sb = document.getElementById('lt-status-bar');
@@ -773,7 +810,12 @@ function handleLtLogout() {
 function handleLtCreateRoom() {
   var nickname = document.getElementById('lt-nickname-input');
   var nVal = nickname && nickname.value.trim() || '';
-  if (nVal) saveNickname(nVal);
+  if (nVal) { try { localStorage.setItem('lt_nickname', nVal); } catch (_) {} }
+  if (!window.ListenTogether || !window.ListenTogether.isConnected) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '未连接到服务器，请先点击「开始一起听」';
+    return;
+  }
   window.ListenTogether.createRoom(undefined, nVal || undefined);
 }
 
@@ -787,7 +829,12 @@ function handleLtJoinRoom() {
     return;
   }
   var nVal = nickname && nickname.value.trim() || '';
-  if (nVal) saveNickname(nVal);
+  if (nVal) { try { localStorage.setItem('lt_nickname', nVal); } catch (_) {} }
+  if (!window.ListenTogether || !window.ListenTogether.isConnected) {
+    var sb2 = document.getElementById('lt-status-bar');
+    if (sb2) sb2.textContent = '未连接到服务器，请先点击「开始一起听」';
+    return;
+  }
   window.ListenTogether.joinRoom(idVal, nVal || undefined);
 }
 

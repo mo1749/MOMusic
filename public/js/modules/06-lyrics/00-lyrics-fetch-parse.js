@@ -32,6 +32,9 @@ function lyricEndpointForSong(songOrId) {
   if (provider === 'spotify') {
     return '/api/spotify/lyric?id=' + encodeURIComponent(song.id || song.providerSongId || song.spotifyId || '');
   }
+  if (provider === 'ls') {
+    return '/api/ls/lyric?songId=' + encodeURIComponent(song.songmid || song.mid || song.id || '');
+  }
   var songId = song ? song.id : songOrId;
   return '/api/lyric?id=' + encodeURIComponent(songId);
 }

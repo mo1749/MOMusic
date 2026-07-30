@@ -94,6 +94,7 @@ function playlistQueueSource(id) {
   if (raw.indexOf('kugou:') === 0) return { provider: 'kugou', id: raw.slice(6), requestId: raw };
   if (raw.indexOf('qishui:') === 0) return { provider: 'qishui', id: raw.slice(7), requestId: raw };
   if (raw.indexOf('spotify:') === 0) return { provider: 'spotify', id: raw.slice(8), requestId: raw };
+  if (raw.indexOf('local:') === 0) return { provider: 'local', id: raw.slice(6), requestId: raw };
   return { provider: 'netease', id: raw, requestId: raw };
 }
 function playlistQueuePageSize(provider, initial) {

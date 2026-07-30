@@ -41,6 +41,8 @@ if (startupLoginStatusPromise && startupLoginStatusPromise.then) {
     if (hasAnyPlatformLogin()) {
       refreshUserPlaylists(true);
       loadHomeDiscover(true);
+    } else {
+      refreshUserPlaylists(true);
     }
     if (restoredPlaybackAtStartup) queueStartupAutoplayAfterHomeReveal('login-status');
     if (document.body.classList.contains('splash-active')) return;

@@ -201,7 +201,7 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-galaxycore', '核心亮度', '核球辉光'),
         fxConsoleItem('fx-galaxyspread', '粒子散布', '星系半径'),
         fxConsoleItem('fx-galaxyspin', '旋转速度', '星系自转')
-      ] }
+      ] },
     ]
   },
   {

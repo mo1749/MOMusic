@@ -14,6 +14,8 @@ function songSourceLabel(song) {
   if (song.provider === 'qq' || song.source === 'qq' || song.type === 'qq') return 'QQ 音乐';
   if (song.provider === 'qishui' || song.source === 'qishui' || song.type === 'qishui') return '汽水音乐';
   if (song.provider === 'kugou' || song.source === 'kugou' || song.type === 'kugou' || song.hash || song.audioHash) return '酷狗音乐';
+  if (song.provider === 'kuwo' || song.source === 'kuwo' || song.type === 'kuwo' || song.provider === 'migu' || song.source === 'migu' || song.type === 'migu' || song.provider === 'ls' || song.source === 'ls' || song.type === 'ls') return '落雪音源';
+  if (song.provider === 'local' || song.source === 'local' || song.type === 'local') return '本地收藏';
   if (song.type === 'local') return '本地上传';
   if (song.type === 'podcast' || song.source === 'podcast') return '网易云播客';
   return '网易云音乐';
@@ -1184,6 +1186,28 @@ var SONG_ACCOUNT_ACTION_ADAPTERS = {
     collect: false,
     createPlaylist: false,
     readOnly: true
+  },
+  ls: {
+    provider: 'ls',
+    label: '落雪音源',
+    like: false,
+    collect: false,
+    createPlaylist: false,
+    readOnly: true
+  },
+  local: {
+    provider: 'local',
+    label: '本地收藏',
+    like: true,
+    collect: true,
+    createPlaylist: true,
+    likeCheckUrl: '/api/local/like/check',
+    likeCheckParam: 'songId',
+    likeUrl: '/api/local/like/toggle',
+    playlistAddUrl: '/api/local/playlist/add-song',
+    playlistCreateUrl: '/api/local/playlist/create',
+    playlistTracksUrl: '/api/local/playlist/tracks',
+    isLocal: true
   }
 };
 function songAccountProvider(song) {
@@ -1234,7 +1258,7 @@ function songAccountStateKey(song) {
 }
 function playlistAccountProvider(playlist) {
   var provider = String(playlist && (playlist.provider || playlist.source) || '').toLowerCase();
-  return /^(netease|qq|kugou|qishui|spotify)$/.test(provider) ? provider : 'netease';
+  return /^(netease|qq|kugou|qishui|spotify|ls|local)$/.test(provider) ? provider : 'netease';
 }
 function songAccountLoginStatus(provider) {
   if (provider === 'spotify') return spotifyLoginStatus || {};
@@ -1244,6 +1268,8 @@ function songAccountLoginStatus(provider) {
   return loginStatus || {};
 }
 function isSongAccountLoggedIn(provider) {
+  if (provider === 'ls') return true;
+  if (provider === 'local') return true;
   var status = songAccountLoginStatus(provider);
   if (provider === 'kugou') return !!(status.loggedIn && status.playbackKeyReady);
   if (provider === 'qishui') return !!(status.loggedIn && (status.webSession || status.cookieReady));
@@ -1307,18 +1333,23 @@ function songActionHtml(kind, source, index, song) {
 function syncLikeStatusForSongs(songs) {
   if (!songs || !songs.length) return;
   var groups = Object.create(null);
+  var localCheckSongs = [];
   songs.forEach(function (song) {
     var provider = songAccountProvider(song);
     var adapter = songAccountAdapter(provider);
     var id = songAccountId(song, provider);
-    if (!adapter || !adapter.like || !adapter.likeCheckUrl || !id || !isSongAccountLoggedIn(provider)) return;
-    if (!groups[provider]) groups[provider] = { adapter: adapter, ids: [], seen: Object.create(null) };
-    if (groups[provider].seen[id]) return;
-    groups[provider].seen[id] = true;
-    groups[provider].ids.push(id);
+    if (!id) return;
+    if (adapter && adapter.like && adapter.likeCheckUrl && isSongAccountLoggedIn(provider)) {
+      if (!groups[provider]) groups[provider] = { adapter: adapter, ids: [], seen: Object.create(null) };
+      if (groups[provider].seen[id]) return;
+      groups[provider].seen[id] = true;
+      groups[provider].ids.push(id);
+    } else if (provider !== 'local') {
+      // 只读音源（QQ/酷我/咪咕等）通过本地收藏检查红心状态
+      localCheckSongs.push({ song: song, provider: provider, id: id });
+    }
   });
   var providers = Object.keys(groups);
-  if (!providers.length) return;
   var token = ++likeStatusToken;
   var requests = [];
   providers.forEach(function (provider) {
@@ -1338,12 +1369,26 @@ function syncLikeStatusForSongs(songs) {
             if (provider === 'qishui' && r.complete === false && !liked) return;
             likedSongMap[provider + ':' + responseId] = !!liked;
           });
-        }).catch(function (err) {
-          console.warn(provider + ' like check failed:', err);
-        }));
+        }).catch(function () {}));
       })(group.ids.slice(offset, offset + batchSize));
     }
   });
+  // 只读音源歌曲通过 /api/local/liked 一次性获取本地红心列表并匹配
+  if (localCheckSongs.length) {
+    requests.push(apiJson('/api/local/liked').then(function (r) {
+      if (token < likeStatusToken - 3 || !r || !r.data || !r.data.songs) return;
+      var localLikedMap = Object.create(null);
+      r.data.songs.forEach(function (ls) {
+        var lsProvider = String(ls.provider || ls.source || '').toLowerCase();
+        var lsId = String(ls.id || ls.songId || '');
+        if (lsProvider && lsId) localLikedMap[lsProvider + ':' + lsId] = true;
+      });
+      localCheckSongs.forEach(function (item) {
+        var checkKey = item.provider + ':' + item.id;
+        if (localLikedMap[checkKey]) likedSongMap[checkKey] = true;
+      });
+    }).catch(function () {}));
+  }
   Promise.all(requests).then(function () {
     if (token < likeStatusToken - 3) return;
     safeRenderQueuePanel('like-status-sync', { scrollCurrent: miniQueueOpen });
@@ -1352,13 +1397,20 @@ function syncLikeStatusForSongs(songs) {
   });
 }
 function syncLikeStatusForSong(song) {
-  var adapter = songAccountAdapter(song);
-  if (!adapter || !adapter.like) { updateLikeButtons(song); return; }
-  syncLikeStatusForSongs([song]);
+  var provider = songAccountProvider(song);
+  var adapter = songAccountAdapter(provider);
+  if (adapter && adapter.like && adapter.likeCheckUrl) {
+    syncLikeStatusForSongs([song]);
+  } else if (provider !== 'local') {
+    // 只读音源通过本地收藏检查红心状态
+    syncLikeStatusForSongs([song]);
+  } else {
+    updateLikeButtons(song);
+  }
 }
 function isLikedPlaylistContext(id, title, meta) {
   var rawId = String(id || '');
-  var idParts = rawId.match(/^(netease|qq|kugou|qishui|spotify):(.*)$/);
+  var idParts = rawId.match(/^(netease|qq|kugou|qishui|spotify|ls|local):(.*)$/);
   var provider = idParts ? idParts[1] : playlistAccountProvider(meta);
   var sid = idParts ? idParts[2] : rawId;
   var text = String(title || (meta && meta.name) || '').trim();
@@ -1390,6 +1442,11 @@ function refreshSearchResultActionStates() {
 async function toggleLikeSong(song) {
   var provider = songAccountProvider(song);
   var adapter = songAccountAdapter(provider);
+  // 不支持云端 like 的音源（QQ/酷我/咪咕等）自动 fallback 到本地收藏
+  var useLocalFallback = (!adapter || !adapter.like || !adapter.likeUrl) && provider !== 'local';
+  if (useLocalFallback) {
+    return toggleLocalLike(song);
+  }
   if (!adapter || !adapter.like || !adapter.likeUrl) {
     showToast(songAccountUnsupportedMessage(provider, 'like'));
     return;
@@ -1427,6 +1484,39 @@ async function toggleLikeSong(song) {
     } else {
       showToast(errorText ? ('红心操作失败: ' + errorText) : '红心操作失败');
     }
+  } finally {
+    delete likeBusyMap[stateKey];
+    updateLikeButtons(song);
+    safeRenderQueuePanel('like-toggle-final', { scrollCurrent: miniQueueOpen });
+    refreshSearchResultActionStates();
+  }
+}
+
+// 本地收藏红心（适用于所有音源歌曲，包括只读音源）
+async function toggleLocalLike(song) {
+  if (!song) return;
+  var stateKey = songAccountStateKey(song);
+  if (!stateKey) { showToast('无法识别当前歌曲'); return; }
+  if (likeBusyMap[stateKey]) return;
+  var next = !likedSongMap[stateKey];
+  likeBusyMap[stateKey] = true;
+  likedSongMap[stateKey] = next;
+  updateLikeButtons(song);
+  safeRenderQueuePanel('like-toggle-optimistic', { scrollCurrent: miniQueueOpen });
+  refreshSearchResultActionStates();
+  try {
+    var r = await apiJson('/api/local/like/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ song: song })
+    });
+    if (r && r.code !== 200) throw new Error(r.msg || 'LIKE_FAILED');
+    var data = r && r.data || {};
+    likedSongMap[stateKey] = !!data.liked;
+    showToast(data.liked ? '已加入本地收藏' : '已取消本地收藏');
+  } catch (err) {
+    likedSongMap[stateKey] = !next;
+    showToast(String(err && err.message || '本地收藏操作失败'));
   } finally {
     delete likeBusyMap[stateKey];
     updateLikeButtons(song);
@@ -1478,6 +1568,12 @@ async function syncAllLikeSongs() {
 function openCollectModal(song) {
   var provider = songAccountProvider(song);
   var adapter = songAccountAdapter(provider);
+  // 不支持云端收藏的音源（QQ/酷我/咪咕等只读源）自动 fallback 到本地收藏
+  var useLocalFallback = (!adapter || !adapter.collect || !adapter.playlistAddUrl) && provider !== 'local';
+  if (useLocalFallback) {
+    adapter = songAccountAdapter('local');
+    provider = 'local';
+  }
   if (!adapter || !adapter.collect || !adapter.playlistAddUrl) {
     showToast(songAccountUnsupportedMessage(provider, 'collect'));
     return;
@@ -1499,6 +1595,12 @@ function closeCollectModal() {
     if (input) input.value = '';
   });
 }
+function collectEffectiveProvider(song) {
+  var provider = songAccountProvider(song);
+  var adapter = songAccountAdapter(provider);
+  if ((!adapter || !adapter.collect || !adapter.playlistAddUrl) && provider !== 'local') return 'local';
+  return provider;
+}
 function renderCollectModal() {
   var current = document.getElementById('collect-current');
   var list = document.getElementById('collect-list');
@@ -1507,7 +1609,7 @@ function renderCollectModal() {
   var cover = songCoverSrc(song, 80);
   current.innerHTML = (cover ? '<img src="' + cover + '" alt="">' : '<div class="cover-placeholder"></div>') +
     '<div style="min-width:0"><div class="collect-title">' + escHtml(song.name || '当前歌曲') + '</div><div class="collect-sub">' + escHtml(song.artist || '') + '</div></div>';
-  var provider = songAccountProvider(song);
+  var provider = collectEffectiveProvider(song);
   var adapter = songAccountAdapter(provider);
   if (!adapter || !adapter.collect) {
     list.innerHTML = '<div class="collect-empty">' + escHtml(songAccountUnsupportedMessage(provider, 'collect')) + '</div>';
@@ -1545,7 +1647,7 @@ function setCollectBusyPid(pid, busy) {
   });
 }
 async function createPlaylistFromCollect() {
-  var provider = songAccountProvider(collectTargetSong);
+  var provider = collectEffectiveProvider(collectTargetSong);
   var adapter = songAccountAdapter(provider);
   if (!adapter || !adapter.createPlaylist || !adapter.playlistCreateUrl) {
     showToast((adapter && adapter.label || '当前平台') + '暂不支持在 MOMusic 内新建歌单');
@@ -1624,8 +1726,15 @@ async function verifySongInPlaylist(pid, song) {
 async function addCollectTargetToPlaylist(pid) {
   if (collectBusy || !collectTargetSong || !pid) return;
   var targetSong = collectTargetSong;
-  var provider = songAccountProvider(targetSong);
+  var originalProvider = songAccountProvider(targetSong);
+  var provider = originalProvider;
   var adapter = songAccountAdapter(provider);
+  // 不支持云端收藏的音源自动 fallback 到本地收藏
+  var useLocalFallback = (!adapter || !adapter.collect || !adapter.playlistAddUrl) && provider !== 'local';
+  if (useLocalFallback) {
+    adapter = songAccountAdapter('local');
+    provider = 'local';
+  }
   if (!adapter || !adapter.collect || !adapter.playlistAddUrl) {
     showToast(songAccountUnsupportedMessage(provider, 'collect'));
     return;
@@ -1634,9 +1743,9 @@ async function addCollectTargetToPlaylist(pid) {
   collectBusy = true;
   setCollectBusyPid(pid, true);
   updateLikeButtons();
-  showToast('正在收藏到歌单...');
+  showToast(useLocalFallback ? '正在加入本地收藏...' : '正在收藏到歌单...');
   try {
-    var songId = songAccountId(targetSong, provider);
+    var songId = songAccountId(targetSong, originalProvider);
     if (!songId) throw new Error('当前歌曲缺少' + adapter.label + '歌曲标识');
     var r = await apiJson(adapter.playlistAddUrl, {
       method: 'POST',
@@ -1644,14 +1753,16 @@ async function addCollectTargetToPlaylist(pid) {
       body: JSON.stringify({ pid: pid, id: songId, song: targetSong })
     });
     if (!r || r.error || r.success === false) throw new Error(collectResultMessage(r));
-    showToast('已收藏到歌单');
+    showToast(useLocalFallback ? '已加入本地收藏歌单' : '已收藏到歌单');
     closeCollectModal();
     refreshUserPlaylists(true);
-    setTimeout(function () {
-      verifySongInPlaylist(pid, targetSong).then(function (ok) {
-        if (!ok) console.warn(provider + ' collect submitted but verify did not find song yet:', pid, songId);
-      });
-    }, 900);
+    if (!useLocalFallback) {
+      setTimeout(function () {
+        verifySongInPlaylist(pid, targetSong).then(function (ok) {
+          if (!ok) console.warn(provider + ' collect submitted but verify did not find song yet:', pid, songId);
+        });
+      }, 900);
+    }
   } catch (err) {
     showToast(err && err.message ? err.message : '收藏失败');
   } finally {

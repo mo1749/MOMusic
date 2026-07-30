@@ -32,6 +32,7 @@ function normalizePlaybackProvider(provider) {
   if (provider === 'kugou') return 'kugou';
   if (provider === 'qishui') return 'qishui';
   if (provider === 'spotify') return 'spotify';
+  if (provider === 'ls') return 'ls';
   return 'netease';
 }
 function normalizePlaybackQualityForProvider(value, provider) {

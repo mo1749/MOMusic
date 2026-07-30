@@ -127,6 +127,10 @@ const {
   handleSpotifyLyric,
 } = require('./spotify-api');
 const {
+  handleLsSongUrl,
+} = require('./lx-source-api');
+const localCollection = require('./local-collection');
+const {
   appendCuefieldFeedback,
   readCuefieldFeedbackStats,
 } = require('./cuefield/feedback-log');
@@ -6630,6 +6634,207 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[QQSongComments]', err);
       sendJSON(res, { provider: 'qq', error: err.message, comments: [] }, 500);
+    }
+    return;
+  }
+
+  // ============ 落雪音源（LS）= 渲染API(huibq) 播放URL + QQ搜索/歌词代理 ============
+  if (pn === '/api/ls/search') {
+    // LS 搜索代理到 QQ 搜索（QQ歌曲带songmid可直接喂给render_api获取播放URL）
+    try {
+      const keyword = String(url.searchParams.get('keywords') || url.searchParams.get('keyword') || url.searchParams.get('q') || '').trim();
+      const limit = Math.max(6, Math.min(50, parseInt(url.searchParams.get('limit') || '20', 10) || 20));
+      const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+      if (!keyword) { sendJSON(res, { provider: 'ls', songs: [] }); return; }
+      // 直接调用 QQ 搜索处理函数
+      const qqResult = await handleQQSearch(keyword, limit, offset);
+      const songs = (qqResult && qqResult.songs) || [];
+      // 将歌曲标记为 ls 源（保留 songmid 供播放URL解析使用）
+      songs.forEach(function (s) {
+        s.provider = 'ls'; s.source = 'ls'; s.type = 'ls';
+        s.lxSource = 'tx'; // 标记底层使用 QQ(tx) 解析
+      });
+      sendJSON(res, {
+        provider: 'ls',
+        songs: songs,
+        offset: offset,
+        limit: limit,
+        nextOffset: (qqResult && qqResult.nextOffset) || (offset + songs.length),
+        hasMore: qqResult && qqResult.hasMore,
+        total: (qqResult && qqResult.total) || songs.length,
+      });
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message, songs: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/ls/song/url') {
+    // LS 播放URL：调用 render_api (huibq) 的 /url/{source}/{songId}/{quality}
+    try {
+      const songId = String(url.searchParams.get('songId') || url.searchParams.get('id') || url.searchParams.get('songmid') || '').trim();
+      const quality = String(url.searchParams.get('quality') || url.searchParams.get('type') || '128k').trim();
+      const source = String(url.searchParams.get('source') || 'tx').trim(); // 默认 tx(QQ)
+      if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
+      const result = await handleLsSongUrl(songId, source, quality);
+      sendJSON(res, result);
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/ls/lyric') {
+    // LS 歌词代理到 QQ 歌词
+    try {
+      const songId = String(url.searchParams.get('songId') || url.searchParams.get('id') || url.searchParams.get('songmid') || '').trim();
+      if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
+      const lyricResult = await handleQQLyric(songId, songId);
+      sendJSON(res, lyricResult || { code: 1, msg: '歌词获取失败' });
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message }, 500);
+    }
+    return;
+  }
+
+  // ============ 本地收藏 ============
+  if (pn === '/api/local/playlists') {
+    try {
+      if (req.method === 'POST') {
+        const body = await readRequestBody(req);
+        const playlist = localCollection.createPlaylist(body.name || body.title);
+        sendJSON(res, { code: 200, data: playlist });
+      } else {
+        const list = localCollection.getPlaylists();
+        sendJSON(res, { playlists: list, source: 'local', provider: 'local', total: list.length, hasMore: false });
+      }
+    } catch (err) {
+      console.error('[LocalPlaylists]', err);
+      sendJSON(res, { code: 500, msg: err.message, playlists: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/create') {
+    try {
+      const body = await readRequestBody(req);
+      const playlist = localCollection.createPlaylist(body.name || body.title || '新建歌单');
+      sendJSON(res, { code: 200, data: playlist, playlist: playlist, success: true });
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/rename') {
+    try {
+      const body = await readRequestBody(req);
+      const result = localCollection.renamePlaylist(body.id, body.name);
+      if (!result) { sendJSON(res, { code: 404, msg: 'playlist not found or cannot rename' }, 404); return; }
+      sendJSON(res, { code: 200, data: result });
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/delete') {
+    try {
+      const body = await readRequestBody(req);
+      const ok = localCollection.deletePlaylist(body.id);
+      if (!ok) { sendJSON(res, { code: 404, msg: 'playlist not found or cannot delete' }, 404); return; }
+      sendJSON(res, { code: 200, data: { ok: true } });
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/tracks') {
+    try {
+      const id = String(url.searchParams.get('id') || url.searchParams.get('playlistId') || '').trim();
+      const limit = Math.max(1, Math.min(200, parseInt(url.searchParams.get('limit') || '100', 10) || 100));
+      const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+      const page = Math.floor(offset / limit) + 1;
+      if (!id) { sendJSON(res, { provider: 'local', tracks: [] }); return; }
+      const data = localCollection.getPlaylistTracks(id, page, limit);
+      if (!data) { sendJSON(res, { provider: 'local', error: 'playlist not found', tracks: [] }, 404); return; }
+      sendJSON(res, {
+        provider: 'local',
+        tracks: data.songs,
+        offset,
+        limit,
+        nextOffset: offset + data.songs.length,
+        hasMore: data.trackCount > offset + data.songs.length,
+        total: data.trackCount,
+        playlist: {
+          id: data.id,
+          name: data.name,
+          cover: data.cover,
+          creator: data.creator,
+        },
+      });
+    } catch (err) {
+      console.error('[LocalPlaylistTracks]', err);
+      sendJSON(res, { provider: 'local', error: err.message, tracks: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/add-song') {
+    try {
+      const body = await readRequestBody(req);
+      const playlistId = body.playlistId || body.pid || body.id;
+      const result = localCollection.addSongToPlaylist(playlistId, body.song);
+      sendJSON(res, result, result.code === 200 ? 200 : 400);
+    } catch (err) {
+      console.error('[LocalPlaylistAddSong]', err);
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/playlist/remove-song') {
+    try {
+      const body = await readRequestBody(req);
+      const result = localCollection.removeSongFromPlaylist(body.playlistId, body.songKey);
+      sendJSON(res, result, result.code === 200 ? 200 : 400);
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/like/toggle') {
+    try {
+      const body = await readRequestBody(req);
+      const result = localCollection.toggleLike(body.song);
+      sendJSON(res, result);
+    } catch (err) {
+      console.error('[LocalLikeToggle]', err);
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/like/check') {
+    try {
+      const songId = String(url.searchParams.get('songId') || '').trim();
+      const provider = String(url.searchParams.get('provider') || url.searchParams.get('source') || '').trim();
+      const liked = localCollection.isLiked({ id: songId, provider, source: provider });
+      sendJSON(res, { code: 200, data: { liked, songId, provider } });
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/local/liked') {
+    try {
+      const songs = localCollection.getLikedSongs();
+      sendJSON(res, { code: 200, data: { songs, source: 'local' } });
+    } catch (err) {
+      sendJSON(res, { code: 500, msg: err.message }, 500);
     }
     return;
   }

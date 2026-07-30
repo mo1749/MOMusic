@@ -213,7 +213,6 @@ function defaultOrbitStateForPreset(p) {
   if (p === 4) return { theta: 0.0, phi: 0.04, radius: 6.5 };
   if (p === 6) return { theta: 0.18, phi: 0.10, radius: 7.4 };
   if (p === 8) return { theta: 0.0, phi: 0.32, radius: 8.6 };
-  if (p === 9) return { theta: 0.0, phi: 0.22, radius: 9.0 };
   if (typeof SONIC_PRESET_INDEX !== 'undefined' && p === SONIC_PRESET_INDEX) {
     return {
       theta: SONIC_ORBIT_BASELINE.theta,
@@ -225,6 +224,7 @@ function defaultOrbitStateForPreset(p) {
 }
 function applyPresetOrbitBaseline(p, opts) {
   opts = opts || {};
+  // Preset 5 (壁纸) 不锁定相机基线, 保持用户当前视角
   if (p === 5) return false;
   var base = defaultOrbitStateForPreset(p);
   orbit.baselineTheta = base.theta;

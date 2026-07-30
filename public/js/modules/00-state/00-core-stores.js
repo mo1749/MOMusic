@@ -68,7 +68,7 @@ var AUDIO_FADE_IN_MS = audioFadePreference.fadeInMs;
 var AUDIO_FADE_OUT_MS = audioFadePreference.fadeOutMs;
 var AUDIO_SILENCE_GAIN = 0.0001;
 var audioFadeEnvelope = 1;
-var userPlaylists = [], neteasePlaylists = [], qqPlaylists = [], kugouPlaylists = [], qishuiPlaylists = [], spotifyPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
+var userPlaylists = [], neteasePlaylists = [], qqPlaylists = [], kugouPlaylists = [], qishuiPlaylists = [], spotifyPlaylists = [], localPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
 var queueHydrationState = {
   token: 0,
   active: false,
@@ -98,7 +98,7 @@ var LYRIC_LAYOUT_STORE_KEY = 'MOMusic-lyric-layout-v1';
 var CURRENT_FX_AUTOSAVE_STORE_KEY = 'MOMusic-current-fx-autosave-v1';
 var CURRENT_FX_AUTOSAVE_SCHEMA = 'current-fx-autosave-v2';
 var VISUAL_PRESET_SCHEMA = 'skull-preset-v2';
-var MAX_VISUAL_PRESET_INDEX = 9;
+var MAX_VISUAL_PRESET_INDEX = 8;
 var SONIC_PRESET_INDEX = 7;
 var LEGACY_REMOVED_VISUAL_PRESET_INDEX = 10;
 function normalizeSavedVisualPresetIndex(value) {

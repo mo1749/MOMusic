@@ -24,9 +24,8 @@ const LT_PORT = parseInt(process.env.LT_PORT || '9527', 10);
 const HEARTBEAT_INTERVAL = 30000;
 const HEARTBEAT_TIMEOUT = 10000;
 const MAX_ROOM_CAPACITY = 20;
-const DATA_DIR = path.join(__dirname, 'lt-data');
-const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
-const CHAT_HISTORY_DIR = path.join(DATA_DIR, 'rooms');
+const DATA_DIR = path.join(__dirname, '.data');
+const CHAT_HISTORY_DIR = path.join(DATA_DIR, 'chats');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
 // 确保数据目录存在
@@ -59,8 +58,30 @@ function saveJSON(filePath, data) {
 }
 
 // ====== 用户账户系统 ======
+const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
+const TOKENS_FILE = path.join(DATA_DIR, 'tokens.json');
 const accounts = loadJSON(ACCOUNTS_FILE, {}); // credential -> { passwordHash, nickname, createdAt, loginMethods: [] }
-const tokens = new Map(); // token -> { credential, nickname, loginMethod, expiresAt }
+
+// tokens 持久化：启动时加载，过期自动清理
+function loadTokens() {
+  const raw = loadJSON(TOKENS_FILE, {});
+  const map = new Map();
+  const now = Date.now();
+  for (const [token, info] of Object.entries(raw)) {
+    if (info.expiresAt && info.expiresAt > now) {
+      map.set(token, info);
+    }
+  }
+  return map;
+}
+
+function saveTokens() {
+  const obj = {};
+  tokens.forEach((v, k) => { obj[k] = v; });
+  saveJSON(TOKENS_FILE, obj);
+}
+
+let tokens = loadTokens(); // token -> { credential, nickname, loginMethod, expiresAt }
 
 function hashPassword(pwd) {
   return crypto.createHash('sha256').update(pwd + 'momusic_lt_salt').digest('hex');
@@ -76,8 +97,9 @@ function storeToken(token, credential, nickname, loginMethod) {
     credential: credential,
     nickname: nickname,
     loginMethod: loginMethod,
-    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7天有效
+    expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 改为365天有效
   });
+  saveTokens();
 }
 
 // 验证 token 是否有效，返回用户信息或 null
