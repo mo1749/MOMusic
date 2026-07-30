@@ -21,8 +21,8 @@ android {
         applicationId = "com.momusic.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.4.2"
+        versionCode = 8
+        versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -94,15 +94,8 @@ dependencies {
     // Coil
     implementation("io.coil-kt:coil-compose:2.6.0")
 
-    // Filament 3D 引擎
-    implementation("com.google.android.filament:filament-android:1.51.0")
-    implementation("com.google.android.filament:filament-utils-android:1.51.0")
-    implementation("com.google.android.filament:gltfio-android:1.51.0")
-
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    // WebSocket (OkHttp 已含)
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

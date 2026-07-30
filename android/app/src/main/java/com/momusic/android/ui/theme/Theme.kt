@@ -5,31 +5,32 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-/**
- * MOMusic 主题 —— 深色玻璃拟态。
- * 对齐 Windows 版 public/css/index.css :root 变量。
- */
-private val MomColorScheme = darkColorScheme(
-    primary = Color(0xFF00F5D4),           // --home-accent 青绿
-    onPrimary = Color(0xFF030608),
-    primaryContainer = Color(0xFF003D33),
-    onPrimaryContainer = Color(0xFFB3FFF0),
-    secondary = Color(0xFFF4D28A),          // --champagne 香槟金
-    onSecondary = Color(0xFF1A1208),
-    tertiary = Color(0xFF9DB8CF),           // --visual-tint 蓝灰
-    onTertiary = Color(0xFF0A1218),
-    background = Color(0xFF08090B),         // --fc-bg
-    onBackground = Color(0xFFE8ECEF),       // --fc-ink
-    surface = Color(0xFF0E1014),            // --fc-paper
-    onSurface = Color(0xFFE8ECEF),
-    surfaceVariant = Color(0xFF1A1D22),     // --fc-hair
-    onSurfaceVariant = Color(0xFFD2D7DC),   // --fc-ink-2
-    outline = Color(0xFF262A31),            // --fc-hair-2
-    outlineVariant = Color(0xFF8A9099),     // --fc-muted
-    error = Color(0xFFCF6679),
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF00F5D4),
+    onPrimary = Color(0xFF003730),
+    primaryContainer = Color(0xFF005048),
+    onPrimaryContainer = Color(0xFF6CFFF1),
+    secondary = Color(0xFFB4CDD8),
+    onSecondary = Color(0xFF1F343B),
+    tertiary = Color(0xFFDBC0A4),
+    onTertiary = Color(0xFF3D2C17),
+    background = Color(0xFF08090B),
+    onBackground = Color(0xFFE0E3E3),
+    surface = Color(0xFF0F1113),
+    onSurface = Color(0xFFE0E3E3),
+    surfaceVariant = Color(0xFF1C1E20),
+    onSurfaceVariant = Color(0xFFC4C7C9),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
 )
 
 @Composable
-fun MOMusicTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = MomColorScheme, typography = MOMusicTypography, content = content)
+fun MOMusicTheme(
+    content: @Composable () -> Unit
+) {
+    MaterialTheme(
+        colorScheme = DarkColorScheme,
+        typography = MOMusicTypography,
+        content = content
+    )
 }

@@ -47,12 +47,5 @@
             </intent-filter>
         </service>
 
-        <service
-            android:name=".ui.desktop.DesktopLyricService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Desktop Lyric Overlay" />
-        </service>
     </application>
 </manifest>

@@ -1,10 +1,6 @@
 package com.momusic.android.data.remote
 
-import com.google.gson.GsonBuilder
-import com.momusic.android.MOMusicApp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -12,64 +8,51 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * 网络模块：单例持有 Retrofit 与 OkHttp 客户端。
+ * 网络模块：提供 OkHttpClient 与 Retrofit 实例。
  *
- * - baseUrl 首次初始化时从 [ServerConfigManager] 同步读取（runBlocking+first）。
- * - 服务器地址变更后调用 [invalidate] 重建 Retrofit 实例。
+ * 由于服务器地址可在运行时切换，baseUrl 通过 [createApi] 动态注入，
+ * 每次切换服务器地址时重新构建 Retrofit 实例。
  */
 object NetworkModule {
 
-    @Volatile private var retrofit: Retrofit = buildRetrofit(initialBaseUrl())
+    private const val TAG = "MoMusicNet"
 
-    /** 当前可用的 Retrofit 实例。 */
-    fun retrofit(): Retrofit = retrofit
+    /** 共享的 OkHttpClient（带超时、重定向、日志拦截器） */
+    val okHttpClient: OkHttpClient by lazy { buildClient() }
 
-    /** 当前 MoMusicApi 接口实现。 */
-    val api: MoMusicApi by lazy { retrofit().create(MoMusicApi::class.java) }
-
-    /**
-     * 服务器地址变更后调用，重建 Retrofit 实例。
-     * 应在协程中先更新 ServerConfigManager，再调用本方法。
-     */
-    fun invalidate() {
-        retrofit = buildRetrofit(initialBaseUrl())
-    }
-
-    /** 构建带超时、日志、cookie 拦截器的 OkHttpClient。 */
     private fun buildClient(): OkHttpClient {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
+        val logging = HttpLoggingInterceptor { msg ->
+            Log.d(TAG, msg)
+        }.apply { level = HttpLoggingInterceptor.Level.BASIC }
+
         return OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
-            .addInterceptor(CookieInterceptor())
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
             .addInterceptor(logging)
             .build()
     }
 
-    /** 构建 Retrofit 实例；Gson 设为 lenient 以容忍后端非标准 JSON。 */
-    private fun buildRetrofit(baseUrl: String): Retrofit {
-        val gson = GsonBuilder()
-            .setLenient()
-            .create()
-        return Retrofit.Builder()
+    /**
+     * 工厂方法：根据服务器地址创建 [MoMusicApi]。
+     *
+     * @param serverUrl 服务器地址（无需保证以 / 结尾，内部会处理）
+     * @param client 复用的 OkHttpClient，默认使用共享实例
+     */
+    fun createApi(serverUrl: String, client: OkHttpClient = okHttpClient): MoMusicApi {
+        val baseUrl = ensureTrailingSlash(serverUrl)
+        val retrofit = Retrofit.Builder()
             .baseUrl(baseUrl)
-            .client(buildClient())
-            .addConverterFactory(GsonConverterFactory.create(gson))
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
             .build()
+        return retrofit.create(MoMusicApi::class.java)
     }
 
-    /**
-     * 同步读取当前 baseUrl（保证以 / 结尾）。
-     * 仅在 NetworkModule 初始化阶段调用，避免主线程阻塞。
-     */
-    private fun initialBaseUrl(): String {
-        var url = runBlocking(Dispatchers.Default) {
-            MOMusicApp.get().serverConfig.serverUrl.first()
-        }
-        if (url.isBlank()) url = "https://your-server.example.com"
-        return if (url.endsWith("/")) url else "$url/"
+    private fun ensureTrailingSlash(url: String): String {
+        val trimmed = url.trim()
+        return if (trimmed.endsWith("/")) trimmed else "$trimmed/"
     }
 }
