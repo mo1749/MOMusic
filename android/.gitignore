@@ -1,14 +1,4 @@
-*.iml
-.gradle/
-local.properties
-.idea/
-.DS_Store
-build/
-captures/
-.externalNativeBuild/
-.cxx/
-
-# 签名密钥（绝对不能提交）
+# MOMusic 安卓签名密钥
 momusic.keystore
 keystore.properties
 *.keystore

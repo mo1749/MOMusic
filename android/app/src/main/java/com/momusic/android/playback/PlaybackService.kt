@@ -8,11 +8,8 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
 /**
- * 媒体播放服务。
- *
- * - 持有 ExoPlayer，支持后台播放与音频焦点管理
- * - 通过 MediaSession 暴露通知栏控制（播放/暂停/上一首/下一首）
- * - URL 解析在 PlayerManager 中完成，service 只接收已带 URI 的 MediaItem
+ * 播放服务：持有 ExoPlayer 与 MediaSession，向通知栏暴露播放控制。
+ * 在 onCreate 中创建具备音频焦点与降噪处理的 ExoPlayer，并构建 MediaSession。
  */
 class PlaybackService : MediaSessionService() {
 
@@ -21,29 +18,37 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val attrs = AudioAttributes.Builder()
+
+        // 媒体类型音频属性，启用音频焦点接管与噪音处理
+        val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build()
-        player = ExoPlayer.Builder(this)
-            .setAudioAttributes(attrs, /* handleAudioFocus = */ true)
+
+        val exoPlayer = ExoPlayer.Builder(this)
+            .setAudioAttributes(audioAttributes, /* handleAudioFocus = */ true)
             .setHandleAudioBecomingNoisy(true)
             .build()
-        mediaSession = MediaSession.Builder(this, player!!)
-            .build()
+        player = exoPlayer
+
+        // 将 player 暴露给 MediaSession，由系统通知栏接管控制
+        mediaSession = MediaSession.Builder(this, exoPlayer).build()
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = mediaSession
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+        return mediaSession
+    }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val p = player
-        if (p != null && !p.playWhenReady) {
+        // 任务移除时，若未在播放则停止服务
+        val current = player
+        if (current == null || !current.playWhenReady) {
             stopSelf()
         }
-        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
+        // 释放 player 与 session
         mediaSession?.run {
             player.release()
             release()
@@ -54,7 +59,6 @@ class PlaybackService : MediaSessionService() {
     }
 
     companion object {
-        /** 通过 MediaController 获取底层 ExoPlayer 暴露的 session token */
         const val NOTIFICATION_ID = 1001
     }
 }

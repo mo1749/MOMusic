@@ -1,8 +1,9 @@
 package com.momusic.android.data.model
 
 /**
- * 音源标识。对应前端 songProviderKey 的可选值。
- * 搜索/取 URL 时用 provider 字段区分。
+ * 音乐内容来源平台枚举。
+ * @param key  后端路由使用的短标识（与 server.js 中 provider 字段对齐）
+ * @param label 用户可见的中文名
  */
 enum class MusicProvider(val key: String, val label: String) {
     NETEASE("netease", "网易云"),
@@ -10,23 +11,13 @@ enum class MusicProvider(val key: String, val label: String) {
     KUGOU("kugou", "酷狗"),
     QISHUI("qishui", "汽水"),
     SPOTIFY("spotify", "Spotify"),
-    LS("ls", "落雪");
+    LS("ls", "落雪"),
+    LOCAL("local", "本地"),
+    PODCAST("podcast", "播客");
 
     companion object {
+        /** 按 key 反查，找不到时返回 NETEASE 作为兜底。 */
         fun fromKey(key: String?): MusicProvider =
             entries.firstOrNull { it.key == key } ?: NETEASE
     }
-}
-
-/**
- * 音质参数。对应前端 mapLxQuality 与各音源 quality 取值。
- * 传给 /api/song/url?quality= 使用。
- */
-enum class AudioQuality(val key: String, val label: String) {
-    STANDARD("standard", "标准"),
-    HIGHER("higher", "较高"),
-    EXHIGH("exhigh", "极高"),
-    LOSSLESS("lossless", "无损"),
-    HIRES("hires", "Hi-Res"),
-    MASTER("master", "Master");
 }

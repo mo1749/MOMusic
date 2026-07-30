@@ -1,21 +1,23 @@
 package com.momusic.android.data.remote
 
-import com.momusic.android.MOMusicApp
 import okhttp3.Interceptor
 import okhttp3.Response
 
 /**
  * Cookie 拦截器。
  *
- * 扫码登录成功后，后端通过 Set-Cookie 自己维护会话；
- * 安卓端无需手动携带 cookie（后端 server.js 用同一进程的 userCookie）。
+ * 后端 server.js 是有状态服务，登录态 cookie 由后端自身持有并管理；
+ * 客户端默认无需附加 cookie。此拦截器作为预留扩展点：
+ * 未来若改为无状态后端，可在此读取 [ServerConfigManager] 中存储的
+ * 平台 auth_cookie 并写入请求头。
  *
- * 这里仅作为扩展点：如果将来需要多账号或透传 cookie，可在此注入。
+ * 当前实现：透传请求，不修改 header。
  */
 class CookieInterceptor : Interceptor {
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        // 当前后端为有状态设计，cookie 在服务端维护，客户端无需附加
+        // 预留：如需附加 cookie，可在此处 request.newBuilder().addHeader(...) 构建
         return chain.proceed(request)
     }
 }

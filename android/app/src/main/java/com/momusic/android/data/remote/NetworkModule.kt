@@ -2,6 +2,7 @@ package com.momusic.android.data.remote
 
 import com.google.gson.GsonBuilder
 import com.momusic.android.MOMusicApp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -11,65 +12,64 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 /**
- * 网络客户端工厂。
+ * 网络模块：单例持有 Retrofit 与 OkHttp 客户端。
  *
- * base url 来自 ServerConfigManager，可被用户在设置页动态修改。
- * 由于 Retrofit 的 baseUrl 一旦构建就不可变，这里提供一个轻量的重建机制：
- * base url 变化时调用 invalidate()，下次 api() 会重建。
+ * - baseUrl 首次初始化时从 [ServerConfigManager] 同步读取（runBlocking+first）。
+ * - 服务器地址变更后调用 [invalidate] 重建 Retrofit 实例。
  */
 object NetworkModule {
 
-    @Volatile private var currentBaseUrl: String = ""
-    @Volatile private var api: MoMusicApi? = null
-    private val lock = Any()
+    @Volatile private var retrofit: Retrofit = buildRetrofit(initialBaseUrl())
 
-    private val gson = GsonBuilder().setLenient().create()
+    /** 当前可用的 Retrofit 实例。 */
+    fun retrofit(): Retrofit = retrofit
 
-    private fun buildClient(): OkHttpClient {
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .addInterceptor(CookieInterceptor())
-        if (isDebug()) {
-            builder.addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
-        }
-        return builder.build()
+    /** 当前 MoMusicApi 接口实现。 */
+    val api: MoMusicApi by lazy { retrofit().create(MoMusicApi::class.java) }
+
+    /**
+     * 服务器地址变更后调用，重建 Retrofit 实例。
+     * 应在协程中先更新 ServerConfigManager，再调用本方法。
+     */
+    fun invalidate() {
+        retrofit = buildRetrofit(initialBaseUrl())
     }
 
-    private fun isDebug(): Boolean = try {
-        Class.forName("com.momusic.android.BuildConfig")
-            .getField("DEBUG").getBoolean(null)
-    } catch (e: Throwable) { false }
+    /** 构建带超时、日志、cookie 拦截器的 OkHttpClient。 */
+    private fun buildClient(): OkHttpClient {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+        return OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor(CookieInterceptor())
+            .addInterceptor(logging)
+            .build()
+    }
 
+    /** 构建 Retrofit 实例；Gson 设为 lenient 以容忍后端非标准 JSON。 */
     private fun buildRetrofit(baseUrl: String): Retrofit {
-        val safeBase = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+        val gson = GsonBuilder()
+            .setLenient()
+            .create()
         return Retrofit.Builder()
-            .baseUrl(safeBase)
+            .baseUrl(baseUrl)
             .client(buildClient())
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 
     /**
-     * 获取当前 API 实例。首次调用会从 ServerConfigManager 同步读取 base url。
+     * 同步读取当前 baseUrl（保证以 / 结尾）。
+     * 仅在 NetworkModule 初始化阶段调用，避免主线程阻塞。
      */
-    fun api(): MoMusicApi {
-        api?.let { if (currentBaseUrl.isNotEmpty()) return it }
-        synchronized(lock) {
-            api?.let { if (currentBaseUrl.isNotEmpty()) return it }
-            val url = runBlocking { MOMusicApp.get().serverConfig.baseUrl.first() }
-            currentBaseUrl = url
-            api = buildRetrofit(url).create(MoMusicApi::class.java)
-            return api!!
+    private fun initialBaseUrl(): String {
+        var url = runBlocking(Dispatchers.Default) {
+            MOMusicApp.get().serverConfig.serverUrl.first()
         }
-    }
-
-    /** base url 变化时调用，强制下次 api() 重建 */
-    fun invalidate() {
-        synchronized(lock) {
-            currentBaseUrl = ""
-            api = null
-        }
+        if (url.isBlank()) url = "https://your-server.example.com"
+        return if (url.endsWith("/")) url else "$url/"
     }
 }

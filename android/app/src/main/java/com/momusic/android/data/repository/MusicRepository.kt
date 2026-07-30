@@ -10,89 +10,119 @@ import com.momusic.android.data.remote.MoMusicApi
 import com.momusic.android.data.remote.NetworkModule
 
 /**
- * 统一数据访问入口。
+ * 音乐数据仓库：单例，持有 [MoMusicApi]。
  *
- * 屏蔽多音源差异：搜索/取URL/取歌词时根据 provider 路由到对应接口。
+ * 职责：
+ * - [search] 按 provider 路由到对应搜索接口，统一返回 [SearchResult]。
+ * - [getSongUrl] 按 provider 路由到对应取 URL 接口。
+ * - [getLyric] 按 provider 路由到对应歌词接口。
+ * - 其余方法直接透传 api 调用。
  */
-class MusicRepository {
+class MusicRepository private constructor(private val api: MoMusicApi) {
 
-    private val api: MoMusicApi get() = NetworkModule.api()
+    // -------------------- 路由聚合方法 --------------------
 
-    // ============ 搜索 ============
-    suspend fun search(provider: MusicProvider, keywords: String, offset: Int = 0, limit: Int = 20): SearchResult {
-        if (keywords.isBlank()) return SearchResult(provider = provider.key)
-        return when (provider) {
-            MusicProvider.NETEASE -> api.searchNetease(keywords, limit, offset)
-            MusicProvider.QQ -> api.searchQq(keywords, limit, offset)
-            MusicProvider.KUGOU -> api.searchKugou(keywords, limit, offset)
-            MusicProvider.QISHUI -> api.searchQishui(keywords, limit, offset)
-            MusicProvider.SPOTIFY -> api.searchSpotify(keywords, limit, offset)
-            MusicProvider.LS -> api.searchNetease(keywords, limit, offset) // 落雪走通用搜索
-        }.copy(provider = provider.key)
+    /**
+     * 跨平台搜索。根据 [provider] 调用对应搜索接口，统一封装为 [SearchResult]。
+     * 对于直接返回数组的平台（QQ/落雪），自动包装为分页结构。
+     */
+    suspend fun search(
+        provider: MusicProvider,
+        keywords: String,
+        offset: Int = 0,
+        limit: Int = 30,
+    ): SearchResult = when (provider) {
+        MusicProvider.NETEASE ->
+            api.search(keywords, offset, limit)
+        MusicProvider.QQ -> {
+            val songs = api.qqSearch(keywords, offset, limit)
+            SearchResult(
+                songs = songs,
+                provider = provider.key,
+                offset = offset,
+                limit = limit,
+                nextOffset = offset + songs.size,
+                hasMore = songs.size >= limit,
+            )
+        }
+        MusicProvider.KUGOU ->
+            api.kugouSearch(keywords, offset, limit)
+        MusicProvider.QISHUI ->
+            api.qishuiSearch(keywords, offset, limit)
+        MusicProvider.SPOTIFY ->
+            api.spotifySearch(keywords, offset, limit)
+        MusicProvider.LS -> {
+            val songs = api.lsSearch(keywords, offset, limit)
+            SearchResult(
+                songs = songs,
+                provider = provider.key,
+                offset = offset,
+                limit = limit,
+                nextOffset = offset + songs.size,
+                hasMore = songs.size >= limit,
+            )
+        }
+        MusicProvider.LOCAL ->
+            api.localLiked().let { songs ->
+                SearchResult(
+                    songs = songs.filter {
+                        keywords.isBlank() ||
+                            it.name.contains(keywords, ignoreCase = true) ||
+                            it.artist.contains(keywords, ignoreCase = true)
+                    },
+                    provider = provider.key,
+                )
+            }
+        MusicProvider.PODCAST ->
+            // 播客搜索返回 Podcast 列表而非歌曲，songs 维度无结果。
+            // 需要播客结果时请直接调用 rawApi.podcastSearch。
+            SearchResult(songs = emptyList(), provider = provider.key)
     }
 
-    // ============ 歌曲 URL ============
-    suspend fun getSongUrl(song: Song, quality: AudioQuality = AudioQuality.EXHIGH): SongUrl {
+    /**
+     * 跨平台获取播放 URL。根据 [song.provider] 路由。
+     */
+    suspend fun getSongUrl(song: Song, quality: AudioQuality): SongUrl {
         val q = quality.key
         return when (MusicProvider.fromKey(song.provider)) {
-            MusicProvider.NETEASE, MusicProvider.LS ->
-                api.getSongUrl(song.id, q, song.name, song.artistDisplay, song.album, song.duration.toString())
-            MusicProvider.QQ -> api.getQqSongUrl(song.id, q)
-            MusicProvider.KUGOU -> api.getKugouSongUrl(song.id, q)
-            MusicProvider.QISHUI -> api.getQishuiSongUrl(song.id, q)
-            MusicProvider.SPOTIFY -> api.getSongUrl(song.id, q) // spotify 复用通用
+            MusicProvider.NETEASE -> api.songUrl(
+                id = song.id, quality = q,
+                name = song.name, artist = song.artist,
+                artistId = song.artistId, album = song.album,
+                duration = song.duration.toString(),
+            )
+            MusicProvider.QQ -> api.qqSongUrl(song.id, q)
+            MusicProvider.KUGOU -> api.kugouSongUrl(song.id, q)
+            MusicProvider.QISHUI -> api.qishuiSongUrl(song.id, q)
+            MusicProvider.SPOTIFY -> api.spotifySongUrl(song.id, q)
+            MusicProvider.LS -> api.lsSongUrl(song.id, q)
+            else -> SongUrl(ok = false, message = "该平台不支持获取播放地址")
         }
     }
 
-    // ============ 歌词 ============
-    suspend fun getLyric(song: Song): Lyric = when (MusicProvider.fromKey(song.provider)) {
-        MusicProvider.NETEASE, MusicProvider.LS -> api.getLyric(song.id)
-        MusicProvider.QQ -> api.getQqLyric(song.id)
-        MusicProvider.KUGOU -> api.getKugouLyric(song.id)
-        MusicProvider.QISHUI -> api.getLyric(song.id)
-        MusicProvider.SPOTIFY -> api.getLyric(song.id)
-    }
+    /**
+     * 跨平台获取歌词。根据 [song.provider] 路由。
+     */
+    suspend fun getLyric(song: Song): Lyric =
+        when (MusicProvider.fromKey(song.provider)) {
+            MusicProvider.NETEASE -> api.lyric(song.id)
+            MusicProvider.QQ -> api.qqLyric(song.id)
+            MusicProvider.KUGOU -> api.kugouLyric(song.id)
+            MusicProvider.QISHUI -> api.qishuiLyric(song.id)
+            MusicProvider.SPOTIFY -> api.spotifyLyric(song.id)
+            MusicProvider.LS -> api.lsLyric(song.id)
+            else -> Lyric()
+        }
 
-    // ============ 歌单 ============
-    suspend fun getUserPlaylists(offset: Int = 0, limit: Int = 0) = api.getUserPlaylists(limit, offset)
-    suspend fun getPlaylistTracks(id: String, offset: Int = 0, limit: Int = 0) = api.getPlaylistTracks(id, limit, offset)
-    suspend fun getRecommendSongs() = api.getRecommendSongs()
-    suspend fun getRecommendResource() = api.getRecommendResource()
-    suspend fun getPersonalized(limit: Int = 30) = api.getPersonalized(limit)
-    suspend fun getDiscoverHome() = api.getDiscoverHome()
-
-    // ============ 喜欢 ============
-    suspend fun checkLike(ids: List<String>) = api.checkLike(ids.joinToString(","))
-    suspend fun toggleLike(songId: String, like: Boolean) =
-        api.toggleLike(com.momusic.android.data.remote.LikeRequest(id = songId, like = like))
-
-    // ============ 歌单操作 ============
-    suspend fun addSongToPlaylist(playlistId: String, songId: String) =
-        api.addSongToPlaylist(com.momusic.android.data.remote.AddSongRequest(playlistId, songId))
-    suspend fun createPlaylist(name: String) = api.createPlaylist(
-        com.momusic.android.data.remote.CreatePlaylistRequest(name)
-    )
-
-    // ============ 评论 ============
-    suspend fun getComments(songId: String, offset: Int = 0, limit: Int = 20) = api.getComments(songId, limit, offset)
-
-    // ============ 歌手 ============
-    suspend fun getArtistDetail(id: String, limit: Int = 30) = api.getArtistDetail(id, limit)
-
-    // ============ 专辑 ============
-    suspend fun getAlbumDetail(id: String) = api.getAlbumDetail(id)
-
-    // ============ 登录 ============
-    suspend fun getLoginStatus() = api.getLoginStatus()
-    suspend fun getQrKey() = api.getQrKey()
-    suspend fun getQrImage(key: String) = api.getQrImage(key)
-    suspend fun checkQrLogin(key: String) = api.checkQrLogin(key)
-    suspend fun logout() = api.logout()
+    /** 暴露底层 api，供需要直接透传的调用方使用。 */
+    val rawApi: MoMusicApi get() = api
 
     companion object {
-        @Volatile private var instance: MusicRepository? = null
-        fun get(): MusicRepository = instance ?: synchronized(this) {
-            instance ?: MusicRepository().also { instance = it }
+        @Volatile private var INSTANCE: MusicRepository? = null
+
+        /** 获取进程内唯一的 Repository 实例。 */
+        fun get(): MusicRepository = INSTANCE ?: synchronized(this) {
+            INSTANCE ?: MusicRepository(NetworkModule.api).also { INSTANCE = it }
         }
     }
 }
