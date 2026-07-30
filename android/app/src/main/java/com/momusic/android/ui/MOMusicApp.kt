@@ -72,7 +72,11 @@ fun MOMusicApp() {
         bottomBar = {
             Column {
                 MiniPlayerBar(onClick = { navController.navigate(Screen.Player.route) })
-                AnimatedVisibility(visible = showBottomBar, enter = slideInVertically{}, exit = slideOutVertically{}) {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(initialOffsetY = { it }),
+                    exit = slideOutVertically(targetOffsetY = { it })
+                ) {
                     NavigationBar(tonalElevation = 0.dp) {
                         bottomTabs.forEach { tab ->
                             NavigationBarItem(

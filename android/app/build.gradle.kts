@@ -5,9 +5,11 @@ plugins {
 }
 
 // 加载签名配置
-val keystoreProperties = java.util.Properties().apply {
+import java.util.Properties
+import java.io.FileInputStream
+val keystoreProperties = Properties().apply {
     val f = rootProject.file("keystore.properties")
-    if (f.exists()) java.io.FileInputStream(f).use { load(it) }
+    if (f.exists()) FileInputStream(f).use { load(it) }
 }
 
 android {

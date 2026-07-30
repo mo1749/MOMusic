@@ -82,6 +82,13 @@ class MusicRepository {
     // ============ 专辑 ============
     suspend fun getAlbumDetail(id: String) = api.getAlbumDetail(id)
 
+    // ============ 登录 ============
+    suspend fun getLoginStatus() = api.getLoginStatus()
+    suspend fun getQrKey() = api.getQrKey()
+    suspend fun getQrImage(key: String) = api.getQrImage(key)
+    suspend fun checkQrLogin(key: String) = api.checkQrLogin(key)
+    suspend fun logout() = api.logout()
+
     companion object {
         @Volatile private var instance: MusicRepository? = null
         fun get(): MusicRepository = instance ?: synchronized(this) {

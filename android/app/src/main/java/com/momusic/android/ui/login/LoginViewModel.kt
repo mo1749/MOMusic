@@ -37,7 +37,7 @@ class LoginViewModel : ViewModel() {
 
     fun checkLogin() {
         viewModelScope.launch {
-            runCatching { _status.value = repo.api.getLoginStatus() }
+            runCatching { _status.value = repo.getLoginStatus() }
         }
     }
 
@@ -46,10 +46,10 @@ class LoginViewModel : ViewModel() {
         viewModelScope.launch {
             _loading.value = true
             runCatching {
-                val keyResp = repo.api.getQrKey()
+                val keyResp = repo.getQrKey()
                 val key = keyResp.key ?: return@runCatching
                 currentKey = key
-                val img = repo.api.getQrImage(key)
+                val img = repo.getQrImage(key)
                 _qrImg.value = img.img ?: ""
                 startPolling(key)
             }
@@ -63,7 +63,7 @@ class LoginViewModel : ViewModel() {
             while (true) {
                 delay(1500)
                 runCatching {
-                    val r = repo.api.checkQrLogin(key)
+                    val r = repo.checkQrLogin(key)
                     _qrCode.value = r.code
                     _message.value = r.message
                     when (r.code) {
@@ -84,7 +84,7 @@ class LoginViewModel : ViewModel() {
 
     fun logout() {
         viewModelScope.launch {
-            runCatching { repo.api.logout() }
+            runCatching { repo.logout() }
             _status.value = LoginStatus()
         }
     }

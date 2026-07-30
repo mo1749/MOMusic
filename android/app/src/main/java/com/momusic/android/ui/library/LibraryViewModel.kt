@@ -9,8 +9,10 @@ import com.momusic.android.data.repository.FavoriteRepository
 import com.momusic.android.data.repository.MusicRepository
 import com.momusic.android.playback.PlayerManager
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
@@ -18,6 +20,7 @@ class LibraryViewModel : ViewModel() {
     private val musicRepo = MusicRepository.get()
 
     val favorites: StateFlow<List<Song>> = favRepo.observeAll()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
     val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()

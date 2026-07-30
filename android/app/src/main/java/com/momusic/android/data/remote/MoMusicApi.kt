@@ -18,7 +18,7 @@ import retrofit2.http.Query
 
 /**
  * MOMusic 后端 API 接口。
- * 对应 server.js 中的 /api/* 路由。
+ * 对应 server.js 中的 /api/ 路由。
  */
 interface MoMusicApi {
 

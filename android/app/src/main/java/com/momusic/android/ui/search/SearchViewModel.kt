@@ -49,12 +49,6 @@ class SearchViewModel : ViewModel() {
         }
     }
 
-    fun onProviderChange(p: MusicProvider) {
-        _provider.value = p
-        _results.value = emptyList()
-        if (_query.value.isNotBlank()) doSearch()
-    }
-
     private suspend fun doSearch() {
         _loading.value = true
         _error.value = null
@@ -63,6 +57,14 @@ class SearchViewModel : ViewModel() {
             _results.value = r.songs
         }.onFailure { _error.value = it.message ?: "搜索失败" }
         _loading.value = false
+    }
+
+    fun onProviderChange(p: MusicProvider) {
+        _provider.value = p
+        _results.value = emptyList()
+        if (_query.value.isNotBlank()) {
+            viewModelScope.launch { doSearch() }
+        }
     }
 
     fun play(song: Song) {

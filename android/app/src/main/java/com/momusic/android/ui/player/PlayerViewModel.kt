@@ -7,6 +7,7 @@ import com.momusic.android.data.model.Lyric
 import com.momusic.android.data.model.Song
 import com.momusic.android.data.repository.MusicRepository
 import com.momusic.android.playback.PlayerManager
+import com.momusic.android.ui.lyric.LyricView
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
