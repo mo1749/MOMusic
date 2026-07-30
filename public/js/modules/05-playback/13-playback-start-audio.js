@@ -1113,8 +1113,23 @@ async function playQueueAt(idx, opts) {
           '&uri=' + encodeURIComponent(song.spotifyUri || song.uri || '') +
           qualityParam, { timeoutMs: 9000 });
       } else if (isLsPlayback) {
-        data = await apiJson('/api/ls/song/url?songId=' + encodeURIComponent(song.songmid || song.mid || song.id || '') +
-          '&source=' + encodeURIComponent(song.lxSource || 'tx') + qualityParam, { timeoutMs: 9000 });
+        var _lsId = song.songmid || song.mid || song.id || '';
+        var _lsSrc = song.lxSource || 'tx';
+        var _customScripts = (typeof getEnabledCustomLxScripts === 'function') ? getEnabledCustomLxScripts() : [];
+        if (_customScripts.length) {
+          try {
+            var _resp = await fetch('/api/ls/custom-source/url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ songId: _lsId, source: _lsSrc, quality: requestedQuality, scripts: _customScripts }),
+            });
+            data = await _resp.json();
+          } catch (e) { data = null; }
+        }
+        if (!data || (!data.url && data.code !== 0)) {
+          data = await apiJson('/api/ls/song/url?songId=' + encodeURIComponent(_lsId) +
+            '&source=' + encodeURIComponent(_lsSrc) + qualityParam, { timeoutMs: 9000 });
+        }
       } else {
         data = await apiJson('/api/song/url?id=' + encodeURIComponent(song.id || '') + neteasePlaybackMatchQuery(song) + qualityParam, { timeoutMs: 14000 });
       }

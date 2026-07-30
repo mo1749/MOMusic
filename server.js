@@ -129,6 +129,11 @@ const {
 const {
   handleLsSongUrl,
 } = require('./lx-source-api');
+const {
+  testCustomSource,
+  tryCustomSourcesForUrl,
+  tryCustomSourcesForLyric,
+} = require('./lx-custom-source-engine');
 const localCollection = require('./local-collection');
 const {
   appendCuefieldFeedback,
@@ -4309,6 +4314,36 @@ async function handleQQAlbumDetail(mid, limit) {
   };
 }
 
+// 红尘客栈雷达种子词库
+function getRedDustInnSeeds(category) {
+  var lib = {
+    '华语流行': ['周杰伦 晴天', '林俊杰 江南', '陈奕迅 浮夸', '孙燕姿 遇见', '五月天 倔强', '莫文蔚 阴天', '李荣浩 模特', '薛之谦 演员', '毛不易 消愁', '邓紫棋 光年之外', '华晨宇 齐天', '张惠妹 听海'],
+    '欧美流行': ['Adele Hello', 'Ed Sheeran Shape of You', 'Taylor Swift Love Story', 'Bruno Mars Just the Way', 'Maroon 5 Sugar', 'Coldplay Yellow', 'Imagine Dragons Believer', 'Billie Eilish Bad Guy', 'Dua Lipa Levitating', 'The Weeknd Blinding Lights'],
+    '日语动漫': 'LiSA 紅蓮華 YOASOBI 夜に駆ける 米津玄師 Lemon Aimer 残響散歌 ZUTOMAYO 勘冴えて Kenshi Yonezu Kick Back King Gnu 白日 Hikaru Utada First Love'.split(' '),
+    '韩语流行': 'BTS Dynamite BLACKPINK How You Like That IU Blueming EXO Love Shot TWICE Feel Special Red Velvet Psycho Stray Kids God Menu aespa Next Level Big Bang Bang Bang Bang'.split(' '),
+    '民谣古风': '陈粒 小半 赵雷 成都 花粥 出山 银临 牵丝戏 河图 倾尽天下 周深 大鱼 刘珂矣 半壶纱 徐梦圆 桃花笑'.split(' '),
+    '电子舞曲': 'Alan Walker Faded Martin Garrix Animals Marshmello Alone Calvin Harris Summer David Guetta Titanium Skrillex Bangarang The Chainsmokers Closer Kygo Firestone'.split(' '),
+    '摇滚节奏': 'Beyond 海阔天空 崔健 一无所有 黑豹 无地自容 Mayflower 想念您 Queen Bohemian Rhapsody Nirvana Smells Like Teen Spirit Linkin Park Numb Imagine Dragons Radioactive Guns N Roses Sweet Child'.split(' '),
+    '轻音乐纯音乐': '久石让 Summer 坂本龙一 Merry Christmas Mr Lawrence Yiruma River Flows in You Kevin Kern Sundial Dreams 喜多郎 丝绸之路 班得瑞 童年 理查德克莱德曼 梦中的婚礼'.split(' '),
+    '怀旧经典': '邓丽君 月亮代表我的心 张国荣 风继续吹 王菲 红豆 刘德华 忘情水 黎明 全日爱 邓丽君 甜蜜蜜 费玉清 一剪梅 蔡琴 你的眼神 罗大佑 光阴的故事'.split(' '),
+    '随机漫游': ['陈奕迅 好久不见', '周杰伦 七里香', '孙燕姿 天黑黑', '林宥嘉 说谎', '方大同 特别的人', '陶喆 爱很简单', '告五人 爱人错过', '落日飞车 My Jinji', 'Deca Joins 海浪', '草东没有派对 大风吹', '陈绮贞 旅行的意义', '张悬 宝贝']
+  };
+  var list = lib[category];
+  if (!Array.isArray(list) || !list.length) list = lib['随机漫游'];
+  return list.slice();
+}
+function pickRandomSeeds(arr, count) {
+  if (!Array.isArray(arr) || !arr.length) return [];
+  var pool = arr.slice();
+  var n = Math.min(count, pool.length);
+  var picked = [];
+  for (var i = 0; i < n; i++) {
+    var idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  return picked;
+}
+
 async function handleQQSearch(keywords, limit, offset) {
   const kw = String(keywords || '').trim();
   if (!kw) return [];
@@ -6646,22 +6681,22 @@ const server = http.createServer(async (req, res) => {
       const limit = Math.max(6, Math.min(50, parseInt(url.searchParams.get('limit') || '20', 10) || 20));
       const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
       if (!keyword) { sendJSON(res, { provider: 'ls', songs: [] }); return; }
-      // 直接调用 QQ 搜索处理函数
-      const qqResult = await handleQQSearch(keyword, limit, offset);
-      const songs = (qqResult && qqResult.songs) || [];
+      // handleQQSearch 直接返回数组（与 /api/qq/search 一致）
+      const songs = await handleQQSearch(keyword, limit, offset);
+      const list = Array.isArray(songs) ? songs : [];
       // 将歌曲标记为 ls 源（保留 songmid 供播放URL解析使用）
-      songs.forEach(function (s) {
+      list.forEach(function (s) {
         s.provider = 'ls'; s.source = 'ls'; s.type = 'ls';
         s.lxSource = 'tx'; // 标记底层使用 QQ(tx) 解析
       });
       sendJSON(res, {
         provider: 'ls',
-        songs: songs,
+        songs: list,
         offset: offset,
         limit: limit,
-        nextOffset: (qqResult && qqResult.nextOffset) || (offset + songs.length),
-        hasMore: qqResult && qqResult.hasMore,
-        total: (qqResult && qqResult.total) || songs.length,
+        nextOffset: offset + list.length,
+        hasMore: list.length >= limit,
+        total: list.length,
       });
     } catch (err) {
       sendJSON(res, { provider: 'ls', error: err.message, songs: [] }, 500);
@@ -6693,6 +6728,207 @@ const server = http.createServer(async (req, res) => {
       sendJSON(res, lyricResult || { code: 1, msg: '歌词获取失败' });
     } catch (err) {
       sendJSON(res, { provider: 'ls', error: err.message }, 500);
+    }
+    return;
+  }
+
+  // ============ 自定义音源 (落雪协议脚本沙箱) ============
+  // 测试脚本: POST { script } -> { ok, info, sources, error }
+  if (pn === '/api/ls/custom-source/test' && req.method === 'POST') {
+    try {
+      const body = await readRequestBody(req);
+      const script = String((body && body.script) || '').trim();
+      if (!script) { sendJSON(res, { ok: false, error: '脚本内容为空' }); return; }
+      if (script.length > 9 * 1024 * 1024) { sendJSON(res, { ok: false, error: '脚本过大' }); return; }
+      const result = await testCustomSource(script);
+      sendJSON(res, result);
+    } catch (err) {
+      sendJSON(res, { ok: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  // 在线导入: POST { url } -> { ok, script, info }
+  if (pn === '/api/ls/custom-source/fetch' && req.method === 'POST') {
+    try {
+      const body = await readRequestBody(req);
+      const scriptUrl = String((body && body.url) || '').trim();
+      if (!scriptUrl || !/^https?:\/\//.test(scriptUrl)) {
+        sendJSON(res, { ok: false, error: 'URL 无效' }); return;
+      }
+      const script = await new Promise((resolve, reject) => {
+        const u = new URL(scriptUrl);
+        const lib = u.protocol === 'http:' ? http : https;
+        const r = lib.get({
+          hostname: u.hostname,
+          path: u.pathname + u.search,
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          rejectUnauthorized: false,
+          timeout: 15000,
+        }, (resp) => {
+          if (resp.statusCode >= 300 && resp.statusCode < 400 && resp.headers.location) {
+            // 简单跟随一次重定向
+            resolve(new Promise((res2, rej2) => {
+              const loc = resp.headers.location;
+              const u2 = new URL(loc, scriptUrl);
+              const lib2 = u2.protocol === 'http:' ? http : https;
+              lib2.get({
+                hostname: u2.hostname,
+                path: u2.pathname + u2.search,
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                rejectUnauthorized: false,
+                timeout: 15000,
+              }, (r2) => {
+                let d = ''; r2.on('data', c => { d += c; if (d.length > 9 * 1024 * 1024) r2.destroy(); });
+                r2.on('end', () => res2(d));
+                r2.on('error', rej2);
+              }).on('error', rej2).on('timeout', () => rej2(new Error('timeout')));
+            }));
+            return;
+          }
+          if (resp.statusCode !== 200) { reject(new Error('HTTP ' + resp.statusCode)); return; }
+          let d = '';
+          resp.on('data', c => { d += c; if (d.length > 9 * 1024 * 1024) resp.destroy(); });
+          resp.on('end', () => resolve(d));
+          resp.on('error', reject);
+        }).on('error', reject).on('timeout', () => reject(new Error('timeout')));
+        r.setTimeout(15000);
+      });
+      if (!script || script.length < 10) { sendJSON(res, { ok: false, error: '脚本内容为空或过短' }); return; }
+      const info = require('./lx-custom-source-engine').parseScriptInfo(script);
+      sendJSON(res, { ok: true, script: script, info: info });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  // 链式回退获取播放URL: POST { songId, source, quality, scripts: [{id, script}] }
+  // 先按顺序尝试自定义音源,全部失败则回退到默认 huibq
+  if (pn === '/api/ls/custom-source/url' && req.method === 'POST') {
+    try {
+      const body = await readRequestBody(req);
+      const songId = String(body.songId || body.id || body.songmid || '').trim();
+      const quality = String(body.quality || body.type || '128k').trim();
+      const source = String(body.source || 'tx').trim();
+      const scripts = Array.isArray(body.scripts) ? body.scripts : [];
+      if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
+      // 先尝试自定义音源链式回退
+      if (scripts.length) {
+        const custom = await tryCustomSourcesForUrl(scripts, songId, source, quality);
+        if (custom && custom.url) {
+          sendJSON(res, { code: 0, url: custom.url, provider: 'ls', from: 'custom-source', sourceId: custom.sourceId });
+          return;
+        }
+      }
+      // 回退到默认 huibq render_api
+      const result = await handleLsSongUrl(songId, source, quality);
+      sendJSON(res, result);
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message }, 500);
+    }
+    return;
+  }
+
+  // 链式回退获取歌词: POST { songId, source, scripts: [{id, script}] }
+  if (pn === '/api/ls/custom-source/lyric' && req.method === 'POST') {
+    try {
+      const body = await readRequestBody(req);
+      const songId = String(body.songId || body.id || body.songmid || '').trim();
+      const source = String(body.source || 'tx').trim();
+      const scripts = Array.isArray(body.scripts) ? body.scripts : [];
+      if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
+      if (scripts.length) {
+        const custom = await tryCustomSourcesForLyric(scripts, songId, source);
+        if (custom && custom.lyric) {
+          sendJSON(res, { code: 0, provider: 'ls', from: 'custom-source', sourceId: custom.sourceId, ...custom.lyric });
+          return;
+        }
+      }
+      // 回退到 QQ 歌词代理
+      const lyricResult = await handleQQLyric(songId, songId);
+      sendJSON(res, lyricResult || { code: 1, msg: '歌词获取失败' });
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message }, 500);
+    }
+    return;
+  }
+
+  // LS 雷达：持续拉取候选并验证，确保凑够目标数量的可播放歌曲（红尘客栈本地模式）
+  if (pn === '/api/ls/radar') {
+    try {
+      const category = String(url.searchParams.get('category') || '随机漫游').trim();
+      const targetLimit = Math.max(6, Math.min(40, parseInt(url.searchParams.get('limit') || '30', 10) || 30));
+      const seedList = getRedDustInnSeeds(category);
+      const seenMid = new Set();
+      const playable = [];
+      const usedSeeds = [];
+      const maxRounds = 6;
+      const verifyConcurrency = 8;
+
+      async function verifyBatch(candidates) {
+        let idx = 0;
+        async function worker() {
+          while (idx < candidates.length && playable.length < targetLimit) {
+            const i = idx++;
+            const song = candidates[i];
+            if (!song) continue;
+            try {
+              const mid = song.mid || song.songmid || song.id;
+              const r = await handleLsSongUrl(mid, 'tx', '128k');
+              if (r && r.code === 0 && r.url) {
+                song.playUrl = r.url;
+                playable.push(song);
+              }
+            } catch (e) { /* 静默跳过 */ }
+          }
+        }
+        const workers = [];
+        for (let w = 0; w < verifyConcurrency; w++) workers.push(worker());
+        await Promise.all(workers);
+      }
+
+      for (let round = 0; round < maxRounds && playable.length < targetLimit; round++) {
+        const remaining = seedList.filter(function (s) { return usedSeeds.indexOf(s) < 0; });
+        const pool = remaining.length ? remaining : seedList;
+        const pickCount = Math.min(3, pool.length);
+        const picked = pickRandomSeeds(pool, pickCount);
+        picked.forEach(function (s) { if (usedSeeds.indexOf(s) < 0) usedSeeds.push(s); });
+        const perSeed = Math.max(8, Math.ceil(targetLimit / pickCount) + 4);
+        const results = await Promise.all(picked.map(function (seed) {
+          return handleQQSearch(seed, perSeed, 0).catch(function () { return []; });
+        }));
+        const batch = [];
+        results.forEach(function (list) {
+          if (!Array.isArray(list)) return;
+          list.forEach(function (song) {
+            var mid = song && (song.mid || song.songmid || song.id);
+            if (!mid || seenMid.has(mid)) return;
+            seenMid.add(mid);
+            song.provider = 'ls'; song.source = 'ls'; song.type = 'ls';
+            song.lxSource = 'tx';
+            batch.push(song);
+          });
+        });
+        // 打乱本批顺序
+        for (var i = batch.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = batch[i]; batch[i] = batch[j]; batch[j] = tmp;
+        }
+        await verifyBatch(batch);
+      }
+
+      sendJSON(res, {
+        provider: 'ls',
+        songs: playable.slice(0, targetLimit),
+        category: category,
+        seeds: usedSeeds,
+        verified: playable.length,
+        rounds: maxRounds,
+        hasMore: true
+      });
+    } catch (err) {
+      sendJSON(res, { provider: 'ls', error: err.message, songs: [] }, 500);
     }
     return;
   }

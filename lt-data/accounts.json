@@ -1,0 +1,26 @@
+{
+  "e2e_test_1785334172236@test.com": {
+    "passwordHash": "8ad9b2e1dbb942b8666cba09ab89d31603c973e67c0580337b013d527e525d3a",
+    "nickname": "E2E测试用户",
+    "createdAt": 1785334172237,
+    "loginMethods": [
+      "email"
+    ]
+  },
+  "e2e_test_1785334267770@test.com": {
+    "passwordHash": "8ad9b2e1dbb942b8666cba09ab89d31603c973e67c0580337b013d527e525d3a",
+    "nickname": "E2E测试用户",
+    "createdAt": 1785334267771,
+    "loginMethods": [
+      "email"
+    ]
+  },
+  "e2e_test_1785334334300@test.com": {
+    "passwordHash": "8ad9b2e1dbb942b8666cba09ab89d31603c973e67c0580337b013d527e525d3a",
+    "nickname": "E2E测试用户",
+    "createdAt": 1785334334302,
+    "loginMethods": [
+      "email"
+    ]
+  }
+}

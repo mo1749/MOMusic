@@ -564,9 +564,9 @@ function renderHomeDashboardQuickCards() {
       className: 'home-card-quick',
     },
     {
-      label: 'DAILY MIX',
-      title: '每日推荐',
-      sub: '来自已登录音乐平台 · 点击获取今日推荐',
+      label: redDustInnState.enabled ? 'RADAR' : 'DAILY MIX',
+      title: redDustInnState.enabled ? '雷达模式' : '每日推荐',
+      sub: redDustInnState.enabled ? ('落雪音源 · ' + redDustInnRadarCategory + ' · 点击推送') : '来自已登录音乐平台 · 点击获取今日推荐',
       cover: homeDashboardSongCover(daily, 260),
       action: 'playHomeDaily()',
       tone: 'mix',

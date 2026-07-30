@@ -364,6 +364,16 @@ function providerAccountIdentity(provider, status) {
 }
 function renderTopAccountPill(provider, opts) {
   opts = opts || {};
+  // 红尘客栈展示模式：强制显示「红尘客栈」与自定义头像
+  if (redDustInnState.enabled && redDustInnState.showcase) {
+    var innAvatar = redDustInnState.avatar || '';
+    var innImg = innAvatar ? innAvatar : 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><rect width="96" height="96" rx="48" fill="#2a1a0f"/><circle cx="48" cy="48" r="34" fill="#d4a05a" opacity=".18"/><text x="48" y="58" text-anchor="middle" font-family="serif" font-size="28" font-weight="700" fill="#e8b878">客</text></svg>');
+    return '<span class="top-account-pill online red-dust-inn-pill" data-account-provider="rdi">' +
+      '<img src="' + innImg + '" alt="">' +
+      '<span class="top-account-name">红尘客栈</span>' +
+      '<span class="top-account-vip rdi">客栈</span>' +
+      '</span>';
+  }
   var st = platformStatus(provider);
   var loggedIn = !!(st && st.loggedIn);
   if (!loggedIn && !opts.force) return '';

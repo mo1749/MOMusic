@@ -6,6 +6,40 @@ function readSavedVolume() {
     return 1.0;
   }
 }
+function normalizeRedDustInnState(raw) {
+  raw = raw && typeof raw === 'object' ? raw : {};
+  var cat = String(raw.category || '').trim();
+  if (RED_DUST_INN_CATEGORIES.indexOf(cat) < 0) cat = '随机漫游';
+  return {
+    enabled: !!raw.enabled,
+    showcase: !!raw.showcase,
+    avatar: String(raw.avatar || '').trim(),
+    category: cat
+  };
+}
+function readRedDustInnPreference() {
+  try {
+    var raw = JSON.parse(localStorage.getItem(RED_DUST_INN_STORE_KEY) || '{}') || {};
+    return normalizeRedDustInnState(raw);
+  } catch (e) {
+    return { enabled: false, showcase: false, avatar: '', category: '随机漫游' };
+  }
+}
+function saveRedDustInnPreference() {
+  try {
+    localStorage.setItem(RED_DUST_INN_STORE_KEY, JSON.stringify({
+      enabled: !!redDustInnState.enabled,
+      showcase: !!redDustInnState.showcase,
+      avatar: redDustInnState.avatar || '',
+      category: redDustInnState.category || '随机漫游'
+    }));
+  } catch (e) { }
+}
+function initRedDustInnState() {
+  redDustInnState = readRedDustInnPreference();
+  redDustInnRadarCategory = redDustInnState.category || '随机漫游';
+}
+initRedDustInnState();
 function normalizeAudioFadeMs(value, fallback) {
   var ms = Math.round(Number(value));
   if (!isFinite(ms)) ms = fallback;

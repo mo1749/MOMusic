@@ -135,7 +135,7 @@
           <button id="search-mode-spotify" type="button" onclick="setSearchMode('spotify')" aria-selected="false">SP</button>
           <button id="search-mode-ls" type="button" onclick="setSearchMode('ls')" aria-selected="false">LS</button>
           <button id="search-mode-podcast" type="button" onclick="setSearchMode('podcast')"
-            aria-selected="false">Podcast</button>
+            aria-selected="false">NEDT</button>
         </div>
         <div id="search-results"></div>
       </div>
@@ -1041,6 +1041,19 @@
             <code class="cache-storage-path small" id="cache-storage-userdata-path">—</code>
             <div class="fx-sub cache-storage-note" id="cache-storage-note">歌词缓存立即切换；网络、节奏分析、WE 静音场景与更新缓存目录在下次重启后切换。</div>
           </div>
+          <div class="fx-section-label">自定义音源 (落雪协议)</div>
+          <div class="custom-source-panel" id="custom-source-panel">
+            <div class="custom-source-head">
+              <span>已添加的音源会按优先级链式回退,失败自动切换下一个</span>
+            </div>
+            <div class="custom-source-actions">
+              <button class="fx-mini-btn ghost" type="button" id="cs-import-text-btn">粘贴文本</button>
+              <button class="fx-mini-btn ghost" type="button" id="cs-import-file-btn">选择文件</button>
+              <button class="fx-mini-btn ghost" type="button" id="cs-import-url-btn">在线URL</button>
+            </div>
+            <div class="custom-source-list" id="custom-source-list"></div>
+            <div class="fx-sub custom-source-tip">支持落雪 music-desktop 协议的 .js 脚本,脚本在 Node.js 沙箱中执行,仅暴露受限的 lx 桥接对象。</div>
+          </div>
           <div class="fx-slider"><label>粒子尺寸</label><input id="fx-point" type="range" min="0.5" max="2.2"
               step="0.01"><output></output></div>
           <div class="fx-slider"><label>流速</label><input id="fx-speed" type="range" min="0.2" max="2.5"
@@ -1493,6 +1506,22 @@
                 class="provider-logo">QS</span><b>汽水音乐</b><small>本地会话 / PC 客户端</small><span class="flow-port out" data-login-provider-output="qishui" title="拖到 MR 接入口"></span></button>
             <button id="login-provider-spotify" class="spotify workflow-node" type="button" data-login-provider="spotify" onclick="selectLoginProviderNode('spotify')"><span
                 class="provider-logo">SP</span><b>Spotify</b><small>官方 OAuth</small><span class="flow-port out" data-login-provider-output="spotify" title="拖到 MR 接入口"></span></button>
+            <button id="login-red-dust-inn-btn" class="red-dust-inn workflow-node" type="button" onclick="toggleRedDustInnFromLogin()">
+              <span class="provider-logo rdi-logo">客</span>
+              <b>红尘客栈</b>
+              <small>本地模式 · 雷达推送</small>
+              <span class="rdi-toggle" id="rdi-toggle-indicator">关</span>
+            </button>
+          </div>
+          <div id="red-dust-inn-settings" class="red-dust-inn-settings" hidden>
+            <button id="rdi-showcase-toggle" class="rdi-chip" type="button" onclick="toggleRedDustInnShowcase()">展示</button>
+            <button id="rdi-avatar-btn" class="rdi-chip" type="button" onclick="pickRedDustInnAvatar()">头像</button>
+            <img id="rdi-avatar-preview" class="rdi-avatar-preview" alt="" hidden>
+            <button id="rdi-avatar-clear" class="rdi-chip tiny" type="button" onclick="clearRedDustInnAvatar()" hidden>×</button>
+            <button id="rdi-category-trigger" class="rdi-chip rdi-category-trigger" type="button" onclick="toggleRdiCategoryPopover()">雷达分类<span class="rdi-cat-name" id="rdi-cat-name">随机漫游</span><span class="rdi-caret">▾</span></button>
+          </div>
+          <div id="rdi-category-popover" class="rdi-category-popover" hidden>
+            <div class="rdi-cat-grid" id="rdi-cat-grid"></div>
           </div>
           <div class="login-node-hub workflow-node" data-login-node="mr">
             <span class="flow-port in" data-login-mr-target="mr" title="MR 接入口"></span>
@@ -2076,6 +2105,35 @@
       try { initListenTogetherUI(); } catch (e) { console.warn('[LT-UI] 初始化失败:', e); }
     }
   </script>
+
+  <!-- 自定义音源导入弹窗 -->
+  <div id="custom-source-import-overlay" class="cs-import-overlay" hidden>
+    <div class="cs-import-dialog">
+      <div class="cs-import-title">导入自定义音源</div>
+      <div class="cs-import-tabs">
+        <button type="button" id="cs-import-mode-text" class="cs-import-tab">粘贴文本</button>
+        <button type="button" id="cs-import-mode-url" class="cs-import-tab">在线URL</button>
+        <button type="button" id="cs-import-mode-file" class="cs-import-tab">选择文件</button>
+      </div>
+      <div class="cs-import-body">
+        <div id="cs-import-text-wrap" class="cs-import-field">
+          <textarea id="cs-import-textarea" class="cs-import-textarea" placeholder="粘贴落雪协议音源脚本内容 (以 /** 开头的块注释)..." rows="10"></textarea>
+        </div>
+        <div id="cs-import-url-wrap" class="cs-import-field" hidden>
+          <input id="cs-import-url" class="cs-import-input" type="url" placeholder="https://example.com/source.js">
+          <div class="cs-import-hint">后端会拉取脚本内容并验证</div>
+        </div>
+        <div id="cs-import-file-wrap" class="cs-import-field" hidden>
+          <input id="cs-import-file" class="cs-import-input" type="file" accept=".js,.txt,text/javascript">
+          <div class="cs-import-hint">选择本地 .js 脚本文件</div>
+        </div>
+      </div>
+      <div class="cs-import-footer">
+        <button type="button" id="cs-import-cancel" class="fx-mini-btn ghost">取消</button>
+        <button type="button" id="cs-import-submit" class="fx-mini-btn">导入</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "playlists": [
+    {
+      "id": "local_liked",
+      "name": "我喜欢的音乐",
+      "createdAt": 1785401837265,
+      "updatedAt": 1785402742425,
+      "songs": [
+        {
+          "provider": "qq",
+          "source": "qq",
+          "type": "qq",
+          "id": "003gvpio3ATfkO",
+          "songmid": "003gvpio3ATfkO",
+          "copyrightId": "",
+          "hash": "",
+          "mid": "003gvpio3ATfkO",
+          "name": "零碎在我的世界",
+          "artist": "徐靖雯",
+          "artists": [
+            {
+              "id": 9281262,
+              "mid": "000Ky3zC0Wy8u0",
+              "name": "徐靖雯"
+            }
+          ],
+          "album": "零碎在我的世界",
+          "albumId": "",
+          "albumName": "零碎在我的世界",
+          "cover": "https://y.qq.com/music/photo_new/T002R300x300M000000i5cK83y5jOP.jpg?max_age=2592000",
+          "duration": 168000,
+          "fee": 0,
+          "savedAt": 1785401990132
+        },
+        {
+          "provider": "podcast",
+          "source": "podcast",
+          "type": "podcast",
+          "id": "3322022742",
+          "songmid": 3322022742,
+          "copyrightId": "",
+          "hash": "",
+          "mid": "",
+          "name": "落空-合唱版",
+          "artist": "落空-合唱版",
+          "artists": [
+            {
+              "id": 0,
+              "name": "郝梦好梦zZ"
+            }
+          ],
+          "album": "落空-合唱版",
+          "albumId": "",
+          "albumName": "落空-合唱版",
+          "cover": "https://p4.music.126.net/txCGbPQ1Ehp1wIgesVHReg==/109951172346030638.jpg",
+          "duration": 217130,
+          "fee": 0,
+          "savedAt": 1785402742425
+        }
+      ],
+      "isLiked": true
+    }
+  ],
+  "liked": [
+    {
+      "provider": "qq",
+      "source": "qq",
+      "type": "qq",
+      "id": "003gvpio3ATfkO",
+      "songmid": "003gvpio3ATfkO",
+      "copyrightId": "",
+      "hash": "",
+      "mid": "003gvpio3ATfkO",
+      "name": "零碎在我的世界",
+      "artist": "徐靖雯",
+      "artists": [
+        {
+          "id": 9281262,
+          "mid": "000Ky3zC0Wy8u0",
+          "name": "徐靖雯"
+        }
+      ],
+      "album": "零碎在我的世界",
+      "albumId": "",
+      "albumName": "零碎在我的世界",
+      "cover": "https://y.qq.com/music/photo_new/T002R300x300M000000i5cK83y5jOP.jpg?max_age=2592000",
+      "duration": 168000,
+      "fee": 0,
+      "savedAt": 1785401990132
+    },
+    {
+      "provider": "podcast",
+      "source": "podcast",
+      "type": "podcast",
+      "id": "3322022742",
+      "songmid": 3322022742,
+      "copyrightId": "",
+      "hash": "",
+      "mid": "",
+      "name": "落空-合唱版",
+      "artist": "落空-合唱版",
+      "artists": [
+        {
+          "id": 0,
+          "name": "郝梦好梦zZ"
+        }
+      ],
+      "album": "落空-合唱版",
+      "albumId": "",
+      "albumName": "落空-合唱版",
+      "cover": "https://p4.music.126.net/txCGbPQ1Ehp1wIgesVHReg==/109951172346030638.jpg",
+      "duration": 217130,
+      "fee": 0,
+      "savedAt": 1785402742425
+    }
+  ]
+}

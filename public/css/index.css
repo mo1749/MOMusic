@@ -18049,3 +18049,485 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
   width: 12px;
   height: 12px
 }
+
+/* ============ 红尘客栈 · 本地模式 ============ */
+#login-red-dust-inn-btn.red-dust-inn {
+  grid-template-columns: 35px minmax(0, 1fr) auto;
+  gap: 0 10px;
+}
+#login-red-dust-inn-btn.red-dust-inn .provider-logo.rdi-logo {
+  background: linear-gradient(135deg, rgba(212, 160, 90, 0.32), rgba(160, 110, 50, 0.22));
+  color: #e8b878;
+  font-family: serif;
+}
+#login-red-dust-inn-btn.red-dust-inn b {
+  color: rgba(232, 184, 120, 0.92);
+  font-family: serif;
+}
+#login-red-dust-inn-btn.red-dust-inn .rdi-toggle {
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  flex: 0 0 auto;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+#login-red-dust-inn-btn.red-dust-inn:hover .rdi-toggle {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.85);
+}
+#login-red-dust-inn-btn.red-dust-inn.on {
+  border-color: rgba(212, 160, 90, 0.45);
+  background: linear-gradient(90deg, rgba(82, 52, 28, 0.42), rgba(42, 26, 15, 0.22));
+}
+#login-red-dust-inn-btn.red-dust-inn.on .rdi-toggle {
+  background: rgba(212, 160, 90, 0.28);
+  color: #e8b878;
+  border-color: rgba(212, 160, 90, 0.4);
+}
+#login-red-dust-inn-btn.red-dust-inn.on .provider-logo.rdi-logo {
+  box-shadow: 0 0 10px rgba(212, 160, 90, 0.4);
+}
+.red-dust-inn-settings {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -3px 0 7px;
+  padding: 0 4px;
+  flex-wrap: wrap;
+}
+.red-dust-inn-settings[hidden] { display: none; }
+.rdi-chip {
+  padding: 4px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.rdi-chip:hover { background: rgba(255, 255, 255, 0.09); color: rgba(255, 255, 255, 0.85); }
+.rdi-chip.tiny { padding: 2px 7px; font-size: 13px; line-height: 1; }
+#rdi-showcase-toggle.rdi-chip.on {
+  background: rgba(212, 160, 90, 0.28);
+  color: #e8b878;
+  border-color: rgba(212, 160, 90, 0.4);
+}
+.rdi-avatar-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(212, 160, 90, 0.3);
+  flex: 0 0 auto;
+}
+.rdi-category-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rdi-category-trigger .rdi-cat-name {
+  max-width: 84px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rdi-category-trigger .rdi-caret {
+  font-size: 9px;
+  opacity: 0.6;
+  transition: transform 0.18s;
+}
+.rdi-category-trigger.open .rdi-caret { transform: rotate(180deg); }
+
+/* 分类弹层 */
+.rdi-category-popover {
+  position: fixed;
+  z-index: 100000;
+  width: 280px;
+  padding: 10px 12px 11px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(12, 12, 16, 0.82);
+  backdrop-filter: blur(24px) saturate(1.12);
+  -webkit-backdrop-filter: blur(24px) saturate(1.12);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  animation: rdi-popover-in 0.18s ease;
+}
+.rdi-category-popover[hidden] { display: none; }
+@keyframes rdi-popover-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.rdi-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(64px, 1fr));
+  gap: 4px;
+  min-width: 240px;
+  max-width: 320px;
+}
+.rdi-cat-item {
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rdi-cat-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.92);
+}
+.rdi-cat-item:active { transform: scale(0.94); }
+.rdi-cat-item.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* ============ 自定义音源面板 ============ */
+.custom-source-panel {
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: rgba(3, 9, 14, 0.42);
+  border-radius: 10px;
+  padding: 10px;
+  margin: -1px 0 12px;
+}
+.custom-source-head {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+.custom-source-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.custom-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.custom-source-empty {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 18px 0;
+}
+.custom-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s, border-color 0.15s;
+}
+.custom-source-row.enabled {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.custom-source-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.cs-row-info {
+  flex: 1;
+  min-width: 0;
+}
+.cs-row-name {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cs-row-ver {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 400;
+}
+.cs-row-meta {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10.5px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cs-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.cs-toggle {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cs-toggle:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.85);
+}
+.cs-toggle.on {
+  background: rgba(82, 196, 26, 0.18);
+  color: #7cd957;
+  border-color: rgba(82, 196, 26, 0.35);
+}
+.cs-move-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.cs-move-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.85);
+}
+.cs-move-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.cs-del-btn {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 80, 80, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 80, 80, 0.06);
+  color: rgba(255, 120, 120, 0.7);
+  font-size: 10.5px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cs-del-btn:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: rgba(255, 150, 150, 0.95);
+}
+.custom-source-tip {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ============ 自定义音源导入弹窗 ============ */
+.cs-import-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+.cs-import-overlay:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
+}
+.cs-import-dialog {
+  width: min(520px, 92vw);
+  max-height: calc(100vh - 80px);
+  background: linear-gradient(180deg, rgba(24, 23, 26, 0.96), rgba(12, 11, 12, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 22px 24px 18px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.56);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cs-import-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+.cs-import-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cs-import-tab {
+  padding: 6px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cs-import-tab:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+.cs-import-tab.active {
+  color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.4);
+}
+.cs-import-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.cs-import-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-import-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cs-import-textarea:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.cs-import-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cs-import-input:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.cs-import-hint {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+}
+.cs-import-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 顶部账号胶囊 · 红尘客栈样式 */
+.top-account-pill.red-dust-inn-pill {
+  background: linear-gradient(135deg, rgba(82, 52, 28, 0.5), rgba(42, 26, 15, 0.4));
+  border-color: rgba(212, 160, 90, 0.3);
+  animation: rdi-pill-shimmer 4s ease-in-out infinite;
+}
+.top-account-pill.red-dust-inn-pill .top-account-name {
+  color: #e8b878;
+  font-family: serif;
+  font-weight: 700;
+}
+.top-account-vip.rdi {
+  background: linear-gradient(135deg, rgba(212, 160, 90, 0.35), rgba(160, 110, 50, 0.3));
+  color: #e8b878;
+  border: 1px solid rgba(212, 160, 90, 0.3);
+}
+@keyframes rdi-pill-shimmer {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 160, 90, 0.15); }
+  50% { box-shadow: 0 0 16px rgba(212, 160, 90, 0.3); }
+}
+
+/* 雷达卡片高亮 */
+body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] {
+  border-color: rgba(212, 160, 90, 0.25);
+}
+body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] .home-card-label {
+  color: #e8b878;
+}
+.home-card-quick.radar-pulsing {
+  border-color: rgba(212, 160, 90, 0.6);
+  animation: radar-pulse 1.4s ease-in-out infinite;
+}
+.home-card-quick.radar-pulsing .home-card-label {
+  animation: radar-scan 1.4s ease-in-out infinite;
+}
+@keyframes radar-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(212, 160, 90, 0.3), 0 0 16px rgba(212, 160, 90, 0.15); }
+  50% { box-shadow: 0 0 0 2px rgba(212, 160, 90, 0.5), 0 0 32px rgba(212, 160, 90, 0.35); }
+}
+@keyframes radar-scan {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+/* 雷达过滤进度提示浮层 */
+.radar-progress-hint {
+  position: fixed;
+  bottom: 92px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  border-radius: 24px;
+  background: rgba(15, 12, 8, 0.88);
+  border: 1px solid rgba(212, 160, 90, 0.3);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(212, 160, 90, 0.15);
+  color: #e8b878;
+  font-size: 13px;
+  font-weight: 500;
+  animation: radar-hint-in 0.3s ease;
+}
+@keyframes radar-hint-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.radar-progress-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 160, 90, 0.25);
+  border-top-color: #e8b878;
+  animation: radar-spin 0.8s linear infinite;
+  flex: 0 0 auto;
+}
+@keyframes radar-spin {
+  to { transform: rotate(360deg); }
+}

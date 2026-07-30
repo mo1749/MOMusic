@@ -452,7 +452,7 @@ function songProviderKey(song) {
   if (song && (song.provider === 'qq' || song.source === 'qq' || song.type === 'qq')) return 'qq';
   if (song && (song.provider === 'qishui' || song.source === 'qishui' || song.type === 'qishui')) return 'qishui';
   if (song && (song.provider === 'kugou' || song.source === 'kugou' || song.type === 'kugou' || song.hash || song.audioHash)) return 'kugou';
-  if (song && (song.provider === 'kuwo' || song.source === 'kuwo' || song.type === 'kuwo' || song.provider === 'migu' || song.source === 'migu' || song.type === 'migu')) return 'ls';
+  if (song && (song.provider === 'ls' || song.source === 'ls' || song.type === 'ls' || song.provider === 'kuwo' || song.source === 'kuwo' || song.type === 'kuwo' || song.provider === 'migu' || song.source === 'migu' || song.type === 'migu')) return 'ls';
   if (song && (song.provider === 'local' || song.source === 'local' || song.type === 'local')) return 'local';
   return 'netease';
 }

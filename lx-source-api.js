@@ -44,6 +44,15 @@ function lxHttpFetch(path, options) {
   });
 }
 
+// 将 MOMusic 内部音质档位映射到 render_api 支持的 128k/320k
+// render_api (huibq v1.2.0) 仅支持 128k 与 320k 两档
+function mapLxQuality(quality) {
+  var q = String(quality || '').toLowerCase();
+  if (q === '128k' || q === 'standard' || q === 'normal' || q === 'std') return '128k';
+  // 其余所有高档位 (320k/exhigh/lossless/hires/jymaster 等) 统一回退到 320k
+  return '320k';
+}
+
 // 获取播放URL
 // songmid: 歌曲ID (QQ的songmid, 网易云的songId, 酷狗的hash等)
 // source: 原始平台 (qq/netease/kugou/kuwo/migu)
@@ -51,7 +60,7 @@ function lxHttpFetch(path, options) {
 async function handleLsSongUrl(songmid, source, quality) {
   if (!songmid) return { code: 1, msg: '缺少歌曲ID' };
   var lxSource = LX_SOURCE_MAP[source] || 'tx';
-  var q = quality || '128k';
+  var q = mapLxQuality(quality);
   try {
     var resp = await lxHttpFetch('/url/' + lxSource + '/' + encodeURIComponent(songmid) + '/' + encodeURIComponent(q));
     var body = resp.body;

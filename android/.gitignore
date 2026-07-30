@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# 签名密钥（绝对不能提交）
+momusic.keystore
+keystore.properties
+*.keystore
+*.jks

@@ -172,6 +172,60 @@ async function playHomeDaily() {
   homeSuppressed = false;
   if (typeof setHomeControlsLocked === 'function') setHomeControlsLocked(false);
 
+  // 红尘客栈本地模式 · 雷达推送
+  if (redDustInnState.enabled) {
+    if (redDustInnRadarLoading) { showToast('雷达正在推送中…'); return; }
+    redDustInnRadarLoading = true;
+    var radarCard = document.querySelector('.home-card-quick[data-home-tone="mix"]');
+    if (radarCard) radarCard.classList.add('radar-pulsing');
+    var radarHintEl = null;
+    try {
+      // 显示过滤进度提示浮层
+      radarHintEl = document.createElement('div');
+      radarHintEl.className = 'radar-progress-hint';
+      radarHintEl.innerHTML = '<span class="radar-progress-spinner"></span><span class="radar-progress-text">雷达扫描中 · 正在验证可播放性</span>';
+      document.body.appendChild(radarHintEl);
+      var hintSteps = [
+        '雷达扫描中 · 拉取候选歌曲',
+        '雷达扫描中 · 正在验证可播放性',
+        '雷达扫描中 · 过滤无效音源',
+        '雷达扫描中 · 凑齐 30 首可播放'
+      ];
+      var hintIdx = 0;
+      var hintTimer = setInterval(function () {
+        hintIdx = (hintIdx + 1) % hintSteps.length;
+        var txt = radarHintEl.querySelector('.radar-progress-text');
+        if (txt) txt.textContent = hintSteps[hintIdx];
+      }, 3000);
+
+      var radarUrl = '/api/ls/radar?category=' + encodeURIComponent(redDustInnRadarCategory) + '&limit=30&t=' + Date.now();
+      var radarData = await apiJson(radarUrl, { timeoutMs: 120000 });
+      clearInterval(hintTimer);
+      var radarSongs = (radarData && radarData.songs) || [];
+      if (!radarSongs.length) { showToast('雷达暂无推送内容'); return; }
+      radarSongs = radarSongs.map(cloneSong);
+      playQueue = radarSongs;
+      currentIdx = 0;
+      if (typeof updateEmptyHomeVisibility === 'function') updateEmptyHomeVisibility();
+      if (typeof safeRenderQueuePanel === 'function') safeRenderQueuePanel('home-radar', { scrollCurrent: true });
+      if (typeof safeShelfRebuild === 'function') safeShelfRebuild('home-radar', true);
+      if (typeof forcePlaybackControlsInteractive === 'function') forcePlaybackControlsInteractive();
+      await Promise.resolve(playQueueAt(0, {
+        manual: true,
+        context: { type: 'home-radar', platform: 'ls', playlistName: '雷达推送 · ' + redDustInnRadarCategory },
+      })).catch(function (error) { console.warn('[HomeRadar]', error); });
+      showToast('雷达推送 ' + radarSongs.length + ' 首 · 已过滤无效音源');
+    } catch (error) {
+      console.warn('[HomeRadar]', error);
+      showToast('雷达推送失败');
+    } finally {
+      redDustInnRadarLoading = false;
+      if (radarCard) radarCard.classList.remove('radar-pulsing');
+      if (radarHintEl && radarHintEl.parentNode) radarHintEl.parentNode.removeChild(radarHintEl);
+    }
+    return;
+  }
+
   var platforms = homeDailyLoggedPlatforms();
 
   if (!platforms.length) {

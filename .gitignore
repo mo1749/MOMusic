@@ -1,15 +1,46 @@
+# ============ Node / 桌面端 ============
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 桌面构建产物
 dist/
-updates/
-lt-data/
-.data/
-data/
+out/
+release/
+desktop/build/
+desktop/dist/
+desktop/out/
+
+# ============ 安卓 ============
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+android/local.properties
+android/*.iml
+
+# 安卓签名密钥（绝对不能提交！）
+android/momusic.keystore
+android/keystore.properties
+android/*.keystore
+android/*.jks
+
+# ============ IDE ============
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ============ 系统文件 ============
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# ============ 日志 / 临时 ============
 *.log
-.cookie
-.qq-cookie
-.163-cookie
-.kugou-cookie
-.qishui-cookie
-.spotify-cookie
-.env
+tmp/
+temp/

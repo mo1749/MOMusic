@@ -114,7 +114,7 @@ var AUDIO_INPUT_BRIDGE_STORE_KEY = 'MOMusic-audio-input-bridge-v1';
 var PROVIDER_VIP_AUDIT_STORE_KEY = 'MOMusic-provider-vip-audit-v1';
 var QQ_PLAYBACK_VIP_EVIDENCE_STORE_KEY = 'MOMusic-qq-playback-vip-evidence-v1';
 var LOGIN_COOKIE_EXPORT_STORE_KEY = 'MOMusic-login-cookie-export-v1';
-var PLAYBACK_QUALITY_DEFAULTS = { netease: 'hires', qq: 'lossless', kugou: 'lossless', qishui: 'standard', spotify: 'standard' };
+var PLAYBACK_QUALITY_DEFAULTS = { netease: 'hires', qq: 'lossless', kugou: 'lossless', qishui: 'standard', spotify: 'standard', ls: 'exhigh' };
 var PLAYBACK_QUALITY_OPTIONS = {
   netease: [
     { key: 'jymaster', title: '超清母带', sub: 'SVIP / 最高规格', svip: true },
@@ -140,6 +140,10 @@ var PLAYBACK_QUALITY_OPTIONS = {
   ],
   spotify: [
     { key: 'standard', title: 'Spotify 匹配源', sub: 'SP 搜索 / 播放自动换源' }
+  ],
+  ls: [
+    { key: 'exhigh', title: '320k MP3', sub: '落雪 / 高品质（推荐）' },
+    { key: 'standard', title: '128k MP3', sub: '落雪 / 标准音质' }
   ]
 };
 var UPLOAD_TIP_STORE_KEY = 'MOMusic-upload-tip-seen';
@@ -158,6 +162,11 @@ var STARTUP_AUTOPLAY_STORE_KEY = 'MOMusic-startup-autoplay-v1';
 var STARTUP_FAST_SKIP_STORE_KEY = 'MOMusic-startup-fast-skip-v1';
 var STARTUP_RESUME_MODE_STORE_KEY = 'MOMusic-startup-resume-mode-v1';
 var LOCAL_BEATMAP_STORE_KEY = 'MOMusic-local-beatmaps-v1';
+var RED_DUST_INN_STORE_KEY = 'MOMusic-red-dust-inn-v1';
+var RED_DUST_INN_CATEGORIES = ['华语流行', '欧美流行', '日语动漫', '韩语流行', '民谣古风', '电子舞曲', '摇滚节奏', '轻音乐纯音乐', '怀旧经典', '随机漫游'];
+var redDustInnState = { enabled: false, showcase: false, avatar: '', category: '随机漫游' };
+var redDustInnRadarCategory = '随机漫游';
+var redDustInnRadarLoading = false;
 var LOCAL_BEAT_PREF_STORE_KEY = 'MOMusic-local-beatmap-prefs-v1';
 var LOCAL_BEAT_COMBOS = ['', 'downbeat', 'push', 'drop', 'rebound', 'accent'];
 var HOTKEY_ACTIONS = [

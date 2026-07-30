@@ -505,6 +505,21 @@ function startSpotifyLoginStatusAutoRefresh() {
 function renderUserBtn() {
   var btn = document.getElementById('user-btn');
   if (!btn) return;
+  // 红尘客栈展示模式：优先渲染客栈胶囊
+  if (redDustInnState.enabled && redDustInnState.showcase) {
+    var topRight0 = document.getElementById('top-right');
+    if (topRight0) topRight0.classList.toggle('account-pill-stack', false);
+    btn.classList.remove('multi-account', 'external-account-pills', 'login-eye-avatar', 'logged-in', 'logged-out');
+    btn.classList.add('logged-in', 'multi-account', 'external-account-pills');
+    btn.title = '红尘客栈 · 本地模式';
+    btn.innerHTML = renderTopAccountPill('rdi', { force: true });
+    if (typeof updateAccountPillGlassDisplacementMap === 'function') {
+      requestAnimationFrame(updateAccountPillGlassDisplacementMap);
+    }
+    bindTopAccountPillSorting();
+    updatePlaybackQualityUi();
+    return;
+  }
   var loggedIn = hasAnyPlatformLogin();
   var externalProviders = accountProviderExternalRenderList().filter(function (provider) {
     return hasPlatformLogin(provider);
