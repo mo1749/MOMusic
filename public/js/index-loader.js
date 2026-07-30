@@ -72,6 +72,7 @@
     'js/modules/05-playback/17-cuefield-timeline-executor.js',
     'js/modules/05-playback/18-cuefield-automix-integration.js',
     'js/modules/05-playback/19-bottom-bar-hide.js',
+    'js/modules/05-playback/20-danmaku-overlay.js',
     'js/modules/06-lyrics/00-lyrics-fetch-parse.js',
     'js/modules/06-lyrics/01-playlist-panel-shell.js',
     'js/modules/06-lyrics/02-playlist-detail.js',

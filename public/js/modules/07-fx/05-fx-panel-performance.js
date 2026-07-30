@@ -267,6 +267,14 @@ function updateFxInputs() {
   setRange('fx-desktoplyricsopacity', fx.desktopLyricsOpacity);
   setRange('fx-desktoplyricsy', fx.desktopLyricsY);
   setRange('fx-wallpaperopacity', fx.wallpaperOpacity);
+  setRange('fx-danmakusize', fx.danmakuSize == null ? fxDefaults.danmakuSize : fx.danmakuSize);
+  setRange('fx-danmakuspeed', fx.danmakuSpeed == null ? fxDefaults.danmakuSpeed : fx.danmakuSpeed);
+  setRange('fx-danmakuopacity', fx.danmakuOpacity == null ? fxDefaults.danmakuOpacity : fx.danmakuOpacity);
+  setRange('fx-galaxyarms', fx.galaxyArms == null ? fxDefaults.galaxyArms : fx.galaxyArms);
+  setRange('fx-galaxytwist', fx.galaxyTwist == null ? fxDefaults.galaxyTwist : fx.galaxyTwist);
+  setRange('fx-galaxycore', fx.galaxyCore == null ? fxDefaults.galaxyCore : fx.galaxyCore);
+  setRange('fx-galaxyspread', fx.galaxySpread == null ? fxDefaults.galaxySpread : fx.galaxySpread);
+  setRange('fx-galaxyspin', fx.galaxySpin == null ? fxDefaults.galaxySpin : fx.galaxySpin);
   setRange('fx-shelfsize', fx.shelfSize);
   setRange('fx-shelfx', fx.shelfOffsetX);
   setRange('fx-shelfy', fx.shelfOffsetY);
@@ -294,6 +302,7 @@ function updateFxInputs() {
   setRange('fx-shelfsummonparallax', fx.shelfSummonParallax);
   setRange('fx-shelfcamenter', fx.shelfCameraEnterSpeed);
   setRange('fx-shelfcamexit', fx.shelfCameraExitSpeed);
+  setRange('fx-shelfscrollspeed', fx.shelfScrollSpeed == null ? fxDefaults.shelfScrollSpeed : fx.shelfScrollSpeed);
   setRange('fx-lyricspacing', fx.lyricLetterSpacing);
   setRange('fx-lyriclineheight', fx.lyricLineHeight);
   setRange('fx-lyricweight', fx.lyricWeight);
@@ -362,6 +371,11 @@ function updateFxInputs() {
   updateWallpaperFpsControls();
   var wallpaperModeToggle = document.getElementById('t-wallpaperMode');
   if (wallpaperModeToggle) wallpaperModeToggle.classList.toggle('on', fx.wallpaperMode);
+  var danmakuBoldToggle = document.getElementById('t-danmakuBold');
+  if (danmakuBoldToggle) danmakuBoldToggle.classList.toggle('on', fx.danmakuBold === true);
+  if (typeof updateDanmakuFontControls === 'function') updateDanmakuFontControls();
+  if (typeof updateDanmakuColorModeControls === 'function') updateDanmakuColorModeControls();
+  if (typeof updateDanmakuColorControls === 'function') updateDanmakuColorControls();
   var shelfPodcastsToggle = document.getElementById('t-shelfShowPodcasts');
   if (shelfPodcastsToggle) shelfPodcastsToggle.classList.toggle('on', fx.shelfShowPodcasts !== false);
   var shelfMergeToggle = document.getElementById('t-shelfMergeCollections');
@@ -478,6 +492,7 @@ function resetFxSliderValue(id, key, btn) {
   syncFxUniforms();
   if (/^shelf/.test(key) && shelfManager && shelfManager.refreshTheme) shelfManager.refreshTheme();
   syncLyricRealtimeFxChange(key);
+  if (/^danmaku(Size|Speed|Opacity)$/.test(key) && typeof applyDanmakuFxToLayer === 'function') applyDanmakuFxToLayer();
   saveLyricLayout({ syncDisk: key === 'controlGlassChromaticOffset', user: true, reason: 'reset:' + key });
   animateFxResetButton(btn);
   showToast('已恢复默认数值');
@@ -754,6 +769,8 @@ function relabelFxPanelControls() {
   setFxSectionBefore('fx-desktoplyricssize', '桌面歌词');
   setFxSectionBefore('desktop-lyrics-fps-seg', '桌面歌词帧率');
   setFxSectionBefore('wallpaper-fps-seg', '壁纸帧率');
+  setFxSectionBefore('danmaku-font-grid', '弹幕');
+  setFxSectionBefore('fx-galaxyarms', '银河旋臂');
   setFxSectionBefore('close-behavior-seg', '关闭窗口');
   setFxSectionBefore('t-startupAutoplay', '启动播放');
   setFxSectionBefore('fx-playlistblur', '左侧歌单栏');

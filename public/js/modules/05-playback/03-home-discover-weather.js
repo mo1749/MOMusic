@@ -150,7 +150,7 @@ function renderHomeDiscover() {
     if (privateSub) privateSub.textContent = cardSongB ? (cardSongB.artist || songSourceLabel(cardSongB) || '推荐歌曲') : (homeDiscoverState.songs.length + ' 首 · 根据今日推荐与常听偏好');
     if (libTitle) libTitle.textContent = cardSongC ? cardSongC.name : (summary.topArtist ? summary.topArtist.name : '更多歌曲');
     if (libSub) libSub.textContent = cardSongC ? (cardSongC.artist || songSourceLabel(cardSongC) || '推荐歌曲') : (summary.topArtist ? ('歌手偏好 · ' + summary.topArtist.plays + ' 次') : '播放几首后生成你的偏好');
-    setHomeArt('home-weather-art', (userPlaylists[0] && userPlaylists[0].cover) || (playlistItem && playlistItem.cover) || daily && daily.cover, 280);
+    setHomeArt('home-weather-art', (playlistItem && playlistItem.cover) || (daily && daily.cover) || '', 280);
     setHomeArt('home-daily-art', daily && daily.cover, 280);
     setHomeArt('home-private-art', cardSongB && cardSongB.cover || daily && daily.cover || summary.recent && summary.recent.cover || playlistItem && playlistItem.cover, 280);
     setHomeArt('home-continue-art', summary.recent && summary.recent.cover || playlistItem && playlistItem.cover, 280);
@@ -161,7 +161,12 @@ function renderHomeDiscover() {
 }
 async function loadHomeDiscover(force) {
   if (homeDiscoverState.loading) return;
-  if (homeDiscoverState.loaded && !force) return;
+  // 跨天失效：每日推荐应当随日期切换自动刷新
+  var todayKey = Math.floor(Date.now() / 86400000);
+  if (!force && homeDiscoverState.loaded && homeDiscoverState.dayKey === todayKey) return;
+  if (!force && homeDiscoverState.loaded && homeDiscoverState.dayKey !== todayKey) {
+    homeDiscoverState.loaded = false;
+  }
   var token = ++homeDiscoverToken;
   homeDiscoverState.loading = true;
   homeDiscoverState.error = '';
@@ -169,12 +174,13 @@ async function loadHomeDiscover(force) {
   try {
     var data = await apiJson('/api/discover/home?t=' + Date.now());
     if (token !== homeDiscoverToken) return;
-    homeDiscoverState.loggedIn = !!(data && data.loggedIn) || hasAnyPlatformLogin();
+    homeDiscoverState.loggedIn = !!(data && data.loggedIn);
     homeDiscoverState.mode = data && data.mode || (homeDiscoverState.loggedIn ? 'member' : 'starter');
     homeDiscoverState.songs = homeDiscoverState.loggedIn ? (data && data.dailySongs || []).map(cloneSong) : [];
-    homeDiscoverState.playlists = homeDiscoverState.loggedIn ? ((data && data.playlists && data.playlists.length) ? data.playlists : userPlaylists.slice(0, 10)) : [];
+    homeDiscoverState.playlists = homeDiscoverState.loggedIn ? (data && data.playlists || []) : [];
     homeDiscoverState.podcasts = homeDiscoverState.loggedIn ? (data && data.podcasts || []) : [];
     homeDiscoverState.updatedAt = Number(data && data.updatedAt) || Date.now();
+    homeDiscoverState.dayKey = todayKey;
     homeDiscoverState.loaded = true;
   } catch (e) {
     console.warn('home discover failed:', e);

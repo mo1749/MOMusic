@@ -22,7 +22,7 @@ var lyricsLines = [], lyricsTranslationLines = [], lyricsVisible = false, lyrics
 var playlist = [], playQueue = [], currentIdx = -1, playing = false, playToggleBusy = false;
 var searchMode = 'song', podcastResults = [], podcastPrograms = [], podcastCurrentRadio = null;
 var loginStatus = { loggedIn: false, vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, vipLabel: '无VIP' };
-var qqLoginStatus = typeof loadQQLoginStatusCache === 'function' ? loadQQLoginStatusCache() || { provider: 'qq', loggedIn: false, preview: false, nickname: 'QQ 音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false } : { provider: 'qq', loggedIn: false, preview: false, nickname: 'QQ 音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false };
+var qqLoginStatus = { provider: 'qq', loggedIn: false, preview: false, nickname: 'QQ 音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false };
 var kugouLoginStatus = { provider: 'kugou', loggedIn: false, preview: false, nickname: '酷狗音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false };
 var qishuiLoginStatus = { provider: 'qishui', loggedIn: false, configured: false, preview: false, nickname: '汽水音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false, playbackMode: 'recommend-match' };
 var qqLoginAutoRefreshTimer = null;
@@ -98,9 +98,9 @@ var LYRIC_LAYOUT_STORE_KEY = 'MOMusic-lyric-layout-v1';
 var CURRENT_FX_AUTOSAVE_STORE_KEY = 'MOMusic-current-fx-autosave-v1';
 var CURRENT_FX_AUTOSAVE_SCHEMA = 'current-fx-autosave-v2';
 var VISUAL_PRESET_SCHEMA = 'skull-preset-v2';
-var MAX_VISUAL_PRESET_INDEX = 7;
+var MAX_VISUAL_PRESET_INDEX = 9;
 var SONIC_PRESET_INDEX = 7;
-var LEGACY_REMOVED_VISUAL_PRESET_INDEX = 8;
+var LEGACY_REMOVED_VISUAL_PRESET_INDEX = 10;
 function normalizeSavedVisualPresetIndex(value) {
   var preset = Number(value);
   if (!isFinite(preset)) preset = 0;
@@ -204,7 +204,7 @@ var visualGuideState = { bottomWasVisible: false, searchWasPeek: false, manual: 
 var emptyHomeActive = false;
 var homeForcedOpen = false;
 var homeSuppressed = false;
-var homeDiscoverState = { loading: false, loaded: false, loggedIn: false, mode: 'starter', songs: [], playlists: [], podcasts: [], error: '', updatedAt: 0 };
+var homeDiscoverState = { loading: false, loaded: false, loggedIn: false, mode: 'starter', songs: [], playlists: [], podcasts: [], error: '', updatedAt: 0, dayKey: 0 };
 var homeDiscoverToken = 0;
 var homeVisualPresetActive = false;
 var homeVisualPrevPreset = 0;

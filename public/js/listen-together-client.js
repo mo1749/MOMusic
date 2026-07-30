@@ -2,9 +2,8 @@
  * MOMusic - 一起听 (Listen Together) 前端模块
  * 
  * WebSocket 客户端实现，连接 server.js 的 listen-together WebSocket 服务。
- * 包含房间创建、加入、播放同步、聊天等功能。
+ * 包含用户登录（邮箱/微信/QQ/手机号）、房间创建/加入、播放同步、聊天、邀请链接等功能。
  */
-
 (function () {
   'use strict';
 
@@ -12,6 +11,10 @@
   const DEFAULT_SERVER = '115.29.197.112:9527';
   const RECONNECT_DELAY = 3000;
   const MAX_RECONNECT_ATTEMPTS = 5;
+  const STORAGE_KEY_TOKEN = 'lt_auth_token';
+  const STORAGE_KEY_CREDENTIAL = 'lt_auth_credential';
+  const STORAGE_KEY_METHOD = 'lt_auth_method';
+  const STORAGE_KEY_NICKNAME = 'lt_auth_nickname';
 
   // ====== 状态 ======
   let ws = null;
@@ -22,7 +25,18 @@
   let isConnected = false;
   let isHost = false;
 
-  // 消息类型（与服务器端一致）
+  // 用户登录状态
+  let authToken = null;
+  let authUser = null;       // { credential, nickname }
+  let loginMethod = 'guest'; // guest | email | phone | wechat | qq
+
+  // 重连后需要重新认证
+  let pendingReconnectAuth = false;
+
+  // 回调队列（连接建立后重放）
+  let pendingCallbacks = [];
+
+  // 消息类型
   const MSG = {
     CREATE_ROOM: 'create_room',
     JOIN_ROOM: 'join_room',
@@ -35,9 +49,15 @@
     KICK_MEMBER: 'kick_member',
     UPDATE_PLAYLIST: 'update_playlist',
     TRANSFER_HOST: 'transfer_host',
+    REGISTER: 'register',
+    LOGIN: 'login',
+    AUTH_TOKEN: 'auth_token',
+    GUEST_LOGIN: 'guest_login',
+    GET_INVITE_LINK: 'get_invite_link',
+    GET_ROOM_DURATION: 'get_room_duration',
   };
 
-  // ====== Callbacks ======
+  // ====== 回调列表 ======
   const _callbacks = {
     onConnected: null,
     onDisconnected: null,
@@ -50,24 +70,25 @@
     onProgressSync: null,
     onChatMessage: null,
     onError: null,
-    onRoomList: null,
     onKicked: null,
     onHostChanged: null,
     onPlaylistUpdated: null,
+    // 新增回调
+    onAuthSuccess: null,
+    onRegisterSuccess: null,
+    onInviteLink: null,
+    onRoomDuration: null,
   };
 
   // ====== 内部方法 ======
   function getWsUrl() {
-    // 优先使用用户自定义地址，否则使用内置默认公网服务器
     var saved = '';
     try { saved = localStorage.getItem('lt_server_url') || ''; } catch (_) {}
     saved = saved.trim();
     if (!saved) saved = DEFAULT_SERVER;
-    // 补全协议
     if (saved.indexOf('ws://') !== 0 && saved.indexOf('wss://') !== 0) {
       saved = 'ws://' + saved;
     }
-    // 补全 path
     if (saved.indexOf('/listen-together') === -1) {
       saved = saved.replace(/\/$/, '') + '/listen-together';
     }
@@ -81,6 +102,47 @@
     }
     console.warn('[ListenTogether] WebSocket 未连接');
     return false;
+  }
+
+  // 加载已保存的登录凭据
+  function loadSavedAuth() {
+    try {
+      var token = localStorage.getItem(STORAGE_KEY_TOKEN);
+      var credential = localStorage.getItem(STORAGE_KEY_CREDENTIAL);
+      var method = localStorage.getItem(STORAGE_KEY_METHOD);
+      var nickname = localStorage.getItem(STORAGE_KEY_NICKNAME);
+      if (token && credential) {
+        authToken = token;
+        authUser = { credential: credential, nickname: nickname || '' };
+        loginMethod = method || 'email';
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function saveAuth(token, credential, method, nickname) {
+    authToken = token;
+    authUser = { credential: credential, nickname: nickname || (authUser ? authUser.nickname : '') };
+    loginMethod = method;
+    try {
+      localStorage.setItem(STORAGE_KEY_TOKEN, token);
+      localStorage.setItem(STORAGE_KEY_CREDENTIAL, credential);
+      localStorage.setItem(STORAGE_KEY_METHOD, method);
+      if (nickname) localStorage.setItem(STORAGE_KEY_NICKNAME, nickname);
+    } catch (_) {}
+  }
+
+  function clearAuth() {
+    authToken = null;
+    authUser = null;
+    loginMethod = 'guest';
+    try {
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      localStorage.removeItem(STORAGE_KEY_CREDENTIAL);
+      localStorage.removeItem(STORAGE_KEY_METHOD);
+      localStorage.removeItem(STORAGE_KEY_NICKNAME);
+    } catch (_) {}
   }
 
   function heartbeatPing() {
@@ -98,11 +160,46 @@
         console.log('[ListenTogether] 已连接, clientId:', clientId);
         if (_callbacks.onConnected) _callbacks.onConnected({ clientId, serverTime: data.serverTime });
         break;
-
       case 'heartbeat_ack':
-        // 心跳确认，不做操作
         break;
 
+      // ====== 用户系统响应 ======
+      case 'auth_success':
+        // 保存登录凭据（游客除外）
+        if (data.token && data.user && data.loginMethod && data.loginMethod !== 'guest') {
+          saveAuth(data.token, data.user.credential || '', data.loginMethod, data.user.nickname || '');
+        }
+        if (data.user && data.user.nickname) {
+          if (authUser) authUser.nickname = data.user.nickname;
+          else authUser = { credential: data.user.credential || '', nickname: data.user.nickname };
+        }
+        if (data.loginMethod) loginMethod = data.loginMethod;
+        if (_callbacks.onAuthSuccess) _callbacks.onAuthSuccess(data);
+        break;
+
+      case 'register_success':
+        // 注册成功后保存凭据
+        if (data.token && data.user) {
+          var regMethod = data.loginMethod || (data.user.credential && data.user.credential.includes('@') ? 'email' : 'phone');
+          saveAuth(data.token, data.user.credential || '', regMethod, data.user.nickname || '');
+        }
+        if (data.user && data.user.nickname) {
+          if (authUser) authUser.nickname = data.user.nickname;
+          else authUser = { credential: data.user.credential || '', nickname: data.user.nickname };
+        }
+        if (data.loginMethod) loginMethod = data.loginMethod;
+        if (_callbacks.onRegisterSuccess) _callbacks.onRegisterSuccess(data);
+        break;
+
+      case 'invite_link':
+        if (_callbacks.onInviteLink) _callbacks.onInviteLink(data);
+        break;
+
+      case 'room_duration':
+        if (_callbacks.onRoomDuration) _callbacks.onRoomDuration(data);
+        break;
+
+      // ====== 房间 ======
       case 'room_created':
         currentRoom = data.room;
         isHost = true;
@@ -198,6 +295,10 @@
     ws.onopen = () => {
       console.log('[ListenTogether] WebSocket 已打开');
       reconnectAttempts = 0;
+      // 连接建立后自动认证（如果有保存的 token）
+      if (authToken && loginMethod !== 'guest') {
+        send({ type: MSG.AUTH_TOKEN, payload: { token: authToken } });
+      }
     };
 
     ws.onmessage = (event) => {
@@ -214,10 +315,9 @@
       isConnected = false;
       if (_callbacks.onDisconnected) _callbacks.onDisconnected({ code: event.code, reason: event.reason });
 
-      // 自动重连（如果之前已连接过且不是主动关闭）
       if (event.code !== 1000 && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         reconnectAttempts++;
-        console.log(`[ListenTogether] ${RECONNECT_DELAY}ms 后重连 (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+        console.log('[ListenTogether] ' + RECONNECT_DELAY + 'ms 后重连 (' + reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS + ')');
         reconnectTimer = setTimeout(doConnect, RECONNECT_DELAY);
       }
     };
@@ -230,11 +330,13 @@
   // ====== 公开 API ======
 
   const ListenTogether = {
-    /** 连接状态 */
     get isConnected() { return isConnected; },
     get clientId() { return clientId; },
     get currentRoom() { return currentRoom; },
     get isHost() { return isHost; },
+    get loginMethod() { return loginMethod; },
+    get authUser() { return authUser; },
+    get isLoggedIn() { return loginMethod !== 'guest'; },
 
     /** 连接 WebSocket */
     connect() {
@@ -251,7 +353,7 @@
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
       }
-      reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // 阻止重连
+      reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
       if (ws) {
         try { ws.close(1000, '主动断开'); } catch (_) {}
         ws = null;
@@ -261,27 +363,68 @@
       isHost = false;
     },
 
+    // ====== 用户系统 ======
+
+    /** 注册账号（邮箱或手机号） */
+    register(credential, password, nickname) {
+      return send({
+        type: MSG.REGISTER,
+        payload: { credential, password, nickname },
+      });
+    },
+
+    /** 密码登录（邮箱或手机号） */
+    login(credential, password) {
+      loginMethod = credential.includes('@') ? 'email' : 'phone';
+      return send({
+        type: MSG.LOGIN,
+        payload: { credential, password },
+      });
+    },
+
+    /** 游客登录 */
+    guestLogin(nickname) {
+      loginMethod = 'guest';
+      return send({
+        type: MSG.GUEST_LOGIN,
+        payload: { nickname },
+      });
+    },
+
+    /** 登出 */
+    logout() {
+      clearAuth();
+      console.log('[ListenTogether] 已登出');
+    },
+
+    /** 检查是否已保存登录信息 */
+    hasSavedLogin() {
+      return !!authToken && loginMethod !== 'guest';
+    },
+
+    // ====== 房间 ======
+
     /** 创建房间 */
-    createRoom(name, password, nickname) {
+    createRoom(name, nickname) {
       if (!isConnected) {
         if (_callbacks.onError) _callbacks.onError({ error: '未连接到服务器' });
         return false;
       }
       return send({
         type: MSG.CREATE_ROOM,
-        payload: { name, password, nickname },
+        payload: { name, nickname },
       });
     },
 
     /** 加入房间 */
-    joinRoom(roomId, password, nickname) {
+    joinRoom(roomId, nickname) {
       if (!isConnected) {
         if (_callbacks.onError) _callbacks.onError({ error: '未连接到服务器' });
         return false;
       }
       return send({
         type: MSG.JOIN_ROOM,
-        payload: { roomId, password, nickname },
+        payload: { roomId, nickname },
       });
     },
 
@@ -290,42 +433,56 @@
       return send({ type: MSG.LEAVE_ROOM });
     },
 
-    /** 播放控制（仅房主） */
+    // ====== 邀请链接 ======
+
+    /** 获取邀请链接 */
+    getInviteLink() {
+      return send({ type: MSG.GET_INVITE_LINK });
+    },
+
+    // ====== 时长统计 ======
+
+    /** 获取房间时长统计 */
+    getRoomDuration() {
+      return send({ type: MSG.GET_ROOM_DURATION });
+    },
+
+    // ====== 播放控制 ======
+
     playerAction(action, value) {
       return send({ type: MSG.PLAYER_ACTION, payload: { action, value } });
     },
 
-    /** 切换歌曲（仅房主） */
     changeTrack(track) {
       return send({ type: MSG.TRACK_CHANGE, payload: track });
     },
 
-    /** 同步进度（仅房主） */
     syncProgress(progress) {
       return send({ type: MSG.SYNC_PROGRESS, payload: progress });
     },
 
-    /** 发送聊天消息 */
+    // ====== 聊天 ======
+
     sendChat(text) {
       return send({ type: MSG.CHAT_MESSAGE, payload: text });
     },
 
-    /** 踢出成员（仅房主） */
-    kickMember(clientId) {
-      return send({ type: MSG.KICK_MEMBER, payload: clientId });
+    // ====== 管理 ======
+
+    kickMember(targetClientId) {
+      return send({ type: MSG.KICK_MEMBER, payload: targetClientId });
     },
 
-    /** 更新播放列表（仅房主） */
     updatePlaylist(playlist) {
       return send({ type: MSG.UPDATE_PLAYLIST, payload: playlist });
     },
 
-    /** 转让房主（仅房主） */
     transferHost(clientId) {
       return send({ type: MSG.TRANSFER_HOST, payload: clientId });
     },
 
-    /** 注册事件回调 */
+    // ====== 事件注册 ======
+
     on(event, callback) {
       const eventMap = {
         connected: 'onConnected',
@@ -343,6 +500,11 @@
         kicked: 'onKicked',
         hostChanged: 'onHostChanged',
         playlistUpdated: 'onPlaylistUpdated',
+        // 新增事件
+        authSuccess: 'onAuthSuccess',
+        registerSuccess: 'onRegisterSuccess',
+        inviteLink: 'onInviteLink',
+        roomDuration: 'onRoomDuration',
       };
       const key = eventMap[event];
       if (key && typeof callback === 'function') {
@@ -351,7 +513,6 @@
       return this;
     },
 
-    /** 移除事件回调 */
     off(event) {
       const eventMap = {
         connected: 'onConnected',
@@ -369,6 +530,10 @@
         kicked: 'onKicked',
         hostChanged: 'onHostChanged',
         playlistUpdated: 'onPlaylistUpdated',
+        authSuccess: 'onAuthSuccess',
+        registerSuccess: 'onRegisterSuccess',
+        inviteLink: 'onInviteLink',
+        roomDuration: 'onRoomDuration',
       };
       const key = eventMap[event];
       if (key) _callbacks[key] = null;
@@ -378,6 +543,9 @@
 
   // 暴露到全局
   window.ListenTogether = ListenTogether;
+
+  // 自动加载已保存的登录信息
+  loadSavedAuth();
 
   // 心跳定时器（每25秒发一次）
   setInterval(heartbeatPing, 25000);

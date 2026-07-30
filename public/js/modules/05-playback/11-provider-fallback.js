@@ -32,7 +32,7 @@ function playbackRestrictionLooksVipLocked(song, data) {
     data.rawMessage,
     restriction.rawMessage
   ].map(function (value) { return String(value || '').toLowerCase(); }).join(' ');
-  return /vip_required|paid_required|trial_only|need_vip|only_vip|member|vip|会员|付费|购买|数字专辑|专辑/.test(text);
+  return /vip_required|paid_required|trial_only|need_vip|only_vip|\bneed\s*member\b|\bvip\b|会员|付费|购买|数字专辑/.test(text);
 }
 function playbackRestrictionMissingPlaybackKey(data) {
   data = data || {};
@@ -159,24 +159,6 @@ function playbackRestrictionNotice(song, data) {
 function playbackRestrictionMessage(song, data) {
   var notice = playbackRestrictionNotice(song, data);
   return notice.body || notice.title;
-  data = data || {};
-  var restriction = data.restriction || {};
-  var category = data.reason || restriction.category || '';
-  var provider = playbackProviderLabel(song);
-  var message = data.message || restriction.message || '';
-  if (!message) {
-    if (category === 'login_required') message = provider + '需要登录后再尝试播放';
-    else if (category === 'vip_required') message = provider + '歌曲需要会员权限';
-    else if (category === 'paid_required') message = provider + '歌曲需要购买或更高权限';
-    else if (category === 'trial_only') message = provider + '仅返回试听片段';
-    else if (category === 'copyright_unavailable') message = provider + '版权暂不可播';
-    else if (category === 'provider_limited') message = provider + '当前只作为匹配源，正在寻找其它可播版本';
-    else message = provider + '没有返回可播放地址';
-  }
-  if (category === 'login_required') return message + ' · 正在打开登录';
-  if (category === 'provider_limited') return message + ' · 可以自动换源';
-  if (category === 'copyright_unavailable' || category === 'url_unavailable') return message + ' · 可以试试另一个平台版本';
-  return message;
 }
 function qqPlaybackRetryQualities(requestedQuality, resolvedLevel) {
   requestedQuality = normalizePlaybackQualityForProvider(requestedQuality || getProviderPlaybackQuality('qq'), 'qq');

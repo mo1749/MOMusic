@@ -115,4 +115,9 @@ function syncFxUniforms() {
   if (uniforms.uTintColor) uniforms.uTintColor.value.set(normalizeHexColor(fx.visualTintColor || '#9db8cf'));
   if (uniforms.uTintStrength) uniforms.uTintStrength.value = fx.visualTintMode === 'custom' ? 0.42 : 0;
   syncSkullParticleColors();
+  uniforms.uGalaxyArms.value = Math.round(clampRange(fx.galaxyArms == null ? fxDefaults.galaxyArms : fx.galaxyArms, 2, 8));
+  uniforms.uGalaxyTwist.value = clampRange(fx.galaxyTwist == null ? fxDefaults.galaxyTwist : fx.galaxyTwist, 0, 2);
+  uniforms.uGalaxyCore.value = clampRange(fx.galaxyCore == null ? fxDefaults.galaxyCore : fx.galaxyCore, 0, 1);
+  uniforms.uGalaxySpread.value = clampRange(fx.galaxySpread == null ? fxDefaults.galaxySpread : fx.galaxySpread, 0.5, 2);
+  uniforms.uGalaxySpin.value = clampRange(fx.galaxySpin == null ? fxDefaults.galaxySpin : fx.galaxySpin, 0, 2);
 }

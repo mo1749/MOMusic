@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 var mouseWorld = new THREE.Vector3(-999, -999, 0);
 var mouseActive = false;
 var mouseDownAt = { x: 0, y: 0, t: 0, hadDrag: false };
@@ -366,6 +366,11 @@ var uniforms = {
   uParticleDim: { value: 1 },          // 覆盖层打开时只压低粒子背景, 不影响 3D 卡片
   uFloatAlpha: { value: 0 },          // 空场/浮空粒子透明度
   uLoading: { value: 0 },          // 加载动画混合度 0..1 (1 = 完全聚成圆环)
+  uGalaxyArms: { value: 4 },
+  uGalaxyTwist: { value: 1.0 },
+  uGalaxyCore: { value: 0.60 },
+  uGalaxySpread: { value: 1.0 },
+  uGalaxySpin: { value: 0.50 },
 };
 installRenderPowerHooks();
 applyRendererPowerMode();
@@ -386,6 +391,7 @@ uniform vec2 uMouseXY, uHandXY;
 uniform float uHandActive, uGestureGrip;
 uniform vec3 uTintColor;
 uniform float uTintStrength;
+uniform float uGalaxyArms, uGalaxyTwist, uGalaxyCore, uGalaxySpread, uGalaxySpin;
 attribute vec2 aUv;
 attribute float aRand;
 varying vec3 vColor;
@@ -646,6 +652,95 @@ if (coverMask > 0.02) {
   }
 
   // ====================================================
+  //  Preset 8: GALAXY SPIRAL — 银河旋臂
+  //  对数螺旋星系: 多条旋臂从中心核球展开
+  //  双层深度 (旋臂盘 + 背景星域) + 核球辉光
+  //  音频驱动: 低频膨胀 / 中频密度波 / 高频星屑闪烁 / 鼓点冲击波
+  // ====================================================
+  else if (uPreset > 7.5) {
+float galT = t * uGalaxySpin * 0.08;
+float roleSeed = hash11(aRand * 1733.7);
+float bgMask = step(0.80, roleSeed);
+
+if (bgMask > 0.5) {
+  // ===== 背景星域 =====
+  float bgA = hash11(aRand * 941.3) * 6.2831;
+  float bgR = 5.0 + hash11(aRand * 617.9) * 20.0;
+  float bgZ = (hash11(aRand * 383.1) - 0.5) * 16.0 - 6.0;
+  pos.x = cos(bgA) * bgR;
+  pos.y = sin(bgA) * bgR;
+  pos.z = bgZ + sin(t * 0.03 + aRand * 12.0) * 0.4;
+  float bgSpin = galT * 0.25;
+  float bgcs = cos(bgSpin), bgsn = sin(bgSpin);
+  pos.xy = mat2(bgcs, -bgsn, bgsn, bgcs) * pos.xy;
+  float twinkle = pow(0.5 + 0.5 * sin(t * (0.5 + roleSeed * 1.2) + aRand * 22.0), 5.0);
+  vec3 starCol = mix(vec3(0.88, 0.94, 1.0), coverColor, 0.12 + roleSeed * 0.28);
+  vColor = starCol * (0.35 + twinkle * 0.65 + uTreble * 0.35);
+  vAlpha = 0.06 + twinkle * 0.22 + uTreble * 0.03;
+  maxRippleAmp = max(maxRippleAmp, twinkle * 0.02);
+} else {
+  // ===== 星系盘粒子 =====
+  float armCount = max(2.0, floor(uGalaxyArms + 0.5));
+  float armIdx = floor(hash11(aRand * 431.7) * armCount);
+  float armOffset = armIdx / armCount * 6.2831;
+  float rN = clamp(aUv.y * 0.98 + 0.02, 0.02, 1.0);
+  float rScatter = (hash11(aRand * 211.3) - 0.5) * 0.18;
+  float radius = (rN + rScatter) * uGalaxySpread * 6.0;
+  radius = max(0.08, radius);
+  float spiralAngle = log(radius) * uGalaxyTwist * 2.8 + armOffset;
+  float armWidth = mix(0.70, 0.12, rN);
+  float angleScatter = (hash11(aRand * 853.1) - 0.5) * armWidth;
+  float angle = spiralAngle + angleScatter;
+  float spinRate = 1.0 / (0.25 + radius * 0.30);
+  angle += galT * spinRate;
+  pos.x = cos(angle) * radius;
+  pos.y = sin(angle) * radius;
+  float diskThick = mix(0.85, 0.10, rN) * uGalaxySpread;
+  pos.z = (hash11(aRand * 661.3) - 0.5) * 2.0 * diskThick;
+  // 低频: 核球膨胀
+  float bassPulse = uBass * 0.18 * (1.0 - rN * 0.6);
+  pos.xy *= 1.0 + bassPulse;
+  // 中频: 密度波
+  float densityWave = sin(radius * 1.8 - t * 0.6) * uMid * 0.10;
+  pos.z += densityWave;
+  // 鼓点: 冲击波
+  float shockwave = uBeat * sin(radius * 4.0 - t * 3.0) * 0.06;
+  pos.z += shockwave;
+  // 径向封面色采样
+  vec2 galCoverUv = vec2(0.5, rN);
+  galCoverUv = safeCoverUv(galCoverUv);
+  newCol = sampleNewCoverColor(galCoverUv);
+  prevCol = samplePrevCoverColor(galCoverUv);
+  coverColor = mix(prevCol, newCol, clamp(uColorMixT, 0.0, 1.0));
+  // 旋臂渐变色: 中心暖色, 外缘冷色
+  vec3 armCol = mix(vec3(1.0, 0.92, 0.72), vec3(0.62, 0.82, 1.0), rN);
+  vColor = mix(armCol, coverColor, 0.50 + rN * 0.30);
+  // 核球增亮
+  float coreGlow = uGalaxyCore * exp(-radius * 0.85) * (1.0 + uBass * 1.8);
+  vColor += vec3(coreGlow * 0.35, coreGlow * 0.22, coreGlow * 0.08);
+  // 高频闪烁: 星形成区
+  float sparkle = pow(hash11(aRand * 1237.3 + floor(t * 6.0)), 9.0) * uTreble * 0.6;
+  vColor += vec3(sparkle);
+  // 透明度
+  float armDensity = exp(-pow(angleScatter / max(armWidth, 0.01), 2.0) * 2.5);
+  vAlpha = (0.30 + rN * 0.12) * armDensity * (0.75 + coreGlow * 0.5);
+  vAlpha *= 1.0 - smoothstep(0.88, 1.0, rN);
+  maxRippleAmp = max(maxRippleAmp, bassPulse * 0.15 + densityWave * 0.30 + sparkle * 0.04);
+  vColor = mix(defaultColor, vColor, uHasCover * 0.65 + 0.35);
+}
+// Burst 过渡
+if (uBurstAmt > 0.001) {
+  float burstN = uBurstAmt;
+  float dist2D = length(pos.xy);
+  vec2 outDir = pos.xy / max(dist2D, 0.1);
+  pos.xy += outDir * burstN * 0.35;
+  pos.z += (hash11(aRand * 123.7) - 0.5) * burstN * 0.25;
+  vAlpha *= 0.82 + burstN * 0.35;
+}
+  }
+
+
+  // ====================================================
   //  Preset 5: WALLPAPER PULSE
   //  Layered music-particle wallpaper: aurora ribbons, depth sparks,
   //  and cover-colored audio flow.
@@ -784,7 +879,9 @@ pos.xy = mat2(cs, -sn, sn, cs) * pos.xy;
   vColor = mix(vColor, tintedColor, clamp(uTintStrength, 0.0, 1.0) * (1.0 - blackParticleGuard));
 
   vBright = 0.82 + maxRippleAmp * 0.55 + uBass * 0.10 + edgeBoost * 0.30 + uEnergy * 0.05 + uBurstAmt * 0.40;
-  if (uPreset > 4.5) {
+  if (uPreset > 7.5) {
+vBright = 0.78 + maxRippleAmp * 0.42 + uBass * 0.09 + uEnergy * 0.04 + uBurstAmt * 0.12;
+  } else if (uPreset > 4.5) {
 vBright = 0.94 + maxRippleAmp * 0.34 + uBass * 0.020 + uEnergy * 0.026 + uBurstAmt * 0.025;
   } else if (uPreset > 3.5) {
 vBright = 0.94 + maxRippleAmp * 0.64 + uBass * 0.08 + edgeBoost * 0.12 + uEnergy * 0.05 + uBeat * 0.16 + uBurstAmt * 0.16;
@@ -831,7 +928,10 @@ loadingMistSize = 1.26 + mistBreath * 0.24 + abs(mistRibbon) * 0.14 + glowPick *
   float depthSize = 36.0 / max(0.5, -mvPos.z);
   float audioBoost = 1.0 + maxRippleAmp * 0.7 + edgeBoost * 0.55 + uBeat * 0.30 + uBurstAmt * 0.5;
   float sz = clamp(depthSize * audioBoost, 1.05, 4.95);
-  if (uPreset > 4.5) {
+  if (uPreset > 7.5) {
+float galDrive = uBass * 0.14 + uMid * 0.07 + uTreble * 0.10 + uBurstAmt * 0.12 + uBeat * 0.07;
+sz = clamp(depthSize * (0.95 + galDrive), 0.80, 4.50);
+  } else if (uPreset > 4.5) {
 float flowDrive = uBass * 0.070 + uMid * 0.046 + uTreble * 0.060 + uBurstAmt * 0.090 + uBeat * 0.055;
 sz = clamp(depthSize * (1.05 + flowDrive), 1.00, 5.45);
   } else if (uPreset > 3.5) {

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 updates/
+lt-data/
 .DS_Store
 *.log
 .cookie

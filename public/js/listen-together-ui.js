@@ -2,13 +2,13 @@
  * MOMusic - 一起听 (Listen Together) UI 初始化 + 播放同步集成
  *
  * 职责：
- * 1. 初始化 UI 事件回调（房间创建/加入/聊天/成员变动）
+ * 1. 初始化 UI 事件回调（登录/注册、房间创建/加入、聊天、邀请链接）
  * 2. 播放同步：收到房主播放状态/切歌/进度消息后操作 audio 元素
  * 3. 房主广播：房主的 togglePlay/nextTrack/prevTrack/seek 操作通知服务端
+ * 4. 登录界面、邀请链接、时长统计
  */
 
 // ====== 房主广播抑制标志 ======
-// 当非房主收到同步消息操作播放器时，设置此标志避免回调循环
 var _ltSuppressBroadcast = false;
 
 // ====== 房主进度同步定时器 ======
@@ -21,23 +21,15 @@ function initListenTogetherUI() {
     return;
   }
 
+  // ====== DOM 引用 ======
   var statusBar = document.getElementById('lt-status-bar');
   var connectView = document.getElementById('lt-connect-view');
+  var loginView = document.getElementById('lt-login-view');
   var roomView = document.getElementById('lt-room-view');
   var activeView = document.getElementById('lt-room-active-view');
 
   function setStatus(msg) {
     if (statusBar) statusBar.textContent = msg;
-  }
-
-  function addChatMessage(nickname, text, isSelf) {
-    var container = document.getElementById('lt-chat-messages');
-    if (!container) return;
-    var div = document.createElement('div');
-    div.className = 'lt-chat-msg' + (isSelf ? ' lt-chat-msg-self' : '');
-    div.innerHTML = '<span class="lt-chat-nick">' + escapeHtml(nickname) + '</span> <span class="lt-chat-text">' + escapeHtml(text) + '</span>';
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
   }
 
   function escapeHtml(str) {
@@ -46,8 +38,31 @@ function initListenTogetherUI() {
     return d.innerHTML;
   }
 
+  function addChatMessage(nickname, text, isSelf, loginMethod, authUser, skipSave) {
+    var container = document.getElementById('lt-chat-messages');
+    if (!container) return;
+    // 保存到本地（从本地加载时跳过）
+    if (!skipSave) {
+      var roomId = window.ListenTogether && window.ListenTogether.currentRoom ? window.ListenTogether.currentRoom.id : '';
+      if (roomId) saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser);
+    }
+
+    var div = document.createElement('div');
+    div.className = 'lt-chat-msg' + (isSelf ? ' lt-chat-msg-self' : '');
+
+    var badge = '';
+    if (loginMethod === 'email') badge = '<span class="lt-chat-badge lt-badge-email">📧</span>';
+    else if (loginMethod === 'phone') badge = '<span class="lt-chat-badge lt-badge-phone">📱</span>';
+    else if (loginMethod === 'wechat') badge = '<span class="lt-chat-badge lt-badge-wechat">💚</span>';
+    else if (loginMethod === 'qq') badge = '<span class="lt-chat-badge lt-badge-qq">🐧</span>';
+
+    div.innerHTML = badge + '<span class="lt-chat-nick">' + escapeHtml(nickname) + '</span> <span class="lt-chat-text">' + escapeHtml(text) + '</span>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
   function showView(viewId) {
-    [connectView, roomView, activeView].forEach(function (v) {
+    [connectView, loginView, roomView, activeView].forEach(function (v) {
       if (v) v.style.display = 'none';
     });
     var el = document.getElementById(viewId);
@@ -58,18 +73,48 @@ function initListenTogetherUI() {
     var list = document.getElementById('lt-members-list');
     if (!list) return;
     list.innerHTML = '';
-    if (!members) return;
+    if (!members || !members.length) {
+      list.style.display = 'none';
+      return;
+    }
+    list.style.display = 'flex';
     members.forEach(function (m) {
       var div = document.createElement('div');
       div.className = 'lt-member';
-      div.textContent = m.nickname + (m.isHost ? ' 👑' : '');
+      var badge = '';
+      if (m.loginMethod === 'email') badge = '📧 ';
+      else if (m.loginMethod === 'phone') badge = '📱 ';
+      else if (m.loginMethod === 'wechat') badge = '💚 ';
+      else if (m.loginMethod === 'qq') badge = '🐧 ';
+      div.textContent = badge + m.nickname + (m.isHost ? ' 👑' : '');
       list.appendChild(div);
     });
     var countEl = document.getElementById('lt-member-count');
     if (countEl) countEl.textContent = members.length;
   }
 
-  // ====== 播放同步：获取当前歌曲信息用于广播 ======
+  function updateLoginButtonState() {
+    var loginBtn = document.getElementById('lt-login-btn-text');
+    var userBadge = document.getElementById('lt-user-badge');
+    if (loginBtn && userBadge) {
+      if (LT.isLoggedIn && LT.authUser) {
+        loginBtn.textContent = '切换账号';
+        userBadge.textContent = LT.authUser.nickname;
+        userBadge.style.display = 'inline';
+        var methodIcon = '';
+        if (LT.loginMethod === 'wechat') methodIcon = '💚';
+        else if (LT.loginMethod === 'qq') methodIcon = '🐧';
+        else if (LT.loginMethod === 'email') methodIcon = '📧';
+        else if (LT.loginMethod === 'phone') methodIcon = '📱';
+        userBadge.innerHTML = methodIcon + ' ' + escapeHtml(LT.authUser.nickname);
+      } else {
+        loginBtn.textContent = '登录';
+        userBadge.style.display = 'none';
+      }
+    }
+  }
+
+  // ====== 播放同步 ======
   function getCurrentTrackInfo() {
     if (typeof playQueue === 'undefined' || typeof currentIdx === 'undefined') return null;
     var song = (playQueue && currentIdx >= 0 && currentIdx < playQueue.length) ? playQueue[currentIdx] : null;
@@ -84,7 +129,6 @@ function initListenTogetherUI() {
     };
   }
 
-  // ====== 房主广播 API ======
   function ltBroadcastPlayerAction(action, value) {
     if (!LT || !LT.isConnected || !LT.isHost) return;
     if (_ltSuppressBroadcast) return;
@@ -108,20 +152,16 @@ function initListenTogetherUI() {
     try { LT.syncProgress(progress); } catch (_) {}
   }
 
-  // 暴露到全局供播放控制模块调用
   window._ltBroadcastPlayerAction = ltBroadcastPlayerAction;
   window._ltBroadcastTrackChange = ltBroadcastTrackChange;
   window._ltBroadcastProgress = ltBroadcastProgress;
   window._ltIsSyncing = function () { return _ltSuppressBroadcast; };
 
-  // ====== 播放同步：收到房主消息后操作本地播放器 ======
   function ltApplyPlayerState(data) {
     if (!data || !data.playerState) return;
-    // 自己是房主时不处理同步（房主是播放权威）
     if (LT.isHost) return;
     var state = data.playerState;
     var action = data.action;
-
     _ltSuppressBroadcast = true;
     try {
       if (action === 'play') {
@@ -154,7 +194,6 @@ function initListenTogetherUI() {
     updateTrackDisplay(track);
     _ltSuppressBroadcast = true;
     try {
-      // 1. 先在本地 playQueue 中查找匹配的歌曲
       var foundIdx = -1;
       if (typeof playQueue !== 'undefined' && playQueue && playQueue.length) {
         for (var i = 0; i < playQueue.length; i++) {
@@ -168,7 +207,6 @@ function initListenTogetherUI() {
       if (foundIdx >= 0 && typeof playQueueAt === 'function') {
         playQueueAt(foundIdx, { manual: true, suppressPlayFailureNotice: true });
       } else {
-        // 2. 本地没有 -> 自动搜索同名歌曲并播放
         ltSearchAndPlayTrack(track);
       }
     } finally {
@@ -176,7 +214,6 @@ function initListenTogetherUI() {
     }
   }
 
-  // 成员收到切歌后自动搜索同名歌曲
   async function ltSearchAndPlayTrack(track) {
     var query = (track.title || '') + ' ' + (track.artist || '');
     query = query.trim();
@@ -186,14 +223,12 @@ function initListenTogetherUI() {
     }
     if (typeof showToast === 'function') showToast('一起听：正在搜索「' + (track.title || query) + '」…');
     try {
-      // 用全局搜索 (mode='song' 搜索所有已登录平台)
       var searchData = await fetchMusicSearchResults(query, 'song');
       var songs = searchData && Array.isArray(searchData.songs) ? searchData.songs : [];
       if (!songs.length) {
         if (typeof showToast === 'function') showToast('一起听：未找到「' + (track.title || query) + '」，请登录音乐平台后重试');
         return;
       }
-      // 找最匹配的歌曲：优先匹配标题+歌手，否则取第一个
       var best = songs[0];
       var trackTitle = (track.title || '').toLowerCase();
       var trackArtist = (track.artist || '').toLowerCase();
@@ -206,10 +241,8 @@ function initListenTogetherUI() {
           break;
         }
       }
-      // 将歌曲插入 playQueue 并播放
       if (typeof playQueue === 'undefined') return;
       if (typeof cloneSong === 'function') best = cloneSong(best);
-      // 如果队列有歌，替换当前；否则直接插入
       if (playQueue.length && typeof currentIdx !== 'undefined' && currentIdx >= 0 && currentIdx < playQueue.length) {
         playQueue[currentIdx] = best;
       } else {
@@ -226,7 +259,6 @@ function initListenTogetherUI() {
     }
   }
 
-  // 更新当前播放歌曲的 UI 显示
   function updateTrackDisplay(track) {
     var container = document.getElementById('lt-current-track');
     var titleEl = document.getElementById('lt-track-title');
@@ -247,7 +279,6 @@ function initListenTogetherUI() {
     if (typeof audio === 'undefined' || !audio) return;
     var target = Number(data.progress) || 0;
     if (!isFinite(target)) return;
-    // 进度差超过 2 秒才同步（避免频繁跳转）
     var current = isFinite(audio.currentTime) ? audio.currentTime : 0;
     if (Math.abs(current - target) > 2) {
       _ltSuppressBroadcast = true;
@@ -256,23 +287,172 @@ function initListenTogetherUI() {
     }
   }
 
-  // ====== 事件回调绑定 ======
+  // ====== 登录UI ======
+  // 使用全局的 showLoginForm 函数
+
+  // ====== 时长统计 ======
+  function getDurationStorageKey(userId, method) {
+    return 'lt_duration_' + method + '_' + userId;
+  }
+
+  function loadTogetherDuration(userId, method) {
+    try {
+      var key = getDurationStorageKey(userId, method);
+      return parseInt(localStorage.getItem(key) || '0', 10);
+    } catch (e) { return 0; }
+  }
+
+  function saveTogetherDuration(userId, method, seconds) {
+    try {
+      var key = getDurationStorageKey(userId, method);
+      var current = loadTogetherDuration(userId, method);
+      localStorage.setItem(key, String(current + seconds));
+    } catch (e) {}
+  }
+
+  // ====== 本地记录保存 ======
+  function getChatStorageKey(roomId) { return 'lt_chat_' + roomId; }
+
+  function saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser) {
+    try {
+      var raw = localStorage.getItem(getChatStorageKey(roomId)) || '[]';
+      var messages = JSON.parse(raw);
+      messages.push({
+        nickname: nickname,
+        text: text,
+        isSelf: isSelf,
+        loginMethod: loginMethod,
+        authUser: authUser,
+        timestamp: Date.now()
+      });
+      // 每个房间最多存200条
+      if (messages.length > 200) messages = messages.slice(-200);
+      localStorage.setItem(getChatStorageKey(roomId), JSON.stringify(messages));
+    } catch (e) {}
+  }
+
+  function loadChatMessages(roomId) {
+    try {
+      var raw = localStorage.getItem(getChatStorageKey(roomId)) || '[]';
+      return JSON.parse(raw);
+    } catch (e) { return []; }
+  }
+
+  function saveRecentRoom(roomId, roomName, isHost, memberCount) {
+    try {
+      var raw = localStorage.getItem('lt_recent_rooms') || '[]';
+      var rooms = JSON.parse(raw);
+      // 去重，新的放最前面
+      rooms = rooms.filter(function (r) { return r.id !== roomId; });
+      rooms.unshift({
+        id: roomId,
+        name: roomName || 'MOMusic 房间',
+        isHost: isHost,
+        memberCount: memberCount || 0,
+        lastUsed: Date.now()
+      });
+      // 最多保存10条
+      if (rooms.length > 10) rooms = rooms.slice(0, 10);
+      localStorage.setItem('lt_recent_rooms', JSON.stringify(rooms));
+    } catch (e) {}
+  }
+
+  function loadRecentRooms() {
+    try {
+      var raw = localStorage.getItem('lt_recent_rooms') || '[]';
+      return JSON.parse(raw);
+    } catch (e) { return []; }
+  }
+
+  function saveNickname(nickname) {
+    try { localStorage.setItem('lt_nickname', nickname || ''); } catch (e) {}
+  }
+
+  function loadNickname() {
+    try { return localStorage.getItem('lt_nickname') || ''; } catch (e) { return ''; }
+  }
+
+  // ====== 模式切换 ======
+  function setRoomMode(mode) { // 'dual' (双人) or 'multi' (多人)
+    try {
+      localStorage.setItem('lt_room_mode', mode);
+    } catch (e) {}
+    // 更新UI
+    var dualBtn = document.getElementById('lt-mode-dual');
+    var multiBtn = document.getElementById('lt-mode-multi');
+    if (dualBtn) dualBtn.style.opacity = mode === 'dual' ? '1' : '0.5';
+    if (multiBtn) multiBtn.style.opacity = mode === 'multi' ? '1' : '0.5';
+  }
+
+  function getRoomMode() {
+    try { return localStorage.getItem('lt_room_mode') || 'multi'; }
+    catch (e) { return 'multi'; }
+  }
+
+  // ====== 事件绑定 ======
   LT.on('connected', function () {
     setStatus('已连接 ✓');
-    showView('lt-room-view');
+    // 自动填充昵称
     var nickInput = document.getElementById('lt-nickname-input');
-    if (nickInput) nickInput.focus();
+    var savedNick = loadNickname();
+    if (nickInput && savedNick) nickInput.value = savedNick;
+    // 初始化房间模式
+    setRoomMode(getRoomMode());
+    // 如果有保存的登录信息，等认证完成后自动跳转到房间视图
+    // 如果没有保存的登录信息，显示登录页
+    if (!LT.hasSavedLogin() && !LT.isLoggedIn) {
+      showView('lt-login-view');
+    }
+    // 有保存的登录信息时，等 authSuccess 事件触发后自动跳转
+    updateLoginButtonState();
+    if (nickInput && !savedNick) nickInput.focus();
   });
 
   LT.on('disconnected', function () {
     setStatus('已断开，点击重试');
     showView('lt-connect-view');
-    var btn = document.querySelector('#lt-connect-view button');
+    var btn = document.querySelector('#lt-connect-view .lt-connect-btn');
     if (btn) { btn.textContent = '开始一起听'; btn.disabled = false; }
     stopListenTogetherDurationTracking();
     stopLtProgressSync();
   });
 
+  // === 登录/认证回调 ===
+  LT.on('authSuccess', function (data) {
+    if (data.user && data.user.nickname) {
+      setStatus('已登录：' + data.user.nickname);
+      if (typeof showToast === 'function') showToast('一起听：登录成功');
+    }
+    updateLoginButtonState();
+    showView('lt-room-view');
+  });
+
+  LT.on('registerSuccess', function (data) {
+    if (typeof showToast === 'function') showToast('一起听：注册成功');
+    updateLoginButtonState();
+    showView('lt-room-view');
+  });
+
+  LT.on('authError', function (data) {
+    var msg = data.error || data.message || '登录失败';
+    setStatus(msg);
+    if (typeof showToast === 'function') showToast('一起听：' + msg);
+  });
+
+  LT.on('loginError', function (data) {
+    var msg = data.error || data.message || '登录失败';
+    setStatus(msg);
+    if (typeof showToast === 'function') showToast('一起听：' + msg);
+  });
+
+  // 通用错误事件（服务端返回的错误统一走这个）
+  LT.on('error', function (data) {
+    var msg = data.error || data.message || '操作失败';
+    setStatus(msg);
+    if (typeof showToast === 'function') showToast('一起听：' + msg);
+  });
+
+  // === 房间回调 ===
   LT.on('roomCreated', function (data) {
     setStatus('房间已创建');
     showView('lt-room-active-view');
@@ -284,7 +464,18 @@ function initListenTogetherUI() {
     if (badge) badge.style.display = 'inline';
     startListenTogetherDurationTracking();
     startLtProgressSync();
-    // 房主创建房间后广播当前歌曲
+    setTimeout(ltBroadcastTrackChange, 500);
+    // 保存房间记录
+    saveRecentRoom(room.id, room.name, true, room.memberCount);
+    // 加载本地历史聊天记录
+    var container = document.getElementById('lt-chat-messages');
+    if (container) {
+      container.innerHTML = '';
+      var savedChat = loadChatMessages(room.id);
+      savedChat.forEach(function (msg) {
+        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true);
+      });
+    }
     setTimeout(ltBroadcastTrackChange, 500);
   });
 
@@ -294,11 +485,30 @@ function initListenTogetherUI() {
     var room = data.room;
     var nameEl = document.getElementById('lt-active-room-name');
     if (nameEl) nameEl.textContent = room.name || 'MOMusic 房间';
-    if (data.members) updateMembers(data.members);
+    if (data.members) updateMembers(room.members);
     var badge = document.getElementById('lt-host-badge');
     if (badge) badge.style.display = (data.myMemberInfo && data.myMemberInfo.isHost) ? 'inline' : 'none';
     startListenTogetherDurationTracking();
-    // 如果加入时已有歌曲和播放状态，同步本地播放器
+    // 保存房间记录
+    saveRecentRoom(room.id, room.name, false, room.memberCount);
+
+    // 先加载本地历史聊天记录
+    var container = document.getElementById('lt-chat-messages');
+    if (container) {
+      container.innerHTML = '';
+      var savedChat = loadChatMessages(room.id);
+      savedChat.forEach(function (msg) {
+        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true);
+      });
+    }
+
+    // 再加载服务器返回的最新聊天
+    if (data.recentChat && data.recentChat.length) {
+      data.recentChat.forEach(function (msg) {
+        addChatMessage(msg.nickname, msg.text, msg.clientId === LT.clientId, msg.loginMethod, msg.authUser);
+      });
+    }
+
     if (data.currentTrack) {
       updateTrackDisplay(data.currentTrack);
       ltApplyTrackChange({ track: data.currentTrack });
@@ -316,7 +526,6 @@ function initListenTogetherUI() {
       var countEl = document.getElementById('lt-member-count');
       if (countEl) countEl.textContent = data.memberCount;
     }
-    // 如果新成员加入，房主广播当前播放状态
     if (LT.isHost) {
       setTimeout(function () {
         ltBroadcastTrackChange();
@@ -337,21 +546,13 @@ function initListenTogetherUI() {
     }
   });
 
-  LT.on('playerState', function (data) {
-    ltApplyPlayerState(data);
-  });
-
-  LT.on('trackChanged', function (data) {
-    ltApplyTrackChange(data);
-  });
-
-  LT.on('progressSync', function (data) {
-    ltApplyProgressSync(data);
-  });
+  LT.on('playerState', function (data) { ltApplyPlayerState(data); });
+  LT.on('trackChanged', function (data) { ltApplyTrackChange(data); });
+  LT.on('progressSync', function (data) { ltApplyProgressSync(data); });
 
   LT.on('chatMessage', function (data) {
     if (data.message) {
-      addChatMessage(data.message.nickname, data.message.text, data.message.clientId === LT.clientId);
+      addChatMessage(data.message.nickname, data.message.text, data.message.clientId === LT.clientId, data.message.loginMethod, data.message.authUser);
     }
   });
 
@@ -377,6 +578,40 @@ function initListenTogetherUI() {
     else stopLtProgressSync();
   });
 
+  // === 邀请链接回调 ===
+  LT.on('inviteLink', function (data) {
+    if (data.links) {
+      // 显示邀请链接弹窗
+      var inviteDisplay = document.getElementById('lt-invite-display');
+      var inviteCode = document.getElementById('lt-invite-code');
+      var inviteLink = document.getElementById('lt-invite-link-text');
+      if (inviteDisplay) inviteDisplay.style.display = 'block';
+      if (inviteCode) inviteCode.textContent = data.links.code;
+      if (inviteLink) {
+        inviteLink.value = data.links.webLink;
+        inviteLink.style.display = 'block';
+      }
+      if (typeof showToast === 'function') showToast('邀请链接已生成');
+    }
+  });
+
+  // === 时长统计回调 ===
+  LT.on('roomDuration', function (data) {
+    var durationEl = document.getElementById('lt-duration-display');
+    if (!durationEl) return;
+    var current = data.currentSession || 0;
+    var total = data.totalDuration || 0;
+    var fmt = function (ms) {
+      var s = Math.floor(ms / 1000);
+      if (s < 60) return '<1m';
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + 'm';
+      var h = Math.floor(m / 60);
+      return h + 'h ' + (m % 60) + 'm';
+    };
+    durationEl.innerHTML = '当前: ' + fmt(current) + ' | 累计: ' + fmt(total);
+  });
+
   setStatus('就绪');
 }
 
@@ -385,7 +620,7 @@ function startLtProgressSync() {
   stopLtProgressSync();
   _ltProgressSyncTimer = setInterval(function () {
     if (window._ltBroadcastProgress) window._ltBroadcastProgress();
-  }, 5000); // 每5秒同步一次进度
+  }, 5000);
 }
 
 function stopLtProgressSync() {
@@ -396,6 +631,8 @@ function stopLtProgressSync() {
 }
 
 // ── 全局 UI 操作函数 ──
+
+function handleLtSetMode(mode) { setRoomMode(mode); }
 
 function handleLtConnect() {
   var btn = event && event.target ? event.target.closest('button') : null;
@@ -415,12 +652,129 @@ function toggleListenTogether() {
   if (homeBtn) homeBtn.classList.toggle('active', hidden);
 }
 
+// ====== 登录操作 ======
+
+function handleLtShowLogin() {
+  showLoginForm('email');
+}
+
+  function handleLtSwitchLoginTab(method) {
+    // 隐藏所有表单
+    ['email', 'phone'].forEach(function (m) {
+      var el = document.getElementById('lt-login-form-' + m);
+      if (el) el.style.display = 'none';
+    });
+    // 移除所有active
+    var tabs = document.querySelectorAll('#lt-login-view .lt-seg-tab');
+    tabs.forEach(function (tab) {
+      tab.classList.remove('active');
+    });
+    // 显示当前
+    var target = document.getElementById('lt-login-form-' + method);
+    if (target) target.style.display = 'block';
+    var activeTab = document.querySelector('#lt-login-view .lt-seg-tab[data-method="' + method + '"]');
+    if (activeTab) activeTab.classList.add('active');
+  }
+
+function handleLtEmailLogin() {
+  var LT = window.ListenTogether;
+  var email = document.getElementById('lt-login-email');
+  var password = document.getElementById('lt-login-password');
+  if (!email || !email.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入邮箱';
+    return;
+  }
+  if (!password || !password.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入密码';
+    return;
+  }
+  var sb = document.getElementById('lt-status-bar');
+  if (sb) sb.textContent = '登录中…';
+  LT.login(email.value.trim(), password.value.trim());
+}
+
+function handleLtEmailRegister() {
+  var LT = window.ListenTogether;
+  var email = document.getElementById('lt-login-email');
+  var password = document.getElementById('lt-login-password');
+  var nickname = document.getElementById('lt-login-nickname');
+  if (!email || !email.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入邮箱';
+    return;
+  }
+  if (!password || !password.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入密码';
+    return;
+  }
+  var sb = document.getElementById('lt-status-bar');
+  if (sb) sb.textContent = '注册中…';
+  LT.register(email.value.trim(), password.value.trim(), nickname ? nickname.value.trim() : '');
+}
+
+function handleLtPhoneLogin() {
+  var LT = window.ListenTogether;
+  var phone = document.getElementById('lt-login-phone');
+  var password = document.getElementById('lt-login-phone-password');
+  if (!phone || !phone.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入手机号';
+    return;
+  }
+  if (!password || !password.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入密码';
+    return;
+  }
+  var sb = document.getElementById('lt-status-bar');
+  if (sb) sb.textContent = '登录中…';
+  LT.login(phone.value.trim(), password.value.trim());
+}
+
+function handleLtPhoneRegister() {
+  var LT = window.ListenTogether;
+  var phone = document.getElementById('lt-login-phone');
+  var password = document.getElementById('lt-login-phone-password');
+  if (!phone || !phone.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入手机号';
+    return;
+  }
+  if (!password || !password.value.trim()) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '请输入密码';
+    return;
+  }
+  var sb = document.getElementById('lt-status-bar');
+  if (sb) sb.textContent = '注册中…';
+  LT.register(phone.value.trim(), password.value.trim(), '');
+}
+
+function handleLtGuestLogin() {
+  var LT = window.ListenTogether;
+  LT.guestLogin();
+}
+
+function handleLtLogout() {
+  var LT = window.ListenTogether;
+  LT.logout();
+  showLoginForm('email');
+  var userBadge = document.getElementById('lt-user-badge');
+  if (userBadge) userBadge.style.display = 'none';
+  var sb = document.getElementById('lt-status-bar');
+  if (sb) sb.textContent = '已登出';
+}
+
+// ====== 房间操作 ======
+
 function handleLtCreateRoom() {
-  var name = document.getElementById('lt-room-name-input');
   var nickname = document.getElementById('lt-nickname-input');
   var nVal = nickname && nickname.value.trim() || '';
-  var nameVal = name && name.value.trim() || '';
-  window.ListenTogether.createRoom(nameVal || undefined, undefined, nVal || undefined);
+  if (nVal) saveNickname(nVal);
+  window.ListenTogether.createRoom(undefined, nVal || undefined);
 }
 
 function handleLtJoinRoom() {
@@ -433,7 +787,8 @@ function handleLtJoinRoom() {
     return;
   }
   var nVal = nickname && nickname.value.trim() || '';
-  window.ListenTogether.joinRoom(idVal, undefined, nVal || undefined);
+  if (nVal) saveNickname(nVal);
+  window.ListenTogether.joinRoom(idVal, nVal || undefined);
 }
 
 function handleLtSendChat() {
@@ -441,11 +796,75 @@ function handleLtSendChat() {
   if (!input || !input.value.trim()) return;
   window.ListenTogether.sendChat(input.value.trim());
   input.value = '';
+  input.focus();
 }
 
 function handleLtLeaveRoom() {
   window.ListenTogether.leaveRoom();
   stopLtProgressSync();
+}
+
+// ====== 邀请链接 ======
+
+function handleLtGetInviteLink() {
+  var LT = window.ListenTogether;
+  if (!LT.currentRoom) {
+    var sb = document.getElementById('lt-status-bar');
+    if (sb) sb.textContent = '你不在房间中';
+    return;
+  }
+  LT.getInviteLink();
+}
+
+function handleLtCopyInviteLink() {
+  var linkInput = document.getElementById('lt-invite-link-text');
+  if (!linkInput) return;
+  linkInput.select();
+  try {
+    document.execCommand('copy');
+    if (typeof showToast === 'function') showToast('邀请链接已复制');
+  } catch (_) {
+    if (typeof showToast === 'function') showToast('复制失败，请手动复制');
+  }
+}
+
+function handleLtCloseInvite() {
+  var inviteDisplay = document.getElementById('lt-invite-display');
+  if (inviteDisplay) inviteDisplay.style.display = 'none';
+}
+
+// ====== 时长统计 ======
+
+function handleLtRefreshDuration() {
+  var LT = window.ListenTogether;
+  if (LT.currentRoom) {
+    LT.getRoomDuration();
+  }
+}
+
+// ====== 视图切换 ======
+
+function showLoginForm(method) {
+  var loginView = document.getElementById('lt-login-view');
+  var roomView = document.getElementById('lt-room-view');
+  var connectView = document.getElementById('lt-connect-view');
+  var activeView = document.getElementById('lt-room-active-view');
+  if (loginView) loginView.style.display = 'block';
+  if (roomView) roomView.style.display = 'none';
+  if (connectView) connectView.style.display = 'none';
+  if (activeView) activeView.style.display = 'none';
+
+  var formEls = document.querySelectorAll('.lt-login-form');
+  formEls.forEach(function (f) { f.style.display = 'none'; });
+
+  var tabs = document.querySelectorAll('#lt-login-view .lt-seg-tab');
+  tabs.forEach(function (t) { t.classList.remove('active'); });
+
+  var selectedForm = document.getElementById('lt-login-form-' + method);
+  if (selectedForm) selectedForm.style.display = 'block';
+
+  var selectedTab = document.querySelector('#lt-login-view .lt-seg-tab[data-method="' + method + '"]');
+  if (selectedTab) selectedTab.classList.add('active');
 }
 
 function showLtJoinForm() {
@@ -463,33 +882,66 @@ function showLtCreateForm() {
 }
 
 // ── 一起听时长追踪 ──
+// ====== 一起听时长追踪 ======
 var listenTogetherDurationTimer = null;
 var listenTogetherSessionStarted = 0;
+var lastDurationTick = 0; // 上一次统计的时间戳
 
 function updateListenTogetherDuration() {
   var el = document.getElementById('home-listen-together-duration');
-  if (!el) return;
-  if (!window.ListenTogether || !ListenTogether.currentRoom) {
-    el.textContent = '0m';
+  var LT = window.ListenTogether;
+  if (!el || !LT || !LT.currentRoom) {
+    if (el) el.textContent = '0m';
     return;
   }
-  var elapsed = Math.floor((Date.now() - listenTogetherSessionStarted) / 1000);
+  var now = Date.now();
+  var elapsed = Math.floor((now - listenTogetherSessionStarted) / 1000);
+
+  // 按成员身份分别统计时长
+  if (LT.isLoggedIn && LT.authUser) {
+    var userId = LT.authUser.credential || 'guest';
+    var tickElapsed = lastDurationTick ? Math.floor((now - lastDurationTick) / 1000) : 15;
+    if (tickElapsed < 1) tickElapsed = 15; // 防止异常
+    // 区分身份统计：房主或成员
+    var suffix = LT.isHost ? '_host' : '_member';
+    saveTogetherDuration(userId, LT.loginMethod + suffix, tickElapsed);
+    // 同时也统计总时长
+    saveTogetherDuration(userId, LT.loginMethod, tickElapsed);
+    lastDurationTick = now;
+  }
+
   if (elapsed < 60) el.textContent = '<1m';
-  else if (elapsed < 3600) el.textContent = Math.floor(elapsed / 60) + 'm';
-  else el.textContent = Math.floor(elapsed / 3600) + 'h ' + Math.floor((elapsed % 3600) / 60) + 'm';
+  else if (elapsed < 3600) el.textContent = Math.floor(el / 60) + 'm';
+  else el.textContent = Math.floor(el / 3600) + 'h ' + Math.floor((el % 3600) / 60) + 'm';
 }
 
 function startListenTogetherDurationTracking() {
   listenTogetherSessionStarted = Date.now();
+  lastDurationTick = Date.now();
   if (listenTogetherDurationTimer) clearInterval(listenTogetherDurationTimer);
   listenTogetherDurationTimer = setInterval(updateListenTogetherDuration, 15000);
   updateListenTogetherDuration();
 }
 
 function stopListenTogetherDurationTracking() {
+  // 停止时统计最后一段时长
+  if (listenTogetherSessionStarted && lastDurationTick) {
+    var LT = window.ListenTogether;
+    if (LT && LT.isLoggedIn && LT.authUser) {
+      var userId = LT.authUser.credential || 'guest';
+      var finalElapsed = Math.floor((Date.now() - lastDurationTick) / 1000);
+      if (finalElapsed > 0) {
+        var suffix = LT.isHost ? '_host' : '_member';
+        saveTogetherDuration(userId, LT.loginMethod + suffix, finalElapsed);
+        saveTogetherDuration(userId, LT.loginMethod, finalElapsed);
+      }
+    }
+  }
   if (listenTogetherDurationTimer) {
     clearInterval(listenTogetherDurationTimer);
     listenTogetherDurationTimer = null;
   }
+  listenTogetherSessionStarted = 0;
+  lastDurationTick = 0;
   updateListenTogetherDuration();
 }

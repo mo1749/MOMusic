@@ -1,14 +1,3 @@
-var QQ_LOGIN_STATUS_CACHE_KEY = 'MOMusic-qq-login-status-v1';
-var QQ_LOGIN_STATUS_CACHE_TTL = 86400000;
-function loadQQLoginStatusCache() {
-  try { var r = localStorage.getItem(QQ_LOGIN_STATUS_CACHE_KEY); if (!r) return null;
-    var p = JSON.parse(r); if (!p || typeof p !== 'object' || !p._t || Date.now() - p._t > QQ_LOGIN_STATUS_CACHE_TTL) return null;
-    delete p._t; return p; } catch (_) { return null; }
-}
-function saveQQLoginStatusCache(st) {
-  if (!st || !st.loggedIn) { try { localStorage.removeItem(QQ_LOGIN_STATUS_CACHE_KEY); } catch (_) {} return; }
-  try { localStorage.setItem(QQ_LOGIN_STATUS_CACHE_KEY, JSON.stringify(Object.assign({}, st, { _t: Date.now() }))); } catch (_) {}
-}
 function readProviderVipAuditState() {
   try {
     var raw = localStorage.getItem(PROVIDER_VIP_AUDIT_STORE_KEY) || '{}';
@@ -202,7 +191,7 @@ function qqLoginNeedsAuthorizationRefresh(status) {
 function qqMembershipLabel(status) {
   if (qqLoginNeedsAuthorizationRefresh(status)) return '会员待同步';
   var level = providerVipLevel('qq', status);
-  return level === 'svip' ? 'QQ SVIP' : (level === 'vip' ? 'QQ VIP' : 'QQ 浪客');
+  return level === 'svip' ? 'SVIP 会员' : (level === 'vip' ? 'VIP 会员' : '浪客');
 }
 function qqLoginStatusText(info) {
   info = normalizeQQLoginStatus(info || qqLoginStatus);
@@ -219,20 +208,7 @@ async function refreshQQLoginStatus(options) {
     var query = '/api/qq/login/status?t=' + Date.now() + (options.forceVip ? '&forceVip=1' : '');
     var info = await apiJson(query);
     var prevLogged = !!qqLoginStatus.loggedIn;
-    var prevVip = !!qqLoginStatus.isVip;
-    var prevQQ = Object.assign({}, qqLoginStatus);
     qqLoginStatus = normalizeQQLoginStatus(info);
-    // VIP dropped but probe might be unreliable → preserve old VIP with stale flag
-    if (qqLoginStatus.loggedIn && !qqLoginStatus.isVip && prevVip && prevLogged) {
-      qqLoginStatus = normalizeQQLoginStatus(Object.assign({}, qqLoginStatus, {
-        isVip: true,
-        isSvip: !!prevQQ.isSvip,
-        vipLevel: qqLoginStatus.vipLevel === 'none' ? (prevQQ.vipLevel || 'vip') : qqLoginStatus.vipLevel,
-        membershipStale: true,
-        vipSyncState: 'stale',
-        stale: true,
-      }));
-    }
     auditProviderVipState('qq', qqLoginStatus);
     if (!qqLoginStatus.loggedIn) {
       if (prevLogged || qqLoginWasLoggedIn) showToast(qqLoginStatus.stale ? 'QQ 音乐登录已失效' : 'QQ 音乐已掉登录');
@@ -251,7 +227,6 @@ async function refreshQQLoginStatus(options) {
     qqLoginWasLoggedIn = !!qqLoginStatus.loggedIn;
     if (!hasPlatformLogin(activeAccountProvider)) activeAccountProvider = firstLoggedProvider();
     renderUserBtn();
-    saveQQLoginStatusCache(qqLoginStatus);
     return qqLoginStatus;
   } catch (e) {
     console.warn('QQ login status failed:', e);

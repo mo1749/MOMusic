@@ -718,11 +718,7 @@ function homeDashboardDiscoverySongs() {
 
   addSongs(homeDiscoverState && homeDiscoverState.songs);
   addSongs(playQueue);
-  if (Array.isArray(userPlaylists)) {
-    userPlaylists.forEach(function (item) { addSongs(item && item.songs); });
-  }
   addSongs(playlist);
-  addSongs(homeDashboardLocalSongs());
 
   if (candidates.length <= 3) return candidates.slice();
   var day = homeDashboardDayNumber();

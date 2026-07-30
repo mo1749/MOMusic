@@ -280,7 +280,7 @@ function finishLoginProviderPointer(e) {
 function loginProviderVipLabel(provider, status) {
   if (!status || !status.loggedIn) return '';
   var level = providerVipLevel(provider, status);
-  return level === 'svip' ? 'SVIP' : (level === 'vip' ? 'VIP' : '普通');
+  return level === 'svip' ? 'SVIP' : (level === 'vip' ? 'VIP' : '浪客');
 }
 function handleLoginProviderExternalSwitchEvent(e, provider) {
   if (e) {

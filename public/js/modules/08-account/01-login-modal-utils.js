@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 function openGsapModal(mask) {
   if (!mask) return;
   var panel = mask.querySelector('.modal');
@@ -306,20 +306,13 @@ function providerAvatarSrc(provider, status) {
 function providerVipBadge(provider, status, idAttr, includeNormal) {
   status = status || platformStatus(provider) || {};
   if (!status.loggedIn) return '';
-  var pendingQQSync = provider === 'qq' && typeof qqLoginNeedsAuthorizationRefresh === 'function' && qqLoginNeedsAuthorizationRefresh(status);
   var level = providerVipLevel(provider, status);
+  var pendingQQSync = provider === 'qq' && typeof qqLoginNeedsAuthorizationRefresh === 'function' && qqLoginNeedsAuthorizationRefresh(status);
   if (level === 'none' && !includeNormal && !pendingQQSync) return '';
   var id = idAttr ? ' id="' + idAttr + '"' : '';
-  var badgeLevel = level === 'none' ? 'normal' : level;
+  var badgeLevel = pendingQQSync ? 'pending' : (level === 'none' ? 'normal' : level);
   var cls = 'top-account-vip ' + escHtml(provider || 'netease') + ' ' + badgeLevel;
-  var label;
-  if (pendingQQSync) {
-    if (providerVipType(provider, status) > 0) label = 'VIP';
-    else if (includeNormal) label = '会员';
-    else return '';
-  } else {
-    label = level === 'svip' ? 'SVIP' : (level === 'vip' ? 'VIP' : '浪客');
-  }
+  var label = pendingQQSync ? '待同步' : (level === 'svip' ? 'SVIP' : (level === 'vip' ? 'VIP' : '浪客'));
   return '<span' + id + ' class="' + cls + '">' + label + '</span>';
 }
 function providerAccountIdentity(provider, status) {

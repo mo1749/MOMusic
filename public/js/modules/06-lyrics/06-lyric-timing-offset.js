@@ -161,6 +161,22 @@ function updateLyricTimingOffsetUi(songOverride) {
   document.querySelectorAll('[data-lyric-offset-step],[data-lyric-offset-reset]').forEach(function (btn) {
     btn.disabled = !key;
   });
+  // 同步桌面歌词快捷按钮的激活态
+  var desktopBtn = document.getElementById('lyric-quick-desktop-btn');
+  if (desktopBtn && typeof fx !== 'undefined') desktopBtn.classList.toggle('is-active', !!fx.desktopLyrics);
+}
+
+// 歌词校准弹层内的桌面歌词快捷开关
+function quickToggleDesktopLyrics() {
+  if (typeof toggleFx !== 'function') {
+    if (typeof showToast === 'function') showToast('桌面歌词暂不可用');
+    return;
+  }
+  toggleFx('desktopLyrics');
+  var btn = document.getElementById('lyric-quick-desktop-btn');
+  if (btn && typeof fx !== 'undefined') btn.classList.toggle('is-active', !!fx.desktopLyrics);
+  // 关闭弹层，避免遮挡桌面歌词
+  closeLyricTimingPopover(true);
 }
 
 function refreshLyricTimingAfterOffsetChange() {

@@ -14,6 +14,20 @@ const VIP_TYPE_KEYS = new Set([
   'greenlevel',
   'associatortype',
   'associatorlevel',
+  // QQ 音乐 SRFVipQuery_V2 字段名（i 前缀 + 驼峰）
+  'inewvip',
+  'inewviptype',
+  'ivipflag',
+  'iviptype',
+  'iviplevel',
+  'imusicviptype',
+  'imusicviplevel',
+  'igreenviptype',
+  'igreenviplevel',
+  'iassociatortype',
+  'iassociatorlevel',
+  'iyellowvip',
+  'iyellowlevel',
 ]);
 const SVIP_TYPE_KEYS = new Set([
   'sviptype',
@@ -23,6 +37,16 @@ const SVIP_TYPE_KEYS = new Set([
   'luxuryviptype',
   'luxuryviplevel',
   'greensvip',
+  // QQ 音乐 SRFVipQuery_V2 字段名
+  'inewsupervip',
+  'inewsviptype',
+  'isupervip',
+  'isuperviptype',
+  'isuperviplevel',
+  'isviptype',
+  'isviplevel',
+  'iluxuryviptype',
+  'iluxuryviplevel',
 ]);
 const VIP_FLAG_KEYS = new Set([
   'isvip',
@@ -34,6 +58,12 @@ const VIP_FLAG_KEYS = new Set([
   'member',
   'isassociator',
   'associator',
+  // QQ 音乐 SRFVipQuery_V2 字段名
+  'inewvip',
+  'ivipflag',
+  'igreenvip',
+  'iyellowvip',
+  'ieight',
 ]);
 const SVIP_FLAG_KEYS = new Set([
   'issvip',
@@ -42,6 +72,10 @@ const SVIP_FLAG_KEYS = new Set([
   'supervip',
   'isluxuryvip',
   'luxuryvip',
+  // QQ 音乐 SRFVipQuery_V2 字段名
+  'inewsupervip',
+  'isupervip',
+  'ieight',
 ]);
 const MEMBERSHIP_STATUS_KEYS = new Set([
   'status',

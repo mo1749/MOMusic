@@ -328,6 +328,18 @@ function readSavedLyricLayout() {
       desktopLyricsCinema: desktopLyricsSchemaReady ? raw.desktopLyricsCinema !== false : fxDefaults.desktopLyricsCinema,
       desktopLyricsHighlight: desktopLyricsSchemaReady ? raw.desktopLyricsHighlight === true : fxDefaults.desktopLyricsHighlight,
       desktopLyricsFps: desktopLyricsSchemaReady ? normalizeDesktopLyricsFps(raw.desktopLyricsFps) : fxDefaults.desktopLyricsFps,
+      danmakuFont: /^(sans|hei|song|kai-song)$/.test(String(raw.danmakuFont)) ? raw.danmakuFont : fxDefaults.danmakuFont,
+      danmakuColorMode: raw.danmakuColorMode === 'custom' ? 'custom' : 'auto',
+      danmakuColor: normalizeHexColor(raw.danmakuColor || fxDefaults.danmakuColor, fxDefaults.danmakuColor),
+      danmakuSize: clampRange(Math.round(raw.danmakuSize == null ? fxDefaults.danmakuSize : Number(raw.danmakuSize)), 10, 22),
+      danmakuSpeed: clampRange(raw.danmakuSpeed == null ? fxDefaults.danmakuSpeed : Number(raw.danmakuSpeed), 0.5, 2),
+      danmakuOpacity: clampRange(raw.danmakuOpacity == null ? fxDefaults.danmakuOpacity : Number(raw.danmakuOpacity), 0.3, 1),
+      danmakuBold: raw.danmakuBold === true,
+      galaxyArms: clampRange(Math.round(raw.galaxyArms == null ? fxDefaults.galaxyArms : Number(raw.galaxyArms)), 2, 8),
+      galaxyTwist: clampRange(raw.galaxyTwist == null ? fxDefaults.galaxyTwist : Number(raw.galaxyTwist), 0, 2),
+      galaxyCore: clampRange(raw.galaxyCore == null ? fxDefaults.galaxyCore : Number(raw.galaxyCore), 0, 1),
+      galaxySpread: clampRange(raw.galaxySpread == null ? fxDefaults.galaxySpread : Number(raw.galaxySpread), 0.5, 2),
+      galaxySpin: clampRange(raw.galaxySpin == null ? fxDefaults.galaxySpin : Number(raw.galaxySpin), 0, 2),
       performanceBackground: normalizePerformanceBackgroundMode(raw.performanceBackground, raw.liveBackgroundKeep === true),
       performanceQuality: normalizePerformanceQuality(raw.performanceQuality),
       foregroundFpsMode: normalizeForegroundFpsMode(raw.foregroundFpsMode === 'adaptive' ? 'vsync' : raw.foregroundFpsMode),
@@ -430,6 +442,7 @@ function readSavedLyricLayout() {
       shelfSummonParallax: clampRange(raw.shelfSummonParallax == null ? fxDefaults.shelfSummonParallax : Number(raw.shelfSummonParallax), 0, 2.5),
       shelfCameraEnterSpeed: clampRange(raw.shelfCameraEnterSpeed == null ? fxDefaults.shelfCameraEnterSpeed : Number(raw.shelfCameraEnterSpeed), 0.2, 1.5),
       shelfCameraExitSpeed: clampRange(raw.shelfCameraExitSpeed == null ? fxDefaults.shelfCameraExitSpeed : Number(raw.shelfCameraExitSpeed), 0.2, 1.5),
+      shelfScrollSpeed: clampRange(raw.shelfScrollSpeed == null ? fxDefaults.shelfScrollSpeed : Number(raw.shelfScrollSpeed), 0.04, 0.4),
       cam: /^(off|gesture)$/.test(String(raw.cam || '')) ? raw.cam : fxDefaults.cam
     };
   } catch (e) {
@@ -814,6 +827,18 @@ function saveLyricLayout(opts) {
       desktopLyricsCinema: fx.desktopLyricsCinema !== false,
       desktopLyricsHighlight: fx.desktopLyricsHighlight === true,
       desktopLyricsFps: normalizeDesktopLyricsFps(fx.desktopLyricsFps),
+      danmakuFont: /^(sans|hei|song|kai-song)$/.test(String(fx.danmakuFont)) ? fx.danmakuFont : fxDefaults.danmakuFont,
+      danmakuColorMode: fx.danmakuColorMode === 'custom' ? 'custom' : 'auto',
+      danmakuColor: normalizeHexColor(fx.danmakuColor || fxDefaults.danmakuColor, fxDefaults.danmakuColor),
+      danmakuSize: clampRange(Math.round(fx.danmakuSize == null ? fxDefaults.danmakuSize : Number(fx.danmakuSize)), 10, 22),
+      danmakuSpeed: clampRange(fx.danmakuSpeed == null ? fxDefaults.danmakuSpeed : Number(fx.danmakuSpeed), 0.5, 2),
+      danmakuOpacity: clampRange(fx.danmakuOpacity == null ? fxDefaults.danmakuOpacity : Number(fx.danmakuOpacity), 0.3, 1),
+      danmakuBold: fx.danmakuBold === true,
+      galaxyArms: clampRange(Math.round(fx.galaxyArms == null ? fxDefaults.galaxyArms : Number(fx.galaxyArms)), 2, 8),
+      galaxyTwist: clampRange(fx.galaxyTwist == null ? fxDefaults.galaxyTwist : Number(fx.galaxyTwist), 0, 2),
+      galaxyCore: clampRange(fx.galaxyCore == null ? fxDefaults.galaxyCore : Number(fx.galaxyCore), 0, 1),
+      galaxySpread: clampRange(fx.galaxySpread == null ? fxDefaults.galaxySpread : Number(fx.galaxySpread), 0.5, 2),
+      galaxySpin: clampRange(fx.galaxySpin == null ? fxDefaults.galaxySpin : Number(fx.galaxySpin), 0, 2),
       performanceBackground: normalizePerformanceBackgroundMode(fx.performanceBackground, fx.liveBackgroundKeep === true),
       performanceQuality: normalizePerformanceQuality(fx.performanceQuality),
       foregroundFpsMode: normalizeForegroundFpsMode(fx.foregroundFpsMode),
@@ -916,6 +941,7 @@ function saveLyricLayout(opts) {
       shelfSummonParallax: clampRange(fx.shelfSummonParallax == null ? fxDefaults.shelfSummonParallax : Number(fx.shelfSummonParallax), 0, 2.5),
       shelfCameraEnterSpeed: clampRange(fx.shelfCameraEnterSpeed == null ? fxDefaults.shelfCameraEnterSpeed : Number(fx.shelfCameraEnterSpeed), 0.2, 1.5),
       shelfCameraExitSpeed: clampRange(fx.shelfCameraExitSpeed == null ? fxDefaults.shelfCameraExitSpeed : Number(fx.shelfCameraExitSpeed), 0.2, 1.5),
+      shelfScrollSpeed: clampRange(fx.shelfScrollSpeed == null ? fxDefaults.shelfScrollSpeed : Number(fx.shelfScrollSpeed), 0.04, 0.4),
       cam: /^(off|gesture)$/.test(String(fx.cam || '')) ? fx.cam : fxDefaults.cam
     };
     autosavePayload = scopeCurrentFxAutosavePayload(autosavePayload, opts);

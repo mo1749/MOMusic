@@ -121,43 +121,70 @@ function applyLyricPaletteToMesh(mesh) {
   if (!mesh || !mesh.userData || !mesh.userData.lyric) return;
   var pal = stageLyrics.palette || {};
   var data = mesh.userData.lyric;
+  var baseCol = lyricThreeColor(pal.primary, '#d6f8ff', 0.38);
+  var hiCol = lyricThreeColor(pal.highlight || pal.primary, '#fff0b8', 0.48);
+  var glowCol = lyricStageGlowThreeColor(pal, '#9cffdf', 0.36);
+  var solarCol = lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50);
   if (data.textMat && data.textMat.uniforms) {
     var u = data.textMat.uniforms;
-    if (u.uBaseColor) u.uBaseColor.value.copy(lyricThreeColor(pal.primary, '#d6f8ff', 0.38));
-    if (u.uHiColor) u.uHiColor.value.copy(lyricThreeColor(pal.highlight || pal.primary, '#fff0b8', 0.48));
-    if (u.uGlowColor) u.uGlowColor.value.copy(lyricStageGlowThreeColor(pal, '#9cffdf', 0.36));
-    if (u.uSolarColor) u.uSolarColor.value.copy(lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50));
+    if (u.uBaseColor) u.uBaseColor.value.copy(baseCol);
+    if (u.uHiColor) u.uHiColor.value.copy(hiCol);
+    if (u.uGlowColor) u.uGlowColor.value.copy(glowCol);
+    if (u.uSolarColor) u.uSolarColor.value.copy(solarCol);
     if (u.uSolar && !isFinite(u.uSolar.value)) u.uSolar.value = 0;
     if (u.uOpacity && !isFinite(u.uOpacity.value)) u.uOpacity.value = 0;
     data.textMat.needsUpdate = true;
   }
-  if (data.glowMat) data.glowMat.color.copy(lyricStageGlowThreeColor(pal, '#9cffdf', 0.36));
-  if (data.contextMat) data.contextMat.color.copy(lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34));
+  if (data.glowMat) {
+    var gmCol = lyricStageGlowThreeColor(pal, '#9cffdf', 0.36);
+    data.glowMat.color.copy(gmCol);
+  }
+  if (data.contextMat) {
+    var cmCol = lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34);
+    data.contextMat.color.copy(cmCol);
+  }
   if (data.rowLayers) {
     data.rowLayers.forEach(function (row) {
       if (!row || !row.mat) return;
-      if (row.glowMat) setLyricMaterialColor(row.glowMat, lyricRowGlowThreeColor(pal, !!row.isTranslation));
+      if (row.glowMat) {
+        var rgCol = lyricRowGlowThreeColor(pal, !!row.isTranslation);
+        setLyricMaterialColor(row.glowMat, rgCol);
+      }
       if (row.mat.uniforms) {
         var ru = row.mat.uniforms;
-        if (ru.uBaseColor) ru.uBaseColor.value.copy(lyricThreeColor(pal.primary, '#d6f8ff', 0.38));
-        if (ru.uHiColor) ru.uHiColor.value.copy(lyricThreeColor(pal.highlight || pal.primary, '#fff0b8', 0.48));
-        if (ru.uGlowColor) ru.uGlowColor.value.copy(lyricStageGlowThreeColor(pal, '#9cffdf', 0.36));
-        if (ru.uSolarColor) ru.uSolarColor.value.copy(lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50));
-        if (ru.uColor) ru.uColor.value.copy(row.isTranslation
-          ? lyricThreeColor(pal.highlight || pal.primary, '#eaf6ff', 0.42)
-          : lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34));
+        var rbCol = lyricThreeColor(pal.primary, '#d6f8ff', 0.38);
+        var rhCol = lyricThreeColor(pal.highlight || pal.primary, '#fff0b8', 0.48);
+        var rgwCol = lyricStageGlowThreeColor(pal, '#9cffdf', 0.36);
+        var rsCol = lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50);
+        if (ru.uBaseColor) ru.uBaseColor.value.copy(rbCol);
+        if (ru.uHiColor) ru.uHiColor.value.copy(rhCol);
+        if (ru.uGlowColor) ru.uGlowColor.value.copy(rgwCol);
+        if (ru.uSolarColor) ru.uSolarColor.value.copy(rsCol);
+        if (ru.uColor) {
+          var rcCol = row.isTranslation
+            ? lyricThreeColor(pal.highlight || pal.primary, '#eaf6ff', 0.42)
+            : lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34);
+          ru.uColor.value.copy(rcCol);
+        }
         row.mat.needsUpdate = true;
         return;
       }
       if (row.mat.color) {
-        row.mat.color.copy(row.isTranslation
+        var rmcCol = row.isTranslation
           ? lyricThreeColor(pal.highlight || pal.primary, '#eaf6ff', 0.42)
-          : lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34));
+          : lyricThreeColor(pal.primary || pal.secondary, '#d6f8ff', 0.34);
+        row.mat.color.copy(rmcCol);
       }
     });
   }
-  if (data.sparkMat) setLyricSparkColor(data, lyricBeatGlowThreeColor(pal, '#fff0b8', 0.46));
-  if (data.sunMat) data.sunMat.color.copy(lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50));
+  if (data.sparkMat) {
+    var spCol = lyricBeatGlowThreeColor(pal, '#fff0b8', 0.46);
+    setLyricSparkColor(data, spCol);
+  }
+  if (data.sunMat) {
+    var snCol = lyricBeatGlowThreeColor(pal, '#fff0b8', 0.50);
+    data.sunMat.color.copy(snCol);
+  }
 }
 function effectiveLyricPalette(pal) {
   var src = pal || stageLyrics.coverPalette || stageLyrics.palette || {};

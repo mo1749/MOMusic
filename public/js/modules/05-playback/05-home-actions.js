@@ -1,4 +1,4 @@
-﻿function songFromListenRecord(record) {
+function songFromListenRecord(record) {
   if (!record) return null;
   var provider = record.sourceKey || '';
   if (!provider && record.type === 'qq') provider = 'qq';
@@ -206,7 +206,8 @@ async function playHomeDaily() {
         var raw = d && (d.songs || d.tracks || d.items || d.recommendations || d.dailySongs);
         if (!Array.isArray(raw)) continue;
         raw.map(cloneSong).forEach(function (s) {
-          var k = s.id && s.provider ? (s.provider + ':' + s.id) : s.id;
+          // 去重 key：优先 provider:id，其次 id，最后用名称+艺术家生成临时 key 避免丢歌
+          var k = s.id && s.provider ? (s.provider + ':' + s.id) : (s.id ? s.id : (s.name + '|' + (s.artist || '') + '|' + (s.provider || pid)));
           if (k && !seen[k]) { seen[k] = true; allSongs.push(s); }
         });
       } catch (e) { console.warn('[HomeDailyAll:' + pid + ']', e); }
@@ -239,12 +240,17 @@ async function playHomeDaily() {
     var songs = [];
     if (selectedId === 'netease') {
       if (typeof waitForHomeDiscoverIdle === 'function') await waitForHomeDiscoverIdle(2600);
-      var data = await apiJson('/api/discover/home?t=' + Date.now(), { timeoutMs: 12000 });
-      var raw = data && data.dailySongs;
-      if (Array.isArray(raw)) songs = raw.map(cloneSong);
+      // 优先使用已缓存的每日推荐，避免网络瞬时异常导致空结果
+      if (homeDiscoverState.loaded && homeDiscoverState.songs && homeDiscoverState.songs.length) {
+        songs = homeDiscoverState.songs.map(cloneSong);
+      } else {
+        var data = await apiJson('/api/discover/home?t=' + Date.now() + '&limit=100', { timeoutMs: 12000 });
+        var raw = data && data.dailySongs;
+        if (Array.isArray(raw)) songs = raw.map(cloneSong);
+      }
     } else {
       var sep = config.endpoint.indexOf('?') >= 0 ? '&' : '?';
-      var data = await apiJson(config.endpoint + sep + 't=' + Date.now(), { timeoutMs: 14000 });
+      var data = await apiJson(config.endpoint + sep + 't=' + Date.now() + '&limit=100', { timeoutMs: 14000 });
       var raw = data && (data.songs || data.tracks || data.items || data.recommendations);
       if (Array.isArray(raw)) songs = raw.map(cloneSong);
     }

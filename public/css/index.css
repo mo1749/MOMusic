@@ -1701,6 +1701,18 @@ body.empty-home-active.diy-mode #search-area:not(.has-results) #search-mode-tabs
   flex-shrink: 0;
   box-shadow: 0 0 10px rgba(244, 210, 138, .22)
 }
+.tag-trial {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #d6e8ff, #7aa8dc, #3e6fb0);
+  color: #0b1622;
+  font-weight: 600;
+  letter-spacing: .5px;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(122, 168, 220, .18)
+}
 
 .tag-podcast {
   display: inline-block;
@@ -1895,8 +1907,7 @@ body.simple-mode #search-results {
 }
 
 body.simple-mode #quality-control,
-body.simple-mode #controls-hide-btn,
-body.simple-mode .fullscreen-toggle-btn {
+body.simple-mode #controls-hide-btn {
   display: none !important
 }
 
@@ -4681,6 +4692,67 @@ body.immersive-mode #bottom-handle {
   filter: none;
   transition: opacity .34s cubic-bezier(.16, 1, .3, 1), bottom .34s cubic-bezier(.16, 1, .3, 1), width .34s, transform .46s cubic-bezier(.16, 1, .3, 1), filter .38s cubic-bezier(.16, 1, .3, 1);
   width: min(1080px, calc(100vw - 56px));
+}
+
+#danmaku-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 96px;
+  height: 56vh;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .3s ease, visibility .3s ease;
+}
+#danmaku-layer.on {
+  opacity: 1;
+  visibility: visible;
+}
+body.immersive-mode #danmaku-layer {
+  display: none !important;
+}
+.danmaku-item {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  transform: translate3d(var(--dx, 0), 0, 0);
+  max-width: 64vw;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.35;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: rgba(255, 255, 255, .92);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .55), 0 0 14px rgba(0, 245, 212, .14);
+  background: rgba(20, 22, 28, .42);
+  backdrop-filter: blur(6px) saturate(1.1);
+  -webkit-backdrop-filter: blur(6px) saturate(1.1);
+  border: 1px solid rgba(255, 255, 255, .06);
+  will-change: transform, opacity;
+  animation: danmaku-rise var(--dur, 9s) linear forwards;
+}
+.danmaku-item.platform-qq { color: rgba(255, 198, 109, .96); }
+.danmaku-item.platform-qishui { color: rgba(120, 225, 200, .96); }
+.danmaku-item.platform-netease { color: rgba(255, 80, 80, .96); }
+.danmaku-item.platform-kugou { color: rgba(140, 200, 255, .96); }
+.danmaku-item.platform-spotify { color: rgba(80, 220, 120, .96); }
+.danmaku-item.custom-color { text-shadow: 0 1px 8px rgba(0, 0, 0, .55); }
+@keyframes danmaku-rise {
+  0% { transform: translate3d(var(--dx, 0), 0, 0); opacity: 0; }
+  8% { opacity: var(--item-opacity, 1); }
+  88% { opacity: var(--item-opacity, 1); }
+  100% { transform: translate3d(var(--dx, 0), calc(-1 * var(--rise, 50vh)), 0); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .danmaku-item { animation-duration: 14s; }
+}
+#bottom-bar {
   padding: 9px 22px 14px;
   border-radius: 50px;
   background: transparent;
@@ -4903,7 +4975,8 @@ body.home-controls-locked #bottom-bar {
 
 .control-cluster.modes {
   grid-column: 3;
-  justify-content: flex-end
+  justify-content: flex-end;
+  margin-left: 42px
 }
 
 #mini-queue-btn {
@@ -5220,8 +5293,22 @@ body.home-controls-locked #bottom-bar {
 }
 
 .ctrl-btn.active {
-  color: rgba(210, 244, 241, .90);
-  text-shadow: 0 0 12px rgba(0, 245, 212, .16)
+  color: var(--fc-accent, #00f5d4);
+  background: rgba(0, 245, 212, .10);
+  text-shadow: 0 0 12px rgba(0, 245, 212, .22);
+  box-shadow: inset 0 0 0 1px rgba(0, 245, 212, .30), 0 0 14px rgba(0, 245, 212, .18)
+}
+
+#controls-hide-btn.active {
+  color: #ffb648;
+  background: rgba(255, 182, 72, .14);
+  text-shadow: 0 0 14px rgba(255, 182, 72, .36);
+  box-shadow: inset 0 0 0 1px rgba(255, 182, 72, .42), 0 0 18px rgba(255, 182, 72, .30);
+  animation: controls-hide-active-pulse 2.4s ease-in-out infinite;
+}
+@keyframes controls-hide-active-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255, 182, 72, .42), 0 0 18px rgba(255, 182, 72, .30); }
+  50% { box-shadow: inset 0 0 0 1px rgba(255, 182, 72, .60), 0 0 24px rgba(255, 182, 72, .50); }
 }
 
 .ctrl-btn.liked {
@@ -5514,6 +5601,38 @@ body:not(.controls-visible) .lyric-timing-control::before,
   opacity: .38;
   cursor: not-allowed;
   transform: none
+}
+
+.lyric-quick-desktop-btn {
+  margin-top: 8px;
+  width: 100%;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  background: rgba(255, 255, 255, .045);
+  color: rgba(255, 255, 255, .72);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: background .18s, border-color .18s, color .18s, transform .18s
+}
+
+.lyric-quick-desktop-btn:hover {
+  transform: translateY(-1px);
+  color: #fff;
+  border-color: rgba(255, 246, 200, .34);
+  background: rgba(255, 246, 200, .10)
+}
+
+.lyric-quick-desktop-btn:active {
+  transform: translateY(0) scale(.98)
+}
+
+.lyric-quick-desktop-btn.is-active {
+  color: rgba(255, 246, 200, .94);
+  border-color: rgba(255, 246, 200, .34);
+  background: rgba(255, 246, 200, .14)
 }
 
 #quality-btn.quality-pill {
@@ -6894,8 +7013,7 @@ body.diy-mode #controls {
 @media (max-width:940px) {
 
   body.diy-mode .lyrics-toggle-btn,
-  body.diy-mode #volume-control,
-  body.diy-mode .fullscreen-toggle-btn {
+  body.diy-mode #volume-control {
     display: none !important
   }
 }
@@ -7020,7 +7138,7 @@ body.immersive-mode #quality-control,
 body.immersive-mode #volume-control,
 body.immersive-mode #controls-hide-btn,
 body.immersive-mode .control-divider,
-body.immersive-mode .fullscreen-toggle-btn {
+body.immersive-mode #danmaku-btn {
   display: none !important
 }
 
@@ -17655,6 +17773,176 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
   transition: background .15s, border-color .15s
 }
 .lt-connect-btn:hover { background: rgba(80, 140, 240, .22); border-color: rgba(80, 140, 240, .55); }
+
+/* ===== 一起听新UI组件 ===== */
+
+/* 发送按钮 - 白底黑字圆角 */
+.lt-send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.lt-send-btn:hover {
+  background: rgba(255, 255, 255, .85);
+}
+.lt-send-btn:active {
+  transform: scale(.96);
+}
+
+/* 离开房间按钮 - 白底黑字圆角 */
+.lt-leave-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #fff;
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.lt-leave-btn:hover {
+  background: rgba(255, 255, 255, .85);
+}
+.lt-leave-btn:active {
+  transform: scale(.96);
+}
+
+/* 邀请按钮 */
+.lt-invite-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, .6);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.lt-invite-btn:hover {
+  border-color: rgba(255, 255, 255, .3);
+  color: rgba(255, 255, 255, .85);
+  background: rgba(255, 255, 255, .04);
+}
+
+/* 底部操作栏 */
+.lt-active-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  background: rgba(0, 0, 0, .15);
+  flex-shrink: 0;
+}
+
+/* 当前播放歌曲卡片 */
+.lt-current-track {
+  background: linear-gradient(135deg, rgba(80, 140, 240, .1), rgba(120, 80, 240, .06));
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(80, 140, 240, .12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lt-track-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: rgba(80, 140, 240, .15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lt-track-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .9);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lt-track-artist {
+  font-size: 10px;
+  color: rgba(255, 255, 255, .4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lt-chat-badge { font-size: 10px; margin-right: 2px; opacity: .7; }
+
+/* 邀请链接浮层 */
+.lt-invite-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  background: rgba(0, 0, 0, .6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 16px;
+}
+.lt-invite-box {
+  background: rgba(24, 26, 36, .95);
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 14px;
+  padding: 18px;
+  width: 80%;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .5);
+}
+.lt-invite-code {
+  font-size: 24px;
+  letter-spacing: 8px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  background: rgba(0, 0, 0, .3);
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+}
+.lt-invite-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, .35);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.lt-invite-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+}
 
 
 /* ============================================================

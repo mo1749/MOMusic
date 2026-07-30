@@ -740,8 +740,9 @@ void main(){ vec4 t = texture2D(uDotTex, gl_PointCoord); if (t.a < 0.02) discard
     getMode: function () { return mode; },
     update: function (dt) {
       if (!group) return;
-      // PSP 滚动平滑
-      centerSmooth += (centerTarget - centerSmooth) * 0.16;
+      // PSP 滚动平滑 — 速度系数可由 FX 控制台调节
+      var scrollSpeed = (fx && typeof fx.shelfScrollSpeed === 'number') ? fx.shelfScrollSpeed : 0.16;
+      centerSmooth += (centerTarget - centerSmooth) * scrollSpeed;
       if (Math.abs(centerSmooth - centerTarget) < 0.001) centerSmooth = centerTarget;
       var px = pointerParallax.x, py = pointerParallax.y;
       var appRevealed = !document.body.classList.contains('splash-active');

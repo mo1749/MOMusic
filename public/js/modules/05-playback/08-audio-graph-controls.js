@@ -641,7 +641,11 @@ function toggleVolumePanel(e) {
   if (e) e.stopPropagation();
   var wrap = document.getElementById('volume-control');
   if (volumeCloseTimer) { clearTimeout(volumeCloseTimer); volumeCloseTimer = null; }
-  if (wrap) wrap.classList.toggle('open');
+  if (wrap) {
+    var opened = wrap.classList.toggle('open');
+    var btn = document.getElementById('volume-btn');
+    if (btn) btn.classList.toggle('active', opened);
+  }
 }
 
 function releaseVolumePanelFocus(wrap) {
@@ -659,6 +663,8 @@ function closeVolumePanel(force) {
   }
   if (!wrap) return;
   wrap.classList.remove('open');
+  var btn = document.getElementById('volume-btn');
+  if (btn) btn.classList.remove('active');
   releaseVolumePanelFocus(wrap);
   if (force) {
     wrap.classList.add('handoff-closing');

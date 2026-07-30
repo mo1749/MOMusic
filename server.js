@@ -1,4 +1,4 @@
-﻿// ====================================================================
+// ====================================================================
 //  粒子音乐可视化播放器 — Server v2
 //  - 网易云搜索 / 歌曲URL / 封面/音频代理
 //  - 扫码登录 (login_qr_*) + cookie 持久化 (./.cookie)
@@ -2368,7 +2368,105 @@ function mapDailyRecommendationSongs(raw) {
 async function handleDiscoverHome() {
   const info = await getLoginInfo();
   const loggedIn = !!(info && info.loggedIn);
-  if (!loggedIn) {
+
+  let publicPlaylists = [];
+  let privatePlaylists = [];
+  let dailySongs = [];
+
+  if (loggedIn) {
+    const tasks = [
+      personalized({ limit: 8, cookie: userCookie, timestamp: Date.now() }),
+      recommend_resource({ cookie: userCookie, timestamp: Date.now() }),
+      recommend_songs({ cookie: userCookie, timestamp: Date.now() }),
+    ];
+    const result = await Promise.allSettled(tasks);
+
+    const personalizedBody = result[0].status === 'fulfilled' && result[0].value && result[0].value.body || {};
+    publicPlaylists = (personalizedBody.result || personalizedBody.data || [])
+      .map(pl => mapDiscoverPlaylist(pl, '推荐歌单'))
+      .filter(pl => pl.id && pl.name)
+      .slice(0, 8);
+
+    if (result[1].status === 'fulfilled' && result[1].value) {
+      const body = result[1].value.body || {};
+      const raw = body.recommend || body.data || [];
+      privatePlaylists = (Array.isArray(raw) ? raw : [])
+        .map(pl => mapDiscoverPlaylist(pl, '私人推荐'))
+        .filter(pl => pl.id && pl.name)
+        .slice(0, 6);
+    }
+
+    if (result[2].status === 'fulfilled' && result[2].value) {
+      const body = result[2].value.body || {};
+      const raw = body.data && (body.data.dailySongs || body.data.recommend) || body.recommend || [];
+      dailySongs = mapDailyRecommendationSongs(raw);
+    }
+  }
+
+  // 跨平台聚合：总是拉取已登录平台的推荐，与网易云推荐合并去重
+  const platformTasks = [];
+  // QQ 音乐每日推荐（handleQQRecommendations 内部会自行检查登录状态）
+  if (qqCookie) {
+    platformTasks.push(
+      handleQQRecommendations(30).then(function (data) {
+        if (data && Array.isArray(data.songs)) {
+          data.songs.forEach(function (s) {
+            if (s && s.id && s.name) dailySongs.push(Object.assign({}, s, { provider: s.provider || 'qq' }));
+          });
+        }
+      }).catch(function () {})
+    );
+  }
+  // 酷狗猜你喜欢
+  if (kugouCookieHasPlayback(kugouCookie)) {
+    platformTasks.push(
+      handleKugouGuessLike(kugouCookie, 30).then(function (data) {
+        if (data && Array.isArray(data.songs)) {
+          data.songs.forEach(function (s) {
+            if (s && s.id && s.name) dailySongs.push(Object.assign({}, s, { provider: s.provider || 'kugou' }));
+          });
+        }
+      }).catch(function () {})
+    );
+  }
+  // 汽水推荐流
+  if (qishuiCookieHasLogin(qishuiCookie)) {
+    platformTasks.push(
+      handleQishuiFeed(30, qishuiCookie).then(function (data) {
+        if (data && Array.isArray(data.songs)) {
+          data.songs.forEach(function (s) {
+            if (s && s.id && s.name) dailySongs.push(Object.assign({}, s, { provider: s.provider || 'qishui' }));
+          });
+        }
+      }).catch(function () {})
+    );
+  }
+  // Spotify 常听
+  if (getSpotifyConfig().configured) {
+    platformTasks.push(
+      handleSpotifyRecommendations(30).then(function (data) {
+        if (data && Array.isArray(data.songs)) {
+          data.songs.forEach(function (s) {
+            if (s && s.id && s.name) dailySongs.push(Object.assign({}, s, { provider: s.provider || 'spotify' }));
+          });
+        }
+      }).catch(function () {})
+    );
+  }
+  if (platformTasks.length) await Promise.allSettled(platformTasks);
+  // 跨平台去重
+  var seen = {};
+  dailySongs = dailySongs.filter(function (s) {
+    var k = (s.provider || '') + ':' + s.id;
+    if (seen[k]) return false;
+    seen[k] = true;
+    return true;
+  });
+
+  // 任一平台有推荐内容即视为有效
+  const hasAny = dailySongs.length > 0 || loggedIn;
+
+  if (!hasAny) {
     return {
       loggedIn: false,
       user: null,
@@ -2381,44 +2479,16 @@ async function handleDiscoverHome() {
       updatedAt: Date.now(),
     };
   }
-  const tasks = [
-    personalized({ limit: 8, cookie: userCookie, timestamp: Date.now() }),
-    recommend_resource({ cookie: userCookie, timestamp: Date.now() }),
-    recommend_songs({ cookie: userCookie, timestamp: Date.now() }),
-  ];
-  const result = await Promise.allSettled(tasks);
-
-  const personalizedBody = result[0].status === 'fulfilled' && result[0].value && result[0].value.body || {};
-  const publicPlaylists = (personalizedBody.result || personalizedBody.data || [])
-    .map(pl => mapDiscoverPlaylist(pl, '推荐歌单'))
-    .filter(pl => pl.id && pl.name)
-    .slice(0, 8);
-
-  let privatePlaylists = [];
-  if (result[1].status === 'fulfilled' && result[1].value) {
-    const body = result[1].value.body || {};
-    const raw = body.recommend || body.data || [];
-    privatePlaylists = (Array.isArray(raw) ? raw : [])
-      .map(pl => mapDiscoverPlaylist(pl, '私人推荐'))
-      .filter(pl => pl.id && pl.name)
-      .slice(0, 6);
-  }
-
-  let dailySongs = [];
-  if (result[2].status === 'fulfilled' && result[2].value) {
-    const body = result[2].value.body || {};
-    const raw = body.data && (body.data.dailySongs || body.data.recommend) || body.recommend || [];
-    dailySongs = mapDailyRecommendationSongs(raw);
-  }
 
   return {
-    loggedIn,
+    loggedIn: true,
     user: loggedIn ? { userId: info.userId, nickname: info.nickname || '', avatar: info.avatar || '' } : null,
     dailySongs,
     dailySongTotal: dailySongs.length,
     dailySongsComplete: true,
     playlists: privatePlaylists.concat(publicPlaylists).slice(0, 10),
     podcasts: [],
+    mode: loggedIn ? 'member' : 'cross-platform',
     updatedAt: Date.now(),
   };
 }
@@ -3835,54 +3905,88 @@ async function handleQQRecommendations(limit) {
     return { provider: 'qq', loggedIn: false, songs: [], error: 'AUTH_REQUIRED', message: '请先登录 QQ 音乐' };
   }
   const pageLimit = Math.max(1, Math.min(30, Number(limit) || 30));
+
+  // QQ 音乐「每日私享」是一个每日动态生成的歌单，
+  // 需要先从首页推荐流中定位当日歌单 ID，再用歌单接口拉取歌曲
   try {
-    // 使用 QQ musicu.fcg 获取每日推荐歌曲
+    const dailyPlaylistId = await fetchQQDailyPlaylistId();
+    if (dailyPlaylistId) {
+      const tracksResult = await handleQQPlaylistTracks(dailyPlaylistId, { limit: pageLimit });
+      const tracks = (tracksResult && Array.isArray(tracksResult.tracks)) ? tracksResult.tracks : [];
+      const songs = tracks.filter(s => s && s.name && (s.mid || s.id));
+      if (songs.length) {
+        return {
+          provider: 'qq', loggedIn: true, songs, source: 'qq',
+          error: '', mode: 'daily', provenance: 'qq-daily-recommend',
+        };
+      }
+    }
+  } catch (e) { /* 忽略，走 fallback */ }
+
+  // Fallback: 个性化推荐接口
+  try {
     const comm = { uin: info.userId, format: 'json', ct: 24, cv: 0 };
-    const body = {
+    const resp = await qqMusicRequest({
       comm,
       req_1: {
         module: 'music.personalized.Personalized',
         method: 'GetSongFromPersonalized',
         param: { uin: Number(info.userId), start: 0, num: pageLimit },
       },
-    };
-    const resp = await qqMusicRequest(body, { cookie: true, timeoutMs: 7000 });
-    const data = resp && resp.req_1 && resp.req_1.data;
+    }, { cookie: true, timeoutMs: 7000 });
+    const block = resp && resp.req_1;
+    const data = block && block.data;
     let songs = [];
     if (data && Array.isArray(data.songs)) {
       songs = data.songs.map(s => mapQQPlaylistTrack(s)).filter(s => s.name && s.id);
     }
-    // fallback: 用喜欢的歌
-    if (!songs.length) {
-      const likedData = await handleQQLikedPlaylistTracks(info, { limit: pageLimit });
-      songs = (Array.isArray(likedData.tracks) ? likedData.tracks : []).map(function (song) {
-        return Object.assign({}, song, { playable: true });
-      });
-    }
     return {
-      provider: 'qq',
-      loggedIn: true,
-      songs,
-      source: 'qq',
-      error: '',
-      mode: songs.length ? 'daily' : 'liked',
-      provenance: songs.length ? 'qq-daily-recommend' : 'qq-liked-playlist',
+      provider: 'qq', loggedIn: true, songs, source: 'qq',
+      error: songs.length ? '' : 'QQ_DAILY_EMPTY', mode: 'daily', provenance: 'qq-daily-recommend',
     };
   } catch (err) {
-    console.error('[QQRecommendations]', err);
-    // fallback to liked songs on error
-    try {
-      const likedData = await handleQQLikedPlaylistTracks(info, { limit: pageLimit });
-      const tracks = Array.isArray(likedData.tracks) ? likedData.tracks : [];
-      return {
-        provider: 'qq', loggedIn: true,
-        songs: tracks.map(function (song) { return Object.assign({}, song, { playable: true }); }),
-        source: 'qq', error: '', mode: 'liked', provenance: 'qq-liked-playlist-fallback',
-      };
-    } catch (e2) {
-      return { provider: 'qq', loggedIn: true, songs: [], error: err.message || 'QQ_RECOMMEND_FAILED', message: 'QQ 音乐推荐读取失败，请稍后刷新重试。', mode: '', source: 'qq', fallback: false, provenance: '' };
-    }
+    return { provider: 'qq', loggedIn: true, songs: [], error: err.message || 'QQ_RECOMMEND_FAILED', message: 'QQ 音乐推荐读取失败，请稍后刷新重试。', mode: 'daily', source: 'qq', provenance: 'qq-daily-recommend' };
   }
+}
+
+// 从 RecommendFeed 首页推荐流中查找「今日私享」每日推荐歌单 ID
+async function fetchQQDailyPlaylistId() {
+  const info = await getQQLoginInfo();
+  if (!info.loggedIn || !info.userId) return '';
+  const comm = { uin: info.userId, format: 'json', ct: 24, cv: 0 };
+  try {
+    const resp = await qqMusicRequest({
+      comm: comm,
+      req_1: { module: 'music.recommend.RecommendFeed', method: 'get_recommend_feed', param: { uin: Number(info.userId), format: 'json', start: 0, count: 30 } },
+    }, { cookie: true, timeoutMs: 8000 });
+    const data = resp && resp.req_1 && resp.req_1.data;
+    const vShelf = data && data.v_shelf;
+    if (!Array.isArray(vShelf)) return '';
+    // 遍历 v_shelf -> v_niche -> v_card，查找 title 包含「今日私享」或「每日30首」的卡片
+    for (var si = 0; si < vShelf.length; si++) {
+      var nicheArr = vShelf[si] && vShelf[si].v_niche;
+      if (!Array.isArray(nicheArr)) continue;
+      for (var ni = 0; ni < nicheArr.length; ni++) {
+        var cardArr = nicheArr[ni] && nicheArr[ni].v_card;
+        if (!Array.isArray(cardArr)) continue;
+        for (var ci = 0; ci < cardArr.length; ci++) {
+          var card = cardArr[ci];
+          var title = String(card && card.title || '');
+          // 匹配「今日私享」「每日30首」「每日推荐」
+          if (title.indexOf('今日私享') >= 0 || title.indexOf('每日30首') >= 0 || title.indexOf('每日推荐') >= 0 || title.indexOf('每日私享') >= 0) {
+            // 歌单 ID 优先级：id > subid > scheme 中的数字
+            var pid = String(card.id || card.subid || '');
+            if (!pid && card.scheme) {
+              var m = String(card.scheme).match(/(?:playlist|dissid|id)=(\d{6,})/);
+              if (m) pid = m[1];
+            }
+            if (pid) return pid;
+          }
+        }
+      }
+    }
+  } catch (e) { /* 忽略 */ }
+  return '';
 }
 
 async function handleQQPlaylistTracks(id, opts) {
@@ -6407,6 +6511,25 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[QQLoginStatus]', err);
       sendJSON(res, { provider: 'qq', loggedIn: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/qq/vip/debug') {
+    try {
+      const info = await getQQLoginInfo({ forceVip: true, forceCookie: true });
+      const cookieObj = qqCookieObject();
+      const probeRaw = await qqMusicRequest({
+        comm: { uin: qqCookieUin(cookieObj), format: 'json', ct: 24, cv: 0, authst: qqCookieMusicKey(cookieObj) },
+        req_1: {
+          module: 'userInfo.VipQueryServer',
+          method: 'SRFVipQuery_V2',
+          param: { uin_list: [String(qqCookieUin(cookieObj))] },
+        },
+      }, { cookie: true, timeoutMs: 5000 }).catch(e => ({ error: e.message }));
+      sendJSON(res, { info, probeRaw });
+    } catch (err) {
+      sendJSON(res, { error: err.message }, 500);
     }
     return;
   }

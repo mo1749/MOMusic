@@ -185,6 +185,22 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-sonicfloatmin', '方块小值', '最小尺寸'),
         fxConsoleItem('fx-sonicfloatmax', '方块大值', '最大尺寸'),
         fxConsoleItem('fx-sonicfloatspeed', '方块速度', '浮空速度')
+      ] },
+      { key: 'danmaku', title: '弹幕设置', hint: '弹幕字体、颜色、大小、速度和透明度', open: true, items: [
+        fxConsoleItem('danmaku-font-grid', '弹幕字体', '默认 黑体 宋体 楷宋'),
+        fxConsoleItem('danmaku-color-mode-seg', '弹幕颜色模式', '自动 平台色 自定义'),
+        fxConsoleItem('danmaku-color-picker', '弹幕颜色', '文字颜色 自定义色'),
+        fxConsoleItem('fx-danmakusize', '字体大小', '弹幕字号'),
+        fxConsoleItem('fx-danmakuspeed', '滚动速度', '弹幕速度 飘屏速度'),
+        fxConsoleItem('fx-danmakuopacity', '透明度', '弹幕透明'),
+        fxConsoleItem('t-danmakuBold', '加粗', '粗体')
+      ] },
+      { key: 'galaxy', title: '银河旋臂', hint: '旋臂数、紧度、核心、散布和旋转', items: [
+        fxConsoleItem('fx-galaxyarms', '旋臂数', '旋臂数量'),
+        fxConsoleItem('fx-galaxytwist', '旋臂紧度', '螺旋紧度'),
+        fxConsoleItem('fx-galaxycore', '核心亮度', '核球辉光'),
+        fxConsoleItem('fx-galaxyspread', '粒子散布', '星系半径'),
+        fxConsoleItem('fx-galaxyspin', '旋转速度', '星系自转')
       ] }
     ]
   },
@@ -232,7 +248,8 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-shelfsummonscale', '唤出缩放', '卡片缩放'),
         fxConsoleItem('fx-shelfsummonparallax', '唤出视差', '卡片视差'),
         fxConsoleItem('fx-shelfcamenter', '镜头进入速度', '歌单镜头进入'),
-        fxConsoleItem('fx-shelfcamexit', '镜头离开速度', '歌单镜头退出')
+        fxConsoleItem('fx-shelfcamexit', '镜头离开速度', '歌单镜头退出'),
+        fxConsoleItem('fx-shelfscrollspeed', '滑动速度', '歌单架滚动')
       ] },
       { key: 'camera', title: '摄像头交互', hint: '摄像头手势触碰开关', items: [
         fxConsoleItem('cam-seg', '摄像头交互', '关闭 手势触碰')

@@ -2995,15 +2995,15 @@ function checkSonicTopographyPresetGuard() {
   if (!/function deriveGroundLayoutSettings/.test(sonicText) || !/sonicGroundRange/.test(sonicText) || !/state\.root\.rotation\.x\s*=\s*state\.boundRotX/.test(sonicText) || !/state\.root\.position\.set\(0,\s*layout\.y,\s*layout\.z\)/.test(sonicText) || !/state\.root\.scale\.setScalar\(layout\.scale\)/.test(sonicText)) {
     fail('Sonic Topography must expose a wide, lyric-safe horizontal platter layout inside MOMusic camera space');
   }
-  if (!/MAX_VISUAL_PRESET_INDEX = 7/.test(coreText)
+  if (!/MAX_VISUAL_PRESET_INDEX = 9/.test(coreText)
     || !/SONIC_PRESET_INDEX = 7/.test(coreText)
-    || !/LEGACY_REMOVED_VISUAL_PRESET_INDEX = 8/.test(coreText)
+    || !/LEGACY_REMOVED_VISUAL_PRESET_INDEX = 10/.test(coreText)
     || !/preset === LEGACY_REMOVED_VISUAL_PRESET_INDEX\) return SONIC_PRESET_INDEX/.test(coreText)
     || !/normalizeSavedVisualPresetIndex/.test(runtimeText + persistenceText + archiveText)) {
-    fail('Sonic preset 7 must remain selectable while legacy preset 8 archives migrate to it');
+    fail('Sonic preset 7 must remain selectable while legacy preset 10 archives migrate to it');
   }
   if (!/音域回响/.test(archiveText)
-    || !/presetDisplayOrder = \[0, 6, 7, 5/.test(archiveText)
+    || !/presetDisplayOrder = \[0, 6, 7, 8, 9, 5/.test(archiveText)
     || /音域回响[\s\S]{0,120}disabled:\s*true/.test(archiveText)) {
     fail('Sonic Topography must be exposed as the selectable 音域回响 preset');
   }

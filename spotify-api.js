@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 
 const fs = require('fs');
 const https = require('https');
@@ -971,20 +971,6 @@ async function handleSpotifyRecommendations(limit) {
       mode = 'personal-top';
     } catch (err) {
       console.warn('[SpotifyRecommendations] top tracks:', err.message);
-    }
-  }
-  if (!items.length && scopes.includes('user-library-read')) {
-    try {
-      const json = await spotifyUserGet('/me/tracks', {
-        limit,
-        offset: 0,
-        market: status.market,
-      }, { timeoutMs: 9000 });
-      const rows = json && Array.isArray(json.items) ? json.items : [];
-      items = rows.map(row => row && row.track).filter(Boolean);
-      mode = 'liked-affinity';
-    } catch (err) {
-      console.warn('[SpotifyRecommendations] liked tracks:', err.message);
     }
   }
   const songs = dedupeSpotifySongs(items.map((item, index) => mapSpotifyTrack(item, index, 'personal')).filter(Boolean)).slice(0, limit);

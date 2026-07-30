@@ -21,11 +21,13 @@ function bindFxPanel() {
     ['fx-bgopacity', 'backgroundOpacity'], ['fx-bgcropx', 'backgroundMediaCropX'], ['fx-bgcropy', 'backgroundMediaCropY'], ['fx-bgzoom', 'backgroundMediaZoom'], ['fx-windowbgopacity', 'windowBackgroundOpacity'], ['fx-bgglassopacity', 'backgroundGlassOpacity'], ['fx-glassaberration', 'controlGlassChromaticOffset'],
     ['fx-playlistblur', 'playlistPanelGlassBlur'], ['fx-playlistdensity', 'playlistPanelGlassDensity'], ['fx-playlistopen', 'playlistPanelOpenDuration'], ['fx-playlistclose', 'playlistPanelCloseDuration'],
     ['fx-desktoplyricssize', 'desktopLyricsSize'], ['fx-desktoplyricsopacity', 'desktopLyricsOpacity'], ['fx-desktoplyricsy', 'desktopLyricsY'], ['fx-wallpaperopacity', 'wallpaperOpacity'],
+    ['fx-danmakusize', 'danmakuSize'], ['fx-danmakuspeed', 'danmakuSpeed'], ['fx-danmakuopacity', 'danmakuOpacity'],
+    ['fx-galaxyarms', 'galaxyArms'], ['fx-galaxytwist', 'galaxyTwist'], ['fx-galaxycore', 'galaxyCore'], ['fx-galaxyspread', 'galaxySpread'], ['fx-galaxyspin', 'galaxySpin'],
     ['fx-shelfsize', 'shelfSize'], ['fx-shelfx', 'shelfOffsetX'], ['fx-shelfy', 'shelfOffsetY'], ['fx-shelfz', 'shelfOffsetZ'], ['fx-shelfangle', 'shelfAngleY'], ['fx-shelfopacity', 'shelfOpacity'], ['fx-shelfbgalpha', 'shelfBgOpacity'],
     ['fx-shelfdetailx', 'shelfDetailOffsetX'], ['fx-shelfdetaily', 'shelfDetailOffsetY'], ['fx-shelfdetailz', 'shelfDetailOffsetZ'], ['fx-shelfdetailscale', 'shelfDetailScale'], ['fx-shelfdetailanglex', 'shelfDetailAngleX'], ['fx-shelfdetailangley', 'shelfDetailAngleY'], ['fx-shelfdetailrowgap', 'shelfDetailRowGap'],
     ['fx-shelfdetailopen', 'shelfDetailOpenDuration'], ['fx-shelfdetailclose', 'shelfDetailCloseDuration'], ['fx-shelfdetailrowtime', 'shelfDetailRowDuration'], ['fx-shelfdetailintro', 'shelfDetailIntroStrength'], ['fx-shelfdetailparallax', 'shelfDetailParallax'],
     ['fx-shelfsummonopen', 'shelfSummonOpenDuration'], ['fx-shelfsummonclose', 'shelfSummonCloseDuration'], ['fx-shelfsummonslide', 'shelfSummonSlide'], ['fx-shelfsummonstagger', 'shelfSummonStagger'], ['fx-shelfsummonscale', 'shelfSummonScale'], ['fx-shelfsummonparallax', 'shelfSummonParallax'],
-    ['fx-shelfcamenter', 'shelfCameraEnterSpeed'], ['fx-shelfcamexit', 'shelfCameraExitSpeed'],
+    ['fx-shelfcamenter', 'shelfCameraEnterSpeed'], ['fx-shelfcamexit', 'shelfCameraExitSpeed'], ['fx-shelfscrollspeed', 'shelfScrollSpeed'],
     ['fx-lyricspacing', 'lyricLetterSpacing'], ['fx-lyriclineheight', 'lyricLineHeight'], ['fx-lyricweight', 'lyricWeight'],
     ['fx-lyriccustomlines', 'lyricCustomLineCount'],
     ['fx-lyricglitchintensity', 'lyricGlitchIntensity'], ['fx-lyricglitchslice', 'lyricGlitchSlice'], ['fx-lyricglitchchroma', 'lyricGlitchChroma'], ['fx-lyricglitchrate', 'lyricGlitchRate'], ['fx-lyricglitchjitter', 'lyricGlitchJitter'],
@@ -101,6 +103,14 @@ function bindFxPanel() {
       if (pair[1] === 'desktopLyricsOpacity') fx.desktopLyricsOpacity = clampRange(fx.desktopLyricsOpacity, 0.28, 1);
       if (pair[1] === 'desktopLyricsY') fx.desktopLyricsY = clampRange(fx.desktopLyricsY, 0.08, 0.92);
       if (pair[1] === 'wallpaperOpacity') fx.wallpaperOpacity = clampRange(fx.wallpaperOpacity, 0.35, 1);
+      if (pair[1] === 'danmakuSize') fx.danmakuSize = Math.round(clampRange(fx.danmakuSize, 10, 22));
+      if (pair[1] === 'danmakuSpeed') fx.danmakuSpeed = clampRange(fx.danmakuSpeed, 0.5, 2);
+      if (pair[1] === 'danmakuOpacity') fx.danmakuOpacity = clampRange(fx.danmakuOpacity, 0.3, 1);
+      if (pair[1] === 'galaxyArms') fx.galaxyArms = Math.round(clampRange(fx.galaxyArms, 2, 8));
+      if (pair[1] === 'galaxyTwist') fx.galaxyTwist = clampRange(fx.galaxyTwist, 0, 2);
+      if (pair[1] === 'galaxyCore') fx.galaxyCore = clampRange(fx.galaxyCore, 0, 1);
+      if (pair[1] === 'galaxySpread') fx.galaxySpread = clampRange(fx.galaxySpread, 0.5, 2);
+      if (pair[1] === 'galaxySpin') fx.galaxySpin = clampRange(fx.galaxySpin, 0, 2);
       if (pair[1] === 'shelfSize') fx.shelfSize = clampRange(fx.shelfSize, 0.65, 1.45);
       if (pair[1] === 'shelfOffsetX') fx.shelfOffsetX = clampRange(fx.shelfOffsetX, -1.2, 1.2);
       if (pair[1] === 'shelfOffsetY') fx.shelfOffsetY = clampRange(fx.shelfOffsetY, -0.9, 0.9);
@@ -131,6 +141,7 @@ function bindFxPanel() {
       if (pair[1] === 'shelfSummonParallax') fx.shelfSummonParallax = clampRange(fx.shelfSummonParallax, 0, 2.5);
       if (pair[1] === 'shelfCameraEnterSpeed') fx.shelfCameraEnterSpeed = clampRange(fx.shelfCameraEnterSpeed, 0.2, 1.5);
       if (pair[1] === 'shelfCameraExitSpeed') fx.shelfCameraExitSpeed = clampRange(fx.shelfCameraExitSpeed, 0.2, 1.5);
+      if (pair[1] === 'shelfScrollSpeed') fx.shelfScrollSpeed = clampRange(fx.shelfScrollSpeed, 0.04, 0.4);
       if (pair[1] === 'lyricOffsetX') fx.lyricOffsetX = clampRange(fx.lyricOffsetX, -4.0, 4.0);
       if (pair[1] === 'lyricOffsetY') fx.lyricOffsetY = clampRange(fx.lyricOffsetY, -2.4, 2.7);
       if (pair[1] === 'lyricOffsetZ') fx.lyricOffsetZ = clampRange(fx.lyricOffsetZ, -3.2, 3.2);
@@ -143,7 +154,7 @@ function bindFxPanel() {
       if (pair[1] === 'lyricGlitchJitter') fx.lyricGlitchJitter = clampRange(fx.lyricGlitchJitter, 0, 1.8);
       if (out) out.textContent = pair[1] === 'coverResolution'
         ? coverParticleCountLabel(fx.coverResolution)
-        : (pair[1] === 'lyricWeight' || /^sonicGround/.test(pair[1]) || /^sonicAudio/.test(pair[1]) || pair[1] === 'sonicWorkshopInputGain' || pair[1] === 'controlGlassChromaticOffset' || pair[1] === 'playlistPanelGlassBlur' || pair[1] === 'backgroundMediaCropX' || pair[1] === 'backgroundMediaCropY' || pair[1] === 'lyricTiltX' || pair[1] === 'lyricTiltY' || pair[1] === 'shelfAngleY' || pair[1] === 'shelfDetailAngleX' || pair[1] === 'shelfDetailAngleY' ? String(Math.round(fx[pair[1]])) : Number(el.value).toFixed(pair[1] === 'lyricLetterSpacing' ? 3 : 2));
+        : (pair[1] === 'lyricWeight' || /^sonicGround/.test(pair[1]) || /^sonicAudio/.test(pair[1]) || pair[1] === 'sonicWorkshopInputGain' || pair[1] === 'controlGlassChromaticOffset' || pair[1] === 'playlistPanelGlassBlur' || pair[1] === 'backgroundMediaCropX' || pair[1] === 'backgroundMediaCropY' || pair[1] === 'lyricTiltX' || pair[1] === 'lyricTiltY' || pair[1] === 'shelfAngleY' || pair[1] === 'shelfDetailAngleX' || pair[1] === 'shelfDetailAngleY' || pair[1] === 'danmakuSize' || pair[1] === 'galaxyArms' ? String(Math.round(fx[pair[1]])) : Number(el.value).toFixed(pair[1] === 'lyricLetterSpacing' ? 3 : 2));
       if (typeof refreshSonicAudioMonitorUi === 'function' && /^sonicAudio/.test(pair[1])) refreshSonicAudioMonitorUi();
       if (/^sonicWorkshop/.test(pair[1]) && window.MOMusicSonicWorkshop && typeof MOMusicSonicWorkshop.pushProperties === 'function') MOMusicSonicWorkshop.pushProperties(true);
       syncFxUniforms();
@@ -152,6 +163,7 @@ function bindFxPanel() {
       syncLyricRealtimeFxChange(pair[1], { deferred: true });
       if (/^(desktopLyricsSize|desktopLyricsOpacity|desktopLyricsY)$/.test(pair[1])) pushDesktopLyricsState(true);
       if (pair[1] === 'wallpaperOpacity') pushWallpaperState(true);
+      if (/^danmaku(Size|Speed|Opacity)$/.test(pair[1]) && typeof applyDanmakuFxToLayer === 'function') applyDanmakuFxToLayer();
       var saveOpts = { user: true, reason: /^backgroundMedia(CropX|CropY|Zoom)$/.test(pair[1]) ? 'backgroundMediaCrop' : pair[1] };
       if (pair[1] === 'controlGlassChromaticOffset') saveOpts.syncDisk = true;
       if (isStageLyricRealtimeFxKey(pair[1]) || isDesktopLyricRealtimeFxKey(pair[1])) scheduleLyricLayoutSave(360, saveOpts);
@@ -233,6 +245,14 @@ function bindFxPanel() {
     shelfAccentPicker.addEventListener('input', function () { setShelfAccentColor(shelfAccentPicker.value, true); });
     shelfAccentPicker.addEventListener('change', function () { showToast('歌单架颜色: ' + shelfAccentHex().toUpperCase()); });
   }
+  var danmakuColorPicker = document.getElementById('danmaku-color-picker');
+  if (danmakuColorPicker) {
+    danmakuColorPicker.addEventListener('input', function () { setDanmakuColor(danmakuColorPicker.value, true); });
+    danmakuColorPicker.addEventListener('change', function () { showToast('弹幕颜色: ' + normalizeHexColor(danmakuColorPicker.value, '#ffffff').toUpperCase()); });
+  }
+  document.querySelectorAll('#danmaku-color-mode-seg [data-danmaku-color-mode]').forEach(function (btn) {
+    btn.addEventListener('click', function () { setDanmakuColorMode(btn.getAttribute('data-danmaku-color-mode')); });
+  });
   var bgImageInput = document.getElementById('background-image-input');
   if (bgImageInput) {
     bgImageInput.addEventListener('change', function (e) {
@@ -241,7 +261,7 @@ function bindFxPanel() {
       e.target.value = '';
     });
   }
-  ['ui-accent-picker', 'visual-tint-picker', 'sonic-ground-base-picker', 'sonic-ground-cool-picker', 'sonic-ground-warm-picker', 'sonic-ground-accent-picker', 'home-accent-picker', 'home-icon-picker', 'visual-icon-picker', 'bg-color-picker', 'shelf-accent-picker', 'lyric-color-picker', 'lyric-highlight-picker', 'lyric-glow-picker'].forEach(function (id) {
+  ['ui-accent-picker', 'visual-tint-picker', 'sonic-ground-base-picker', 'sonic-ground-cool-picker', 'sonic-ground-warm-picker', 'sonic-ground-accent-picker', 'home-accent-picker', 'home-icon-picker', 'visual-icon-picker', 'bg-color-picker', 'shelf-accent-picker', 'lyric-color-picker', 'lyric-highlight-picker', 'lyric-glow-picker', 'danmaku-color-picker'].forEach(function (id) {
     bindColorLabPicker(document.getElementById(id));
   });
   bindColorLabRows();
@@ -401,11 +421,12 @@ function toggleFx(key) {
   if (toggle) toggle.classList.toggle('on', fx[key]);
   if (key === 'lyricGlow' || key === 'lyricGlowBeat') updateLyricGlowControls();
   syncFxUniforms();
-  if (key === 'lyricCameraLock' || key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles' || key === 'lyricVerticalFloat' || key === 'backgroundStarRiver' || key === 'lyricPauseHold' || key === 'bloom' || key === 'edge' || key === 'cinema' || key === 'aiDepth' || key === 'desktopLyrics' || key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight' || key === 'wallpaperMode' || key === 'sonicGroundFloatingEnabled' || key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack' || key === 'shelfShowPodcasts' || key === 'shelfMergeCollections' || key === 'liveBackgroundKeep' || key === 'memoryAutoTrimApp' || key === 'memoryAutoTrimOnBackground' || key === 'memoryAutoSystemTrim' || key === 'memorySystemAutoElevate') saveLyricLayout({ user: true, reason: key });
+  if (key === 'lyricCameraLock' || key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles' || key === 'lyricVerticalFloat' || key === 'backgroundStarRiver' || key === 'lyricPauseHold' || key === 'bloom' || key === 'edge' || key === 'cinema' || key === 'aiDepth' || key === 'desktopLyrics' || key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight' || key === 'wallpaperMode' || key === 'sonicGroundFloatingEnabled' || key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack' || key === 'shelfShowPodcasts' || key === 'shelfMergeCollections' || key === 'liveBackgroundKeep' || key === 'memoryAutoTrimApp' || key === 'memoryAutoTrimOnBackground' || key === 'memoryAutoSystemTrim' || key === 'memorySystemAutoElevate' || key === 'danmakuBold') saveLyricLayout({ user: true, reason: key });
   if ((key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack') && typeof refreshSonicAudioMonitorUi === 'function') refreshSonicAudioMonitorUi();
   if (key === 'floatLayer') { if (fx.floatLayer) createFloatLayer(); else destroyFloatLayer(); saveLyricLayout({ user: true, reason: key }); }
   if (key === 'desktopLyrics') applyDesktopLyricsState(true);
   if (key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight') pushDesktopLyricsState(true);
+  if (key === 'danmakuBold' && typeof applyDanmakuFxToLayer === 'function') applyDanmakuFxToLayer();
   if (key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles') pushDesktopLyricsState(true);
   if (key === 'backgroundStarRiver') {
     if (typeof updateBackgroundStarRiverState === 'function') updateBackgroundStarRiverState(0.016, true);
@@ -512,6 +533,7 @@ function resetFx() {
   applyDesktopLyricsState(true);
   pushDesktopLyricsState(true);
   applyWallpaperModeState(true);
+  if (typeof applyDanmakuFxToLayer === 'function') applyDanmakuFxToLayer();
   updateRenderPowerClasses();
   applyRendererPowerMode();
   setStageLyricPalette(stageLyrics.coverPalette || stageLyrics.palette);
