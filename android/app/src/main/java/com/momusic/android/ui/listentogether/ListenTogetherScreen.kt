@@ -446,7 +446,7 @@ class ListenTogetherViewModel : ViewModel() {
         if (el == null || el.isJsonNull) return null
         val obj = el.asJsonObject ?: return null
         val members: List<LtMember> = runCatching {
-            gson.fromJson(obj.get("members"), object : TypeToken<List<LtMember>>() {}.type)
+            gson.fromJson<List<LtMember>>(obj.get("members"), object : TypeToken<List<LtMember>>() {}.type)
         }.getOrNull() ?: emptyList()
         val track = runCatching { gson.fromJson(obj.get("currentTrack"), LtTrack::class.java) }.getOrNull()
         return LtRoom(

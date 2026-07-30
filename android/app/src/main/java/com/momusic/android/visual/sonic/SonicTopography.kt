@@ -9,6 +9,7 @@ import com.google.android.filament.MaterialInstance
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Scene
 import com.google.android.filament.TransformManager
+import com.google.android.filament.VertexAttribute
 import com.google.android.filament.VertexBuffer
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -124,9 +125,9 @@ class SonicTopography {
         terrainVertexBuffer = VertexBuffer.Builder()
             .vertexCount(vertexCount)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
-        terrainVertexBuffer?.setBufferAt(engine, 0, terrainPositionBuffer)
+        terrainVertexBuffer?.setBufferAt(engine, 0, terrainPositionBuffer!!)
 
         // 索引：每个格子两个三角形
         val indices = ShortArray(indexCount)
@@ -183,9 +184,9 @@ class SonicTopography {
         floatingVertexBuffer = VertexBuffer.Builder()
             .vertexCount(floatingCount)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
-        floatingVertexBuffer?.setBufferAt(engine, 0, floatingPositionBuffer)
+        floatingVertexBuffer?.setBufferAt(engine, 0, floatingPositionBuffer!!)
         val idxBuf = allocateShortBuffer(floatingCount)
         idxBuf.asShortBuffer().put(ShortArray(floatingCount) { it.toShort() })
         floatingIndexBuffer = IndexBuffer.Builder()
@@ -279,7 +280,7 @@ class SonicTopography {
             }
         }
         uploadFloat(terrainPositionBuffer, terrainPositions)
-        terrainVertexBuffer?.setBufferAt(eng, 0, terrainPositionBuffer)
+        terrainVertexBuffer?.setBufferAt(eng, 0, terrainPositionBuffer!!)
 
         // 地形自转
         try {
@@ -310,7 +311,7 @@ class SonicTopography {
                 }
             }
             uploadFloat(floatingPositionBuffer, floatingPositions)
-            floatingVertexBuffer?.setBufferAt(eng, 0, floatingPositionBuffer)
+            floatingVertexBuffer?.setBufferAt(eng, 0, floatingPositionBuffer!!)
         }
 
         // ===== 涟漪推进 =====

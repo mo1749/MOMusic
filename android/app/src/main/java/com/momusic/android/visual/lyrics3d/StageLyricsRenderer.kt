@@ -12,6 +12,7 @@ import com.google.android.filament.Scene
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
 import com.google.android.filament.TransformManager
+import com.google.android.filament.VertexAttribute
 import com.google.android.filament.VertexBuffer
 import com.momusic.android.data.model.LyricFont
 import com.momusic.android.data.model.LyricLine
@@ -124,8 +125,8 @@ class StageLyricsRenderer {
         quadVertexBuffer = VertexBuffer.Builder()
             .vertexCount(4)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 20)
-            .attribute(VertexBuffer.AttributeType.UV0, 0, VertexBuffer.AttributeFormat.FLOAT2, 12, 20)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 20)
+            .attribute(VertexAttribute.UV0, 0, VertexBuffer.AttributeType.FLOAT2, 12, 20)
             .build(engine)
         quadVertexBuffer?.setBufferAt(engine, 0, vbuf)
 

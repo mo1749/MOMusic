@@ -203,7 +203,7 @@ class FilamentEngine private constructor() {
         val vw = view ?: return
         vw.setViewport(Viewport(0, 0, frameWidth, frameHeight))
         // 更新相机宽高比
-        camera?.setProjection(45.0, frameWidth.toFloat() / frameHeight.toFloat(), 0.1, 100.0, Camera.Fov.VERTICAL)
+        camera?.setProjection(45.0, frameWidth.toDouble() / frameHeight.toDouble(), 0.1, 100.0, Camera.Fov.VERTICAL)
     }
 
     /** 启动 Choreographer 驱动的渲染循环。 */
@@ -279,9 +279,9 @@ class FilamentEngine private constructor() {
                 indirectLight?.let { eng.destroyIndirectLight(it) }
                 if (sunLight != 0) {
                     scene?.removeEntity(sunLight)
-                    eng.destroyLight(sunLight)
+                    eng.destroyLightEntity(sunLight)
                 }
-                camera?.let { eng.destroyCamera(it) }
+                if (cameraEntity != 0) eng.destroyCameraEntity(cameraEntity)
                 if (cameraEntity != 0) EntityManager.get().destroy(cameraEntity)
                 view?.let { eng.destroyView(it) }
                 scene?.let { eng.destroyScene(it) }

@@ -8,6 +8,7 @@ import com.google.android.filament.Material
 import com.google.android.filament.MaterialInstance
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Scene
+import com.google.android.filament.VertexAttribute
 import com.google.android.filament.VertexBuffer
 import com.google.android.filament.IndexBuffer
 import java.nio.ByteBuffer
@@ -165,9 +166,9 @@ class ParticleSystem {
         floatingVertexBuffer = VertexBuffer.Builder()
             .vertexCount(floatingCount)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
-        floatingVertexBuffer?.setBufferAt(engine, 0, floatingPositionBuffer)
+        floatingVertexBuffer?.setBufferAt(engine, 0, floatingPositionBuffer!!)
 
         // 索引缓冲（点列表，每个粒子一个索引）
         val indices = ShortArray(floatingCount) { it.toShort() }
@@ -198,9 +199,9 @@ class ParticleSystem {
         trailVertexBuffer = VertexBuffer.Builder()
             .vertexCount(trailMax)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
-        trailVertexBuffer?.setBufferAt(engine, 0, trailPositionBuffer)
+        trailVertexBuffer?.setBufferAt(engine, 0, trailPositionBuffer!!)
         val idxBuf = allocateShortBuffer(trailMax)
         idxBuf.asShortBuffer().put(ShortArray(trailMax) { it.toShort() })
         trailIndexBuffer = IndexBuffer.Builder()
@@ -226,9 +227,9 @@ class ParticleSystem {
         burstVertexBuffer = VertexBuffer.Builder()
             .vertexCount(burstMax)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
-        burstVertexBuffer?.setBufferAt(engine, 0, burstPositionBuffer)
+        burstVertexBuffer?.setBufferAt(engine, 0, burstPositionBuffer!!)
         val idxBuf = allocateShortBuffer(burstMax)
         idxBuf.asShortBuffer().put(ShortArray(burstMax) { it.toShort() })
         burstIndexBuffer = IndexBuffer.Builder()
@@ -268,7 +269,7 @@ class ParticleSystem {
         skullVertexBuffer = VertexBuffer.Builder()
             .vertexCount(skullPointCount)
             .bufferCount(1)
-            .attribute(VertexBuffer.AttributeType.POSITION, 0, VertexBuffer.AttributeFormat.FLOAT3, 0, 12)
+            .attribute(VertexAttribute.POSITION, 0, VertexBuffer.AttributeType.FLOAT3, 0, 12)
             .build(engine)
         skullVertexBuffer?.setBufferAt(engine, 0, buf)
         val idxBuf = allocateShortBuffer(skullPointCount)
@@ -361,7 +362,7 @@ class ParticleSystem {
             }
         }
         uploadFloat(floatingPositionBuffer, floatingPositions)
-        floatingVertexBuffer?.setBufferAt(eng, 0, floatingPositionBuffer)
+        floatingVertexBuffer?.setBufferAt(eng, 0, floatingPositionBuffer!!)
 
         // ===== 指针拖尾：向最新指针位置插值 =====
         // 将 pointer(屏幕坐标) 映射到 3D 空间近似坐标
@@ -372,7 +373,7 @@ class ParticleSystem {
         trailPositions[trailHead * 3 + 2] = 2f
         trailHead = (trailHead + 1) % trailMax
         uploadFloat(trailPositionBuffer, trailPositions)
-        trailVertexBuffer?.setBufferAt(eng, 0, trailPositionBuffer)
+        trailVertexBuffer?.setBufferAt(eng, 0, trailPositionBuffer!!)
 
         // ===== 封面爆发粒子：生命周期推进 =====
         for (i in 0 until burstMax) {
@@ -390,7 +391,7 @@ class ParticleSystem {
             }
         }
         uploadFloat(burstPositionBuffer, burstPositions)
-        burstVertexBuffer?.setBufferAt(eng, 0, burstPositionBuffer)
+        burstVertexBuffer?.setBufferAt(eng, 0, burstPositionBuffer!!)
 
         // ===== 材质参数 =====
         try {
