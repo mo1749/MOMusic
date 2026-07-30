@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.4.0
+
+- 修复：安卓版 8 个 UI 文件缺失 `collectAsStateWithLifecycle` import 导致编译失败
+- 修复：ListenStats 数据模型重复定义冲突
+- 修复：BeatAnalysis / Update 页面导航路由未注册
+- 修复：DesktopLyricService 未在 AndroidManifest 注册
+- 修复：lifecycle-runtime-compose 依赖缺失
+- 优化：GitHub Actions 改用 setup-gradle 指定 Gradle 8.7，不再依赖 gradlew
+
 ## v1.3.0
 
 - 新增：安卓版客户端（Kotlin + Jetpack Compose 原生开发）
