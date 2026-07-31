@@ -1,14 +1,12 @@
-# MoMusic v1.3.0
 
-新增安卓版客户端（Kotlin + Jetpack Compose 原生开发），GitHub Actions 自动构建 APK。
 
 ## 下载
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | MoMusic-1.3.0-Setup.exe | 安装程序 (NSIS) |
-| Windows | MoMusic-1.3.0-Portable.zip | 便携版 (免安装) |
-| Android | app-release.apk | 安卓 APK |
+| Windows | MoMusic-1.3.2-Setup.exe | 安装程序 (NSIS) |
+| Windows | MoMusic-1.3.2-Portable.zip | 便携版 (免安装) |
+
 
 ## 更新内容
 
