@@ -1,7 +1,7 @@
 {
   "name": "MOMusic",
   "productName": "MoMusic",
-  "version": "1.4.2",
+  "version": "1.3.0",
   "description": "MOMusic - 多平台音乐聚合播放器，支持QQ音乐、网易云音乐、酷狗音乐、汽水音乐，融合桌面模式、歌词舞台、粒子视觉和3D歌单架，支持一起听功能。",
   "author": "MOMusic",
   "license": "GPL-3.0-only",
@@ -57,6 +57,12 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -74,6 +80,9 @@
       "installerHeader": "build/installerHeader.bmp",
       "include": "build/installer.nsh",
       "artifactName": "MoMusic-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "MoMusic-${version}-Portable.${ext}"
     },
     "publish": [
       {

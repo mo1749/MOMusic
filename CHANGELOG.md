@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.0（Windows 版同步发布）
+
+- 新增：Windows 版便携包（portable）构建目标，与安装程序同步发布
+- 同步：版本号对齐安卓版 v1.3.0
+
 ## v1.3.0（安卓版扩展功能补齐）
 
 - 新增：FX 控制台（均衡器/低音增强/环绕声，绑定 ExoPlayer audioSessionId）
