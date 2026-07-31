@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.0（安卓版扩展功能补齐）
+
+- 新增：FX 控制台（均衡器/低音增强/环绕声，绑定 ExoPlayer audioSessionId）
+- 新增：节拍分析页（BPM 估算/节拍脉冲/波形可视化）
+- 新增：桌面歌词（悬浮窗服务 + 权限处理 + 设置页）
+- 新增：一起听页面接入路由（WebSocket 客户端）
+- 新增：弹幕覆盖层（全屏播放器内开关）
+- 优化：全屏播放器集成粒子背景 + 音频频谱 + 弹幕层
+- 优化：顶部添加弹幕/FX/一起听/桌面歌词功能入口
+- 修复：GitHub Actions 改用 setup-gradle 绕过损坏的 gradle-wrapper.jar
+- 修复：DanmakuOverlay 未使用变量警告
+
 ## v1.4.1
 
 - 修复：安卓版 19 处 Kotlin 编译错误
