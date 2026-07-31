@@ -130,8 +130,7 @@ fun HomeScreen(navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(bottom = 72.dp), // 为全局底部控制栏预留空间
+                .padding(innerPadding),
         ) {
             when {
                 isLoading -> {

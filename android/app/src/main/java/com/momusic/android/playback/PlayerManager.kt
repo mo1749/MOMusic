@@ -70,6 +70,10 @@ class PlayerManager private constructor(context: Context) {
         player.addListener(listener)
     }
 
+    /** ExoPlayer 的 audio session id，供 FX 均衡器/低音增强等音频效果使用 */
+    val audioSessionId: Int
+        get() = try { player.audioSessionId } catch (_: Exception) { 0 }
+
     /**
      * 设置播放队列并播放指定歌曲。
      * 媒体 URL 由外部观察 [currentSong] 变化后通过 [setMediaUrl] 注入。

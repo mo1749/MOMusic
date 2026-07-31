@@ -11,12 +11,13 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.random.Random
 
-/**
- * 单个粒子的状态
- */
+/** 单个粒子的状态 */
 data class Particle(
     var x: Float,
     var y: Float,
@@ -24,49 +25,46 @@ data class Particle(
     var vy: Float,
     var radius: Float,
     var alpha: Float,
-    var phase: Float,  // 用于呼吸效果
+    var phase: Float,
 )
 
 /**
- * 粒子背景效果
+ * 粒子背景效果（对齐 Windows 版 Three.js 粒子球视觉）
  *
- * 用 Compose Canvas 实现 2D 浮动粒子动画：
- * - 全屏 Canvas，绘制浮动的粒子点
- * - 粒子有随机位置、速度、大小、颜色（青绿色系）
- * - 粒子缓慢漂浮，碰到边界反弹
- * - 用 LaunchedEffect + withFrameNanos 驱动每帧更新
+ * 用 Compose Canvas 实现：
+ * - 全屏 Canvas，绘制浮动粒子点
+ * - 粒子之间近距离自动连线（形成网状结构）
+ * - 呼吸效果（透明度随时间正弦波动）
+ * - 颜色渐变（青绿到紫色）
+ * - 缓慢漂浮，边界反弹
  */
 @Composable
 fun ParticleBackground(
     modifier: Modifier = Modifier,
-    particleCount: Int = 60,
-    color: Color = Color(0xFF00F5D4),
+    particleCount: Int = 50,
+    primaryColor: Color = Color(0xFF00F5D4),
+    secondaryColor: Color = Color(0xFFA855F7),
+    linkDistance: Float = 0.18f,
 ) {
-    // 用 remember 保存粒子状态（可观察的列表，便于每帧刷新绘制）
     val particles = remember {
         List(particleCount) {
             Particle(
                 x = Random.nextFloat(),
                 y = Random.nextFloat(),
-                vx = (Random.nextFloat() - 0.5f) * 0.001f,
-                vy = (Random.nextFloat() - 0.5f) * 0.001f,
-                radius = Random.nextFloat() * 3f + 1f,
-                alpha = Random.nextFloat() * 0.5f + 0.2f,
+                vx = (Random.nextFloat() - 0.5f) * 0.0008f,
+                vy = (Random.nextFloat() - 0.5f) * 0.0008f,
+                radius = Random.nextFloat() * 2.5f + 0.8f,
+                alpha = Random.nextFloat() * 0.5f + 0.25f,
                 phase = Random.nextFloat() * (Math.PI * 2).toFloat(),
             )
         }.toMutableStateList()
     }
 
-    // 时间戳（秒），用于驱动呼吸效果
     var tick by remember { mutableStateOf(0f) }
 
-    // 每帧更新粒子位置
     LaunchedEffect(Unit) {
         while (true) {
-            withFrameNanos { nanoTime ->
-                tick = nanoTime / 1_000_000_000f
-            }
-            // 更新粒子位置（归一化坐标 0..1），碰到边界反弹
+            withFrameNanos { nanoTime -> tick = nanoTime / 1_000_000_000f }
             particles.forEach { p ->
                 p.x += p.vx
                 p.y += p.vy
@@ -79,9 +77,32 @@ fun ParticleBackground(
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
+
+        // 绘制粒子之间的连线（近距离）
+        for (i in particles.indices) {
+            for (j in i + 1 until particles.size) {
+                val p1 = particles[i]
+                val p2 = particles[j]
+                val dx = p1.x - p2.x
+                val dy = p1.y - p2.y
+                val dist = hypot(dx, dy)
+                if (dist < linkDistance) {
+                    val linkAlpha = (1f - dist / linkDistance) * 0.25f
+                    drawLine(
+                        color = primaryColor.copy(alpha = linkAlpha),
+                        start = Offset(p1.x * w, p1.y * h),
+                        end = Offset(p2.x * w, p2.y * h),
+                        strokeWidth = 0.8f,
+                    )
+                }
+            }
+        }
+
+        // 绘制粒子（带呼吸效果和颜色渐变）
         particles.forEach { p ->
-            // 呼吸效果：透明度随时间正弦波动
-            val breath = 0.7f + 0.3f * kotlin.math.sin(tick * 2f + p.phase)
+            val breath = 0.7f + 0.3f * sin(tick * 1.5f + p.phase)
+            val colorMix = (sin(tick * 0.5f + p.phase) + 1f) / 2f
+            val color = lerpColor(primaryColor, secondaryColor, colorMix)
             drawCircle(
                 color = color.copy(alpha = p.alpha * breath),
                 radius = p.radius,
@@ -89,4 +110,14 @@ fun ParticleBackground(
             )
         }
     }
+}
+
+/** 简单的颜色插值 */
+private fun lerpColor(a: Color, b: Color, t: Float): Color {
+    return Color(
+        red = a.red + (b.red - a.red) * t,
+        green = a.green + (b.green - a.green) * t,
+        blue = a.blue + (b.blue - a.blue) * t,
+        alpha = a.alpha + (b.alpha - a.alpha) * t,
+    )
 }

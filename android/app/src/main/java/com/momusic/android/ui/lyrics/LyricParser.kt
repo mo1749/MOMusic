@@ -69,4 +69,12 @@ object LyricParser {
         }
         return result
     }
+
+    /**
+     * 根据当前播放位置返回当前歌词行（找不到返回 null）
+     */
+    fun findCurrentLine(lines: List<LyricLine>, positionMs: Long): LyricLine? {
+        val idx = findCurrentIndex(lines, positionMs)
+        return if (idx >= 0) lines[idx] else null
+    }
 }

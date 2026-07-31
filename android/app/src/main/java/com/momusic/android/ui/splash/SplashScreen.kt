@@ -16,20 +16,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.momusic.android.ui.Screen
+import kotlinx.coroutines.delay
 
 /**
  * 启动页：对齐 Windows 版 splash 效果。
  *
- * - 全屏深色背景
- * - 居中显示 MOMusic Logo（青绿色圆点 + 文字）
- * - 简单的淡入动画
- * - 不负责自动跳转（由 MOMusicAppRoot 控制跳转时机），仅接收 [navController] 但不使用
+ * - 全屏深色背景 + 青绿色脉冲圆点
+ * - 居中显示 MOMusic Logo（圆点 + 文字 + 副标题）
+ * - 淡入动画，2 秒后自动跳转到 Home 页
  */
 @Composable
 fun SplashScreen(navController: NavController) {
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         visible = true
+        delay(2000)
+        navController.navigate(Screen.Home.route) {
+            popUpTo(Screen.Splash.route) { inclusive = true }
+        }
     }
     Box(
         modifier = Modifier

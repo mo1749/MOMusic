@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
@@ -24,6 +26,9 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,6 +63,10 @@ import com.momusic.android.data.remote.NetworkModule
 import com.momusic.android.data.repository.MusicRepository
 import com.momusic.android.playback.PlayerManager
 import com.momusic.android.playback.PlayMode
+import com.momusic.android.ui.Screen
+import com.momusic.android.ui.common.AudioVisualizer
+import com.momusic.android.ui.common.DanmakuOverlay
+import com.momusic.android.ui.common.ParticleBackground
 import com.momusic.android.ui.lyrics.LyricLine
 import com.momusic.android.ui.lyrics.LyricParser
 import com.momusic.android.ui.lyrics.LyricsView
@@ -93,6 +102,9 @@ fun FullPlayerScreen(navController: NavController) {
 
     // 封面/歌词切换
     var showLyrics by remember { mutableStateOf(false) }
+
+    // 弹幕开关
+    var showDanmaku by remember { mutableStateOf(true) }
 
     // 歌曲变化时自动加载歌词
     LaunchedEffect(currentSong) {
@@ -137,6 +149,12 @@ fun FullPlayerScreen(navController: NavController) {
                 ),
             ),
     ) {
+        // 最底层：粒子背景（对齐 Windows 版 Three.js 粒子球视觉）
+        ParticleBackground(
+            modifier = Modifier.fillMaxSize(),
+            particleCount = 40,
+        )
+
         // 模糊封面背景层（增强沉浸感）
         if (currentSong?.cover?.isNotEmpty() == true) {
             AsyncImage(
@@ -195,8 +213,50 @@ fun FullPlayerScreen(navController: NavController) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                // 占位，保持标题居中
-                Spacer(modifier = Modifier.size(48.dp))
+                // 右侧功能入口：弹幕 / FX / 一起听 / 桌面歌词
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showDanmaku = !showDanmaku },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Subtitles,
+                            contentDescription = "弹幕",
+                            tint = if (showDanmaku) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        )
+                    }
+                    IconButton(
+                        onClick = { navController.navigate(Screen.FxConsole.route) },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Tune,
+                            contentDescription = "FX控制台",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(
+                        onClick = { navController.navigate(Screen.ListenTogether.route) },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Group,
+                            contentDescription = "一起听",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    IconButton(
+                        onClick = { navController.navigate(Screen.DesktopLyrics.route) },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Lyrics,
+                            contentDescription = "桌面歌词",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
             }
 
             // ---------------- 中间：封面 / 歌词切换 ----------------
@@ -257,6 +317,15 @@ fun FullPlayerScreen(navController: NavController) {
                     }
                 }
             }
+
+            // ---------------- 音频频谱可视化 ----------------
+            AudioVisualizer(
+                isPlaying = isPlaying,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp),
+            )
 
             // ---------------- 底部：进度条 + 控制栏 ----------------
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -347,6 +416,12 @@ fun FullPlayerScreen(navController: NavController) {
                 }
             }
         }
+
+        // 顶层：弹幕覆盖（对齐 Windows 版弹幕功能）
+        DanmakuOverlay(
+            enabled = showDanmaku && !showLyrics,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

@@ -47,5 +47,9 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".ui.desktop.DesktopLyricsService"
+            android:exported="false" />
+
     </application>
 </manifest>

@@ -3,3 +3,19 @@ momusic.keystore
 keystore.properties
 *.keystore
 *.jks
+
+# Gradle 发行版（体积大，不入库）
+gradle-dist/
+gradle-8.7-bin.zip
+
+# Android 构建产物
+build/
+.gradle/
+local.properties
+*.iml
+.cxx/
+captures/
+
+# IDE
+.idea/
+*.swp

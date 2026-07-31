@@ -20,5 +20,7 @@ sealed class Screen(val route: String) {
     object ListenTogether : Screen("listen_together")
     object LocalCollection : Screen("local_collection")
     object BeatAnalysis : Screen("beat_analysis")
+    object FxConsole : Screen("fx_console")
+    object DesktopLyrics : Screen("desktop_lyrics")
     object Update : Screen("update")
 }
