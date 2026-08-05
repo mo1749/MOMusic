@@ -7,8 +7,6 @@ function createFloatLayer() {
   fx.floatLayer = false;
   uniforms.uFloatAlpha.value = 0;
   if (floatGroup) destroyFloatLayer();
-  return;
-  if (floatGroup) return;
   var fgeo = new THREE.BufferGeometry();
   floatPositionsArr = new Float32Array(FLOAT_COUNT * 3);
   floatBaseArr = new Float32Array(FLOAT_COUNT * 3);  // 基准位置

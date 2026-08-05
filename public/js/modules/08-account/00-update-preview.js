@@ -150,7 +150,7 @@ function syncUpdatePreviewStateClass() {
   var canOpenRelease = updatePreviewState.configured && updatePreviewState.updateAvailable && !updatePreviewState.downloadUrl && updatePreviewState.releaseUrl;
   if (label) {
     if (isDownloading) label.textContent = (isPatch ? '快速补丁 ' : '正在下载 ') + Math.round(updatePreviewState.progress) + '%';
-    else if (isOpening) label.textContent = '正在打开安装包';
+    else if (isOpening) label.textContent = updatePreviewState.silentInstalling ? '正在静默安装' : '正在打开安装包';
     else if (isError && updatePreviewState.mode === 'patch' && updatePreviewState.downloadUrl) label.textContent = '下载完整安装包';
     else if (isError) label.textContent = updatePreviewState.mode === 'installer' ? '重试下载' : '重试更新';
     else if (isReady && isPatch && updatePreviewState.restartRequired) label.textContent = '重启生效';
@@ -244,6 +244,7 @@ async function startRealUpdateDownload() {
   updatePreviewState.downloadJobId = '';
   updatePreviewState.installerPath = '';
   updatePreviewState.installerOpened = false;
+  updatePreviewState.silentInstalling = false;
   updatePreviewState.cached = false;
   updatePreviewState.received = 0;
   updatePreviewState.total = 0;
@@ -288,6 +289,7 @@ async function startRealUpdatePatch() {
   updatePreviewState.patchJobId = '';
   updatePreviewState.installerPath = '';
   updatePreviewState.installerOpened = false;
+  updatePreviewState.silentInstalling = false;
   updatePreviewState.cached = false;
   updatePreviewState.received = 0;
   updatePreviewState.total = 0;
@@ -411,7 +413,15 @@ function applyUpdateDownloadJob(job) {
     if (updatePreviewState.mode === 'patch') {
       showToast(updatePreviewState.restartRequired ? '快速补丁已应用，重启后生效' : '快速补丁已应用');
     } else if (updatePreviewState.installerPath) {
-      showToast(updatePreviewState.cached ? '已复用上次下载的安装包' : '安装包已下载，点击按钮打开');
+      if (updatePreviewState.cached) {
+        showToast('已复用上次下载的安装包');
+      } else {
+        showToast('安装包已下载');
+      }
+      // 自动静默安装：无需用户手动确认；非桌面环境或失败时回退为手动打开
+      if (!updatePreviewState.installerOpened && !updatePreviewState.silentInstalling) {
+        autoSilentInstallUpdate(updatePreviewState.installerPath);
+      }
     }
   }
 }
@@ -447,6 +457,33 @@ async function openDownloadedUpdateInstaller(filePath) {
     syncUpdatePreviewStateClass();
     if (updatePreviewState.releaseUrl) window.open(updatePreviewState.releaseUrl, '_blank');
     showToast('无法自动打开安装包，已尝试打开更新页面');
+  }
+}
+
+// 下载完成后自动静默安装（NSIS /S），无需用户手动确认；不可用时回退到打开安装包
+async function autoSilentInstallUpdate(filePath) {
+  if (!filePath || updatePreviewState.silentInstalling) return false;
+  updatePreviewState.silentInstalling = true;
+  updatePreviewState.status = 'opening';
+  syncUpdatePreviewStateClass();
+  try {
+    if (window.desktopWindow && typeof window.desktopWindow.silentInstallUpdate === 'function') {
+      var result = await window.desktopWindow.silentInstallUpdate(filePath);
+      if (result && result.ok === true) {
+        updatePreviewState.installerOpened = true;
+        showToast('安装包已下载，正在后台静默安装，完成后将自动启动新版');
+        return true;
+      }
+      throw new Error((result && result.error) || 'SILENT_INSTALL_FAILED');
+    }
+    throw new Error('DESKTOP_BRIDGE_MISSING');
+  } catch (e) {
+    updatePreviewState.silentInstalling = false;
+    updatePreviewState.status = 'ready';
+    syncUpdatePreviewStateClass();
+    console.warn('[Update] silent install failed, fallback to manual open:', e && e.message);
+    openDownloadedUpdateInstaller(filePath);
+    return false;
   }
 }
 

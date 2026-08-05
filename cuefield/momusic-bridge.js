@@ -1,5 +1,5 @@
 const { analyzeSectionCandidates, chooseTransitionCandidates } = require('./section-candidates');
-const { normalizeMOMusicBeatMap } = require('./adapter-MOMusic');
+const { normalizeMOMusicBeatMap } = require('./adapter-momusic');
 const { buildCueProfile } = require('./cue-profile');
 const { parseLrc } = require('./lrc-anchors');
 const { planRecipeCandidates } = require('./recipe-planner');

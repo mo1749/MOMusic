@@ -38,13 +38,30 @@ function initListenTogetherUI() {
     return d.innerHTML;
   }
 
-  function addChatMessage(nickname, text, isSelf, loginMethod, authUser, skipSave) {
+  function addChatMessage(nickname, text, isSelf, loginMethod, authUser, skipSave, ts, avatar) {
     var container = document.getElementById('lt-chat-messages');
     if (!container) return;
     // 保存到本地（从本地加载时跳过）
     if (!skipSave) {
       var roomId = window.ListenTogether && window.ListenTogether.currentRoom ? window.ListenTogether.currentRoom.id : '';
-      if (roomId) saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser);
+      if (roomId) saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser, avatar);
+    }
+
+    var msgTs = ts || Date.now();
+
+    // 桥接给悬浮聊天框（历史与实时消息统一渲染）
+    try {
+      window.dispatchEvent(new CustomEvent('lt:chat-render', {
+        detail: { nickname: nickname, text: text, isSelf: !!isSelf, loginMethod: loginMethod, ts: msgTs, avatar: avatar || '' }
+      }));
+    } catch (_) {}
+
+    // 气泡渲染（悬浮聊天模块提供）；未加载时回退到旧行式渲染
+    if (window.LtChatBubbles && window.LtChatBubbles.renderInto) {
+      window.LtChatBubbles.renderInto(container, {
+        nickname: nickname, text: text, isSelf: !!isSelf, loginMethod: loginMethod, ts: msgTs, avatar: avatar || ''
+      });
+      return;
     }
 
     var div = document.createElement('div');
@@ -86,7 +103,13 @@ function initListenTogetherUI() {
       else if (m.loginMethod === 'phone') badge = '📱 ';
       else if (m.loginMethod === 'wechat') badge = '💚 ';
       else if (m.loginMethod === 'qq') badge = '🐧 ';
-      div.textContent = badge + m.nickname + (m.isHost ? ' 👑' : '');
+      // 头像：自定义（图片/预设）或首字哈希色（与聊天头像同源）
+      var name = String(m.nickname || '客');
+      var avHtml = '';
+      if (window.LtChatBubbles && window.LtChatBubbles.avatarChipHtml) {
+        avHtml = window.LtChatBubbles.avatarChipHtml(name, m.avatar || '');
+      }
+      div.innerHTML = avHtml + '<span>' + badge + escapeHtml(name) + (m.isHost ? ' 👑' : '') + '</span>';
       list.appendChild(div);
     });
     var countEl = document.getElementById('lt-member-count');
@@ -157,6 +180,8 @@ function initListenTogetherUI() {
   window._ltBroadcastProgress = ltBroadcastProgress;
   window._ltIsSyncing = function () { return _ltSuppressBroadcast; };
 
+  var _ltHostPlaying = false;
+
   function ltApplyPlayerState(data) {
     if (!data || !data.playerState) return;
     if (LT.isHost) return;
@@ -165,14 +190,20 @@ function initListenTogetherUI() {
     _ltSuppressBroadcast = true;
     try {
       if (action === 'play') {
+        _ltHostPlaying = true;
         if (typeof audio !== 'undefined' && audio && audio.paused) {
           if (typeof playAudio === 'function') playAudio({ manual: true });
           else if (audio.play) audio.play().catch(function () {});
         }
       } else if (action === 'pause') {
+        _ltHostPlaying = false;
         if (typeof audio !== 'undefined' && audio && !audio.paused) {
           if (typeof fadeOutAndPauseAudio === 'function') fadeOutAndPauseAudio();
           else audio.pause();
+        }
+        var pauseTarget = Number(state.progress) || 0;
+        if (typeof audio !== 'undefined' && audio && isFinite(pauseTarget) && Math.abs(audio.currentTime - pauseTarget) > 0.5) {
+          try { audio.currentTime = pauseTarget; } catch (_) {}
         }
       } else if (action === 'seek') {
         if (typeof audio !== 'undefined' && audio) {
@@ -279,8 +310,12 @@ function initListenTogetherUI() {
     if (typeof audio === 'undefined' || !audio) return;
     var target = Number(data.progress) || 0;
     if (!isFinite(target)) return;
+    var elapsedMs = Date.now() - (Number(data.timestamp) || Date.now());
+    if (_ltHostPlaying && elapsedMs > 0) {
+      target += Math.min(elapsedMs, 3000) / 1000;
+    }
     var current = isFinite(audio.currentTime) ? audio.currentTime : 0;
-    if (Math.abs(current - target) > 2) {
+    if (Math.abs(current - target) > 0.8) {
       _ltSuppressBroadcast = true;
       try { audio.currentTime = target; } catch (_) {}
       finally { _ltSuppressBroadcast = false; }
@@ -313,7 +348,7 @@ function initListenTogetherUI() {
   // ====== 本地记录保存 ======
   function getChatStorageKey(roomId) { return 'lt_chat_' + roomId; }
 
-  function saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser) {
+  function saveChatMessage(roomId, nickname, text, isSelf, loginMethod, authUser, avatar) {
     try {
       var raw = localStorage.getItem(getChatStorageKey(roomId)) || '[]';
       var messages = JSON.parse(raw);
@@ -323,6 +358,7 @@ function initListenTogetherUI() {
         isSelf: isSelf,
         loginMethod: loginMethod,
         authUser: authUser,
+        avatar: avatar || '',
         timestamp: Date.now()
       });
       // 每个房间最多存200条
@@ -377,11 +413,14 @@ function initListenTogetherUI() {
     try {
       localStorage.setItem('lt_room_mode', mode);
     } catch (e) {}
-    // 更新UI
-    var dualBtn = document.getElementById('lt-mode-dual');
-    var multiBtn = document.getElementById('lt-mode-multi');
-    if (dualBtn) dualBtn.style.opacity = mode === 'dual' ? '1' : '0.5';
-    if (multiBtn) multiBtn.style.opacity = mode === 'multi' ? '1' : '0.5';
+    // 统一走全局 handleLtSetMode 的 UI 更新（active 高亮），避免两套状态不同步
+    if (typeof handleLtSetMode === 'function') handleLtSetMode(mode, true);
+    else {
+      var dualBtn = document.getElementById('lt-mode-dual');
+      var multiBtn = document.getElementById('lt-mode-multi');
+      if (dualBtn) dualBtn.classList.toggle('active', mode === 'dual');
+      if (multiBtn) multiBtn.classList.toggle('active', mode === 'multi');
+    }
   }
 
   function getRoomMode() {
@@ -401,6 +440,8 @@ function initListenTogetherUI() {
     if (nickInput && savedNick) nickInput.value = savedNick;
     // 初始化房间模式
     setRoomMode(getRoomMode());
+    // 初始化头像选择器并刷新预览
+    initLtAvatarPicker();
     // 直接进入房间视图，不自动用旧 token 认证
     showView('lt-room-view');
     updateLoginButtonState();
@@ -413,6 +454,7 @@ function initListenTogetherUI() {
     if (btn) { btn.textContent = '开始一起听'; btn.disabled = false; }
     stopListenTogetherDurationTracking();
     stopLtProgressSync();
+    try { window.dispatchEvent(new CustomEvent('lt:room-exit')); } catch (_) {}
   });
 
   // === 登录/认证回调 ===
@@ -461,14 +503,18 @@ function initListenTogetherUI() {
     // 其他错误也要重置按钮
     var btn = document.querySelector('#lt-connect-view button');
     if (btn && btn.disabled) { btn.disabled = false; btn.textContent = '开始一起听'; }
+    restoreLtRoomActionButtons();
     if (typeof showToast === 'function') showToast('一起听：' + msg);
   });
 
   // === 房间回调 ===
   LT.on('roomCreated', function (data) {
+    restoreLtRoomActionButtons();
     setStatus('房间已创建');
     showView('lt-room-active-view');
     var room = data.room;
+    // 通知悬浮聊天框进入房间（先于此后的历史消息渲染）
+    try { window.dispatchEvent(new CustomEvent('lt:room-enter', { detail: { roomName: room.name || 'MOMusic 房间', roomId: room.id } })); } catch (_) {}
     var nameEl = document.getElementById('lt-active-room-name');
     if (nameEl) nameEl.textContent = room.name || 'MOMusic 房间';
     if (room.members) updateMembers(room.members);
@@ -485,16 +531,20 @@ function initListenTogetherUI() {
       container.innerHTML = '';
       var savedChat = loadChatMessages(room.id);
       savedChat.forEach(function (msg) {
-        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true);
+        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
       });
     }
     setTimeout(ltBroadcastTrackChange, 500);
   });
 
   LT.on('roomJoined', function (data) {
+    restoreLtRoomActionButtons();
     setStatus('已加入房间');
     showView('lt-room-active-view');
+    _ltHostPlaying = !!(data.playerState && data.playerState.playing);
     var room = data.room;
+    // 通知悬浮聊天框进入房间（先于此后的历史消息渲染）
+    try { window.dispatchEvent(new CustomEvent('lt:room-enter', { detail: { roomName: room.name || 'MOMusic 房间', roomId: room.id } })); } catch (_) {}
     var nameEl = document.getElementById('lt-active-room-name');
     if (nameEl) nameEl.textContent = room.name || 'MOMusic 房间';
     if (data.members) updateMembers(room.members);
@@ -510,14 +560,14 @@ function initListenTogetherUI() {
       container.innerHTML = '';
       var savedChat = loadChatMessages(room.id);
       savedChat.forEach(function (msg) {
-        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true);
+        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
       });
     }
 
     // 再加载服务器返回的最新聊天
     if (data.recentChat && data.recentChat.length) {
       data.recentChat.forEach(function (msg) {
-        addChatMessage(msg.nickname, msg.text, msg.clientId === LT.clientId, msg.loginMethod, msg.authUser);
+        addChatMessage(msg.nickname, msg.text, msg.clientId === LT.clientId, msg.loginMethod, msg.authUser, false, msg.timestamp, msg.avatar);
       });
     }
 
@@ -558,18 +608,35 @@ function initListenTogetherUI() {
     }
   });
 
+  LT.on('memberKicked', function (data) {
+    if (data.memberCount !== undefined) {
+      var countEl = document.getElementById('lt-member-count');
+      if (countEl) countEl.textContent = data.memberCount;
+    }
+    if (data.memberId) setStatus('成员 ' + data.memberId + ' 已被移出房间');
+  });
+
   LT.on('playerState', function (data) { ltApplyPlayerState(data); });
   LT.on('trackChanged', function (data) { ltApplyTrackChange(data); });
   LT.on('progressSync', function (data) { ltApplyProgressSync(data); });
 
   LT.on('chatMessage', function (data) {
     if (data.message) {
-      addChatMessage(data.message.nickname, data.message.text, data.message.clientId === LT.clientId, data.message.loginMethod, data.message.authUser);
+      var m = data.message;
+      var isSelf = m.clientId === LT.clientId;
+      addChatMessage(m.nickname, m.text, isSelf, m.loginMethod, m.authUser, false, null, m.avatar);
+      // 桥接给悬浮聊天框：弹丸提示 + 未读计数
+      try {
+        window.dispatchEvent(new CustomEvent('lt:chat-live', {
+          detail: { nickname: m.nickname, text: m.text, isSelf: isSelf, loginMethod: m.loginMethod, ts: Date.now(), avatar: m.avatar || '' }
+        }));
+      } catch (_) {}
     }
   });
 
   LT.on('error', function (data) {
     setStatus('错误: ' + (data.error || '未知'));
+    restoreLtRoomActionButtons();
     if (typeof showToast === 'function') showToast('一起听: ' + (data.error || '错误'));
   });
 
@@ -579,6 +646,7 @@ function initListenTogetherUI() {
     var badge = document.getElementById('lt-host-badge');
     if (badge) badge.style.display = 'none';
     stopLtProgressSync();
+    try { window.dispatchEvent(new CustomEvent('lt:room-exit')); } catch (_) {}
   });
 
   LT.on('hostChanged', function (data) {
@@ -625,6 +693,8 @@ function initListenTogetherUI() {
   });
 
   setStatus('就绪');
+  // 头像选择器在 DOM 就绪后即可初始化（不依赖连接）
+  try { initLtAvatarPicker(); } catch (e) { console.warn('[LT-UI] 头像选择器初始化失败:', e); }
 }
 
 // ====== 房主进度同步定时器 ======
@@ -644,14 +714,14 @@ function stopLtProgressSync() {
 
 // ── 全局 UI 操作函数 ──
 
-function handleLtSetMode(mode) {
+function handleLtSetMode(mode, silent) {
+  mode = mode === 'dual' ? 'dual' : 'multi';
   try { localStorage.setItem('lt_room_mode', mode); } catch (_) {}
   var dualBtn = document.getElementById('lt-mode-dual');
   var multiBtn = document.getElementById('lt-mode-multi');
-  if (dualBtn && multiBtn) {
-    dualBtn.classList.toggle('active', mode === 'dual');
-    multiBtn.classList.toggle('active', mode === 'multi');
-  }
+  if (dualBtn) dualBtn.classList.toggle('active', mode === 'dual');
+  if (multiBtn) multiBtn.classList.toggle('active', mode === 'multi');
+  if (!silent && typeof showToast === 'function') showToast('房间模式：' + (mode === 'dual' ? '双人' : '多人'));
 }
 
 function handleLtConnect() {
@@ -807,6 +877,29 @@ function handleLtLogout() {
 
 // ====== 房间操作 ======
 
+/** 创建/加入房间按钮的请求中状态（禁用 + 文案 + 脉冲动画），请求完成或失败后恢复 */
+function setLtRoomActionBusy(btn, busy, busyText) {
+  if (!btn) return;
+  if (busy) {
+    if (!btn.dataset.ltRestoreText) btn.dataset.ltRestoreText = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('lt-btn-busy');
+    btn.textContent = busyText || btn.textContent;
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('lt-btn-busy');
+    if (btn.dataset.ltRestoreText) {
+      btn.textContent = btn.dataset.ltRestoreText;
+      delete btn.dataset.ltRestoreText;
+    }
+  }
+}
+
+function restoreLtRoomActionButtons() {
+  setLtRoomActionBusy(document.querySelector('#lt-create-room-form .lt-btn-primary'), false);
+  setLtRoomActionBusy(document.querySelector('#lt-join-room-form .lt-btn-primary'), false);
+}
+
 function handleLtCreateRoom() {
   var nickname = document.getElementById('lt-nickname-input');
   var nVal = nickname && nickname.value.trim() || '';
@@ -816,7 +909,13 @@ function handleLtCreateRoom() {
     if (sb) sb.textContent = '未连接到服务器，请先点击「开始一起听」';
     return;
   }
-  window.ListenTogether.createRoom(undefined, nVal || undefined);
+  var createBtn = document.querySelector('#lt-create-room-form .lt-btn-primary');
+  setLtRoomActionBusy(createBtn, true, '创建中…');
+  window.ListenTogether.createRoom(undefined, nVal || undefined, window.ListenTogether.getAvatar ? window.ListenTogether.getAvatar() : '');
+  // 兜底：服务端超时无响应时恢复按钮
+  setTimeout(function () {
+    if (createBtn && createBtn.disabled) setLtRoomActionBusy(createBtn, false);
+  }, 15000);
 }
 
 function handleLtJoinRoom() {
@@ -835,7 +934,13 @@ function handleLtJoinRoom() {
     if (sb2) sb2.textContent = '未连接到服务器，请先点击「开始一起听」';
     return;
   }
-  window.ListenTogether.joinRoom(idVal, nVal || undefined);
+  var joinBtn = document.querySelector('#lt-join-room-form .lt-btn-primary');
+  setLtRoomActionBusy(joinBtn, true, '加入中…');
+  window.ListenTogether.joinRoom(idVal, nVal || undefined, window.ListenTogether.getAvatar ? window.ListenTogether.getAvatar() : '');
+  // 兜底：服务端超时无响应时恢复按钮
+  setTimeout(function () {
+    if (joinBtn && joinBtn.disabled) setLtRoomActionBusy(joinBtn, false);
+  }, 15000);
 }
 
 function handleLtSendChat() {
@@ -849,6 +954,15 @@ function handleLtSendChat() {
 function handleLtLeaveRoom() {
   window.ListenTogether.leaveRoom();
   stopLtProgressSync();
+  // 重置视图状态
+  var activeView = document.getElementById('lt-room-active-view');
+  var roomView = document.getElementById('lt-room-view');
+  var inviteDisplay = document.getElementById('lt-invite-display');
+  if (activeView) activeView.style.display = 'none';
+  if (roomView) roomView.style.display = '';
+  if (inviteDisplay) inviteDisplay.style.display = 'none';
+  try { window.dispatchEvent(new CustomEvent('lt:room-exit')); } catch (_) {}
+  if (typeof showToast === 'function') showToast('已离开房间');
 }
 
 // ====== 邀请链接 ======
@@ -919,6 +1033,9 @@ function showLtJoinForm() {
   var joinForm = document.getElementById('lt-join-room-form');
   if (createForm) createForm.style.display = 'none';
   if (joinForm) joinForm.style.display = 'block';
+  document.querySelectorAll('#lt-room-view .lt-seg-tab').forEach(function (t) {
+    t.classList.toggle('active', t.getAttribute('data-lt-form') === 'join');
+  });
 }
 
 function showLtCreateForm() {
@@ -926,6 +1043,132 @@ function showLtCreateForm() {
   var joinForm = document.getElementById('lt-join-room-form');
   if (createForm) createForm.style.display = 'block';
   if (joinForm) joinForm.style.display = 'none';
+  document.querySelectorAll('#lt-room-view .lt-seg-tab').forEach(function (t) {
+    t.classList.toggle('active', t.getAttribute('data-lt-form') === 'create');
+  });
+}
+
+// ====== 自定义头像选择器 ======
+
+/** 渲染头像按钮预览（图片 / 预设 emoji / 昵称首字，三级回退） */
+function renderLtAvatarPreview() {
+  var btn = document.getElementById('lt-avatar-btn');
+  if (!btn) return;
+  var LT = window.ListenTogether;
+  var avatar = LT && LT.getAvatar ? LT.getAvatar() : '';
+  var nickInput = document.getElementById('lt-nickname-input');
+  var nick = (nickInput && nickInput.value.trim()) ||
+    (LT && LT.authUser && LT.authUser.nickname) || '客';
+  if (window.LtChatBubbles && window.LtChatBubbles.fillAvatar) {
+    window.LtChatBubbles.fillAvatar(btn, nick, avatar);
+  } else {
+    btn.textContent = nick.charAt(0).toUpperCase() || '客';
+  }
+}
+
+function handleLtAvatarToggle(e) {
+  if (e) e.stopPropagation();
+  var pop = document.getElementById('lt-avatar-pop');
+  if (!pop) return;
+  var showing = pop.style.display !== 'none';
+  pop.style.display = showing ? 'none' : 'block';
+  if (!showing) renderLtAvatarPreview();
+}
+
+/** 选中头像（preset:xxx 或 data:image/...），传空恢复默认 */
+function handleLtAvatarPick(avatar) {
+  var LT = window.ListenTogether;
+  if (LT && LT.setAvatar) LT.setAvatar(avatar || '');
+  renderLtAvatarPreview();
+  var pop = document.getElementById('lt-avatar-pop');
+  if (pop) pop.style.display = 'none';
+  if (typeof showToast === 'function') {
+    showToast(avatar ? '头像已更新，进房后生效' : '已恢复默认头像');
+  }
+}
+
+function handleLtAvatarReset() {
+  handleLtAvatarPick('');
+}
+
+function handleLtAvatarUploadClick() {
+  var fileInput = document.getElementById('lt-avatar-file');
+  if (fileInput) fileInput.click();
+}
+
+/** 上传图片：居中裁剪为 96×96 JPEG dataURL（服务端上限 40KB） */
+function handleLtAvatarFile(e) {
+  var file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    if (typeof showToast === 'function') showToast('图片过大，请选择 10MB 以内的图片');
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var size = 96;
+        var canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        var s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        if (dataUrl.length > 38000) dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+        handleLtAvatarPick(dataUrl);
+      } catch (err) {
+        if (typeof showToast === 'function') showToast('图片处理失败，请换一张试试');
+      }
+    };
+    img.onerror = function () {
+      if (typeof showToast === 'function') showToast('图片读取失败');
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/** 初始化头像选择器（幂等，可重复调用） */
+function initLtAvatarPicker() {
+  var grid = document.getElementById('lt-avatar-grid');
+  if (grid && !grid._ltBuilt && window.LtChatBubbles && window.LtChatBubbles.presets) {
+    grid._ltBuilt = true;
+    window.LtChatBubbles.presets.forEach(function (p) {
+      var cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'lt-avatar-cell';
+      cell.textContent = p.emoji;
+      cell.title = p.id;
+      cell.style.setProperty('--ltm-av-bg', window.LtChatBubbles.presetBg(p.hue));
+      cell.addEventListener('click', function () { handleLtAvatarPick('preset:' + p.id); });
+      grid.appendChild(cell);
+    });
+  }
+  var fileInput = document.getElementById('lt-avatar-file');
+  if (fileInput && !fileInput._ltBound) {
+    fileInput._ltBound = true;
+    fileInput.addEventListener('change', handleLtAvatarFile);
+  }
+  var nickInput = document.getElementById('lt-nickname-input');
+  if (nickInput && !nickInput._ltAvatarBound) {
+    nickInput._ltAvatarBound = true;
+    nickInput.addEventListener('input', renderLtAvatarPreview);
+  }
+  if (!document._ltAvatarDocBound) {
+    document._ltAvatarDocBound = true;
+    document.addEventListener('click', function (e) {
+      var pop = document.getElementById('lt-avatar-pop');
+      var btn = document.getElementById('lt-avatar-btn');
+      if (!pop || pop.style.display === 'none') return;
+      if (pop.contains(e.target) || (btn && btn.contains(e.target))) return;
+      pop.style.display = 'none';
+    });
+  }
+  renderLtAvatarPreview();
 }
 
 // ── 一起听时长追踪 ──

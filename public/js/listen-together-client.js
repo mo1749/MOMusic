@@ -342,6 +342,10 @@
         console.log('[ListenTogether] 已经连接中');
         return;
       }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       doConnect();
     },
 
@@ -403,29 +407,44 @@
       return !!authToken && loginMethod !== 'guest';
     },
 
+    // ====== 自定义头像（本地持久化，进房时随成员信息上传） ======
+
+    /** 读取本地保存的头像：'' | 'preset:<id>' | 'data:image/...;base64,...' */
+    getAvatar() {
+      try { return localStorage.getItem('lt_avatar') || ''; } catch (_) { return ''; }
+    },
+
+    /** 保存头像到本地（传空字符串恢复默认首字头像） */
+    setAvatar(avatar) {
+      try {
+        if (avatar) localStorage.setItem('lt_avatar', avatar);
+        else localStorage.removeItem('lt_avatar');
+      } catch (_) {}
+    },
+
     // ====== 房间 ======
 
     /** 创建房间 */
-    createRoom(name, nickname) {
+    createRoom(name, nickname, avatar) {
       if (!isConnected) {
         if (_callbacks.onError) _callbacks.onError({ error: '未连接到服务器' });
         return false;
       }
       return send({
         type: MSG.CREATE_ROOM,
-        payload: { name, nickname },
+        payload: { name, nickname, avatar: avatar || '' },
       });
     },
 
     /** 加入房间 */
-    joinRoom(roomId, nickname) {
+    joinRoom(roomId, nickname, avatar) {
       if (!isConnected) {
         if (_callbacks.onError) _callbacks.onError({ error: '未连接到服务器' });
         return false;
       }
       return send({
         type: MSG.JOIN_ROOM,
-        payload: { roomId, nickname },
+        payload: { roomId, nickname, avatar: avatar || '' },
       });
     },
 

@@ -23,7 +23,7 @@ var FX_CONSOLE_LAYOUT = [
     key: 'home',
     groups: [
       { key: 'presets', title: '视觉预设', hint: '先选整体风格，再进入细节调整', open: true, items: [
-        fxConsoleItem('preset-grid', '视觉预设', '风格 场景 Emily 安魂 音域 星河 唱片 星球 滚筒 虚空')
+        fxConsoleItem('preset-grid', '视觉预设', '风格 场景 Emily 安魂 音域 星河 唱片 星球 滚筒 虚空 银河 几何 像素 颜文字 Pixel Kaomoji')
       ] },
       { key: 'archives', title: '用户存档', hint: '保存、应用和分享整套视觉参数', items: [
         fxConsoleItem('user-archive-grid', '用户存档', '方案 快照 预设码 应用 回退')
@@ -85,7 +85,8 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-lyricbgadapt', '亮底避光', '亮背景 可读性 自动压光'),
         fxConsoleItem('t-lyricGlow', '歌词溢光', '后层辉光 开关'),
         fxConsoleItem('t-lyricGlowBeat', '鼓点溢光', '歌词辉光 跟随节拍'),
-        fxConsoleItem('t-lyricGlowParticles', '歌词光粒', '歌词粒子 光点')
+        fxConsoleItem('t-lyricGlowParticles', '歌词光粒', '歌词粒子 光点'),
+        fxConsoleItem('t-pixelLyricsEnabled', '像素歌词', '像素字体 歌词 像素化 全局开关 开关')
       ] },
       { key: 'type', title: '字体与排版', hint: '字体、字重、大小、位置和角度', items: [
         fxConsoleItem('lyric-texture-quality-seg', '歌词清晰度', '分辨率 纹理 1x 2x 3x 4x 标清 高清 超清 极致 低配 显存 放大 清楚'),
@@ -201,6 +202,40 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-galaxycore', '核心亮度', '核球辉光'),
         fxConsoleItem('fx-galaxyspread', '粒子散布', '星系半径'),
         fxConsoleItem('fx-galaxyspin', '旋转速度', '星系自转')
+      ] },
+      { key: 'golden-core', title: '几何能量核心', hint: '核心发光、颜色、轨道、粒子和星尘', items: [
+        fxConsoleItem('fx-goldencoreglow', '核心发光', '发光强度 亮度'),
+        fxConsoleItem('golden-core-color-picker', '核心颜色', '金核颜色'),
+        fxConsoleItem('golden-core-halo-picker', '光晕颜色', '暖橙光晕'),
+        fxConsoleItem('fx-goldencoreorbitcount', '轨道数量', '粒子轨道数'),
+        fxConsoleItem('fx-goldencoreorbitsize', '轨道尺寸', '轨道大小'),
+        fxConsoleItem('fx-goldencoredensity', '粒子密度', '轨道粒子密度'),
+        fxConsoleItem('fx-goldencorespin', '旋转速度', '核心自转'),
+        fxConsoleItem('fx-goldencorestardust', '星尘浓度', '背景星尘'),
+        fxConsoleItem('fx-goldencorebreath', '呼吸脉动', '核心呼吸')
+      ] },
+      { key: 'pixel-kaomoji', title: '像素颜文字', hint: '3D粒子颜文字、节拍联动和像素歌词', items: [
+        fxConsoleItem('pixel-kaomoji-toggle-grid', '像素风格开关', '颜文字 像素化 开关 启用'),
+        fxConsoleItem('t-pixelKaomojiLyricsPanel', '像素歌词开关', '歌词 像素字体 独立开关'),
+        fxConsoleItem('pixel-kaomoji-color-mode-seg', '颜色模式', '封面取色 自定义颜色'),
+        fxConsoleItem('pixel-kaomoji-color-picker', '表情颜色', '颜文字颜色 粒子颜色'),
+        fxConsoleItem('fx-pixelkaomojisize', '表情尺寸', '颜文字大小 粒子大小 缩放'),
+        fxConsoleItem('fx-pixelkaomojispeed', '动画速度', '颜文字切换速度 表情变化'),
+        fxConsoleItem('pixel-kaomoji-bg-mode-seg', '像素背景', '网格 圆点 星点 关闭 背景模式')
+      ] },
+      { key: 'tree-canopy', title: '树梢乐谱', hint: '树梢摆动、五线谱漂动和音符节拍', items: [
+        fxConsoleItem('tree-canopy-color-section', '乐谱颜色', '树梢 五线谱 音符 颜色'),
+        fxConsoleItem('tree-canopy-tree-picker', '树梢颜色', '树干 树叶 自定义颜色'),
+        fxConsoleItem('tree-canopy-staff-picker', '五线谱颜色', '谱线 自定义颜色'),
+        fxConsoleItem('tree-canopy-note-picker', '音符颜色', '音符 自定义颜色'),
+        fxConsoleItem('fx-treecanopyglow', '发光强度', '树梢乐谱辉光'),
+        fxConsoleItem('fx-treecanopywind', '谱线风速', '五线谱漂动速度'),
+        fxConsoleItem('fx-treecanopysway', '树梢摆幅', '树枝摆动幅度'),
+        fxConsoleItem('fx-treecanopystaffcount', '五线谱组数', '谱线层数'),
+        fxConsoleItem('fx-treecanopynotedensity', '音符密度', '飘出音符数量'),
+        fxConsoleItem('fx-treecanopynotesize', '音符大小', '音符缩放'),
+        fxConsoleItem('fx-treecanopybeat', '节拍响应', '鼓点跳动强度'),
+        fxConsoleItem('fx-treecanopyambient', '环境粒子', '光尘 落叶 背景音符 数量')
       ] },
     ]
   },

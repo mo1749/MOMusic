@@ -35,8 +35,13 @@ function qqPlaybackVipEvidenceApplies(evidence, status) {
 }
 function mergeQQPlaybackVipEvidence(status) {
   if (!status || !status.loggedIn) return status;
+  // 服务端已完成会员判定时, 以服务端为准 (避免本地残留/过期证据覆盖真实结果)
+  if (status.membershipKnown === true || status.vipProbeAvailable === true) return status;
   var evidence = readQQPlaybackVipEvidence();
   if (!qqPlaybackVipEvidenceApplies(evidence, status)) return status;
+  // 防御: 证据必须带明确的会员标记, 残留的残缺数据不参与合并
+  var evLevel = String(evidence.vipLevel || evidence.vip_level || '').trim().toLowerCase();
+  if (evidence.isVip !== true && evidence.is_svip !== true && evLevel !== 'vip' && evLevel !== 'svip') return status;
   var svip = providerVipLevel('qq', status) === 'svip' || providerVipLevel('qq', evidence) === 'svip' || !!status.isSvip || !!evidence.isSvip;
   return Object.assign({}, status, {
     provider: 'qq',

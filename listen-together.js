@@ -185,9 +185,41 @@ function safeString(val, fallback) {
   return typeof val === 'string' ? val : (fallback || '');
 }
 
+function escapeHtml(val) {
+  return String(val == null ? '' : val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function safeNumber(val, fallback) {
   const n = Number(val);
   return isFinite(n) ? n : (fallback || 0);
+}
+
+// ====== 头像字段净化 ======
+// 允许三种取值：''（默认首字头像）、'preset:<id>'（内置预设）、
+// 'data:image/...;base64,...'（用户上传，客户端已压缩，限制 40KB）
+const MAX_AVATAR_LEN = 40000;
+function sanitizeAvatar(val) {
+  if (typeof val !== 'string' || !val) return '';
+  if (val.length > MAX_AVATAR_LEN) return '';
+  if (/^preset:[a-z0-9_-]{1,24}$/.test(val)) return val;
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(val)) return val;
+  return '';
+}
+
+/** 成员对象的公开投影（广播成员列表时统一走这里，携带头像） */
+function publicMember(m) {
+  return {
+    clientId: m.clientId,
+    nickname: m.nickname,
+    isHost: m.isHost,
+    loginMethod: m.loginMethod,
+    avatar: m.avatar || '',
+  };
 }
 
 // ====== 消息类型常量 ======
@@ -301,7 +333,11 @@ class LTRoom {
     };
   }
 
-  addMember(clientId, nickname, loginMethod) {
+  addMember(clientId, nickname, loginMethod, avatar) {
+    const existing = this.members.find(m => m.clientId === clientId);
+    if (existing) {
+      return { ok: true, member: existing };
+    }
     if (this.members.length >= MAX_ROOM_CAPACITY) {
       return { ok: false, error: '房间已满' };
     }
@@ -311,6 +347,7 @@ class LTRoom {
       isHost: this.members.length === 0,
       joinedAt: Date.now(),
       loginMethod: loginMethod || 'guest',
+      avatar: sanitizeAvatar(avatar),
     };
     this.members.push(member);
     return { ok: true, member };
@@ -324,6 +361,11 @@ class LTRoom {
     if (removed.isHost && this.members.length > 0) {
       this.members[0].isHost = true;
       this.hostId = this.members[0].clientId;
+      this.broadcast(null, {
+        type: MSG.HOST_CHANGED,
+        newHostId: this.hostId,
+        members: this.members.map(publicMember),
+      });
     }
     return removed;
   }
@@ -339,7 +381,7 @@ class LTRoom {
     });
   }
 
-  addChat(clientId, nickname, text, loginMethod, authUser) {
+  addChat(clientId, nickname, text, loginMethod, authUser, avatar) {
     const msg = {
       clientId,
       nickname,
@@ -347,6 +389,7 @@ class LTRoom {
       timestamp: Date.now(),
       loginMethod: loginMethod || 'guest',
       authUser: authUser ? { nickname: authUser.nickname } : null,
+      avatar: sanitizeAvatar(avatar),
     };
     this.recentChat.push(msg);
     if (this.recentChat.length > 50) {
@@ -451,7 +494,8 @@ function handleMessage(client, data) {
 
     // ====== 房间管理 ======
     case MSG.CREATE_ROOM: {
-      const { name, nickname } = payload || {};
+      const { name, nickname, avatar } = payload || {};
+      if (client.roomId) leaveRoom(client);
       const room = new LTRoom(
         name,
         client.id,
@@ -461,7 +505,8 @@ function handleMessage(client, data) {
       const joinResult = room.addMember(
         client.id,
         nickname || (client.authUser ? client.authUser.nickname : client.userInfo.nickname),
-        client.loginMethod
+        client.loginMethod,
+        avatar
       );
       if (!joinResult.ok) {
         client.send({ type: MSG.ERROR, error: joinResult.error });
@@ -480,7 +525,12 @@ function handleMessage(client, data) {
     }
 
     case MSG.JOIN_ROOM: {
-      const { roomId, nickname } = payload || {};
+      const { roomId, nickname, avatar } = payload || {};
+      if (client.roomId === roomId) {
+        client.send({ type: MSG.ERROR, error: '你已在该房间中' });
+        return;
+      }
+      if (client.roomId) leaveRoom(client);
       const room = rooms.get(roomId);
 
       if (!room) {
@@ -491,7 +541,8 @@ function handleMessage(client, data) {
       const joinResult = room.addMember(
         client.id,
         nickname || (client.authUser ? client.authUser.nickname : client.userInfo.nickname),
-        client.loginMethod
+        client.loginMethod,
+        avatar
       );
       if (!joinResult.ok) {
         client.send({ type: MSG.ERROR, error: joinResult.error });
@@ -508,12 +559,7 @@ function handleMessage(client, data) {
         type: MSG.ROOM_JOINED,
         room: room.info,
         myMemberInfo: joinResult.member,
-        members: room.members.map(m => ({
-          clientId: m.clientId,
-          nickname: m.nickname,
-          isHost: m.isHost,
-          loginMethod: m.loginMethod,
-        })),
+        members: room.members.map(publicMember),
         recentChat: displayHistory,
         playlist: room.playlist,
         currentTrack: room.currentTrack,
@@ -643,7 +689,8 @@ function handleMessage(client, data) {
         member ? member.nickname : '未知用户',
         payload,
         client.loginMethod,
-        client.authUser
+        client.authUser,
+        member ? member.avatar : ''
       );
       room.broadcast(null, {
         type: MSG.CHAT_BROADCAST,
@@ -722,12 +769,7 @@ function handleMessage(client, data) {
       room.broadcast(null, {
         type: MSG.HOST_CHANGED,
         newHostId,
-        members: room.members.map(m => ({
-          clientId: m.clientId,
-          nickname: m.nickname,
-          isHost: m.isHost,
-          loginMethod: m.loginMethod,
-        })),
+        members: room.members.map(publicMember),
       });
       break;
     }
@@ -756,20 +798,24 @@ function leaveRoom(client) {
     });
   }
 
-  // 记录会话时长
+  // 记录会话时长（每次离开结算一段，并重置起点，避免同一段时长被多次累计）
   if (room.sessionStartTime) {
     recordSessionEnd(room.id, room.sessionStartTime);
+    room.sessionStartTime = Date.now();
   }
 
   // 如果房间没人了，保存最终时长并5分钟后自动销毁
   if (room.memberCount === 0) {
+    const roomIdForTimer = room.id;
     setTimeout(() => {
-      if (rooms.has(room.id) && rooms.get(room.id).memberCount === 0) {
+      const r = rooms.get(roomIdForTimer);
+      if (r && r.memberCount === 0) {
         // 最后一次保存时长
-        if (rooms.get(room.id).sessionStartTime) {
-          recordSessionEnd(room.id, rooms.get(room.id).sessionStartTime);
+        if (r.sessionStartTime) {
+          recordSessionEnd(roomIdForTimer, r.sessionStartTime);
+          r.sessionStartTime = null;
         }
-        rooms.delete(room.id);
+        rooms.delete(roomIdForTimer);
       }
     }, 5 * 60 * 1000);
   }
@@ -813,8 +859,8 @@ function startListenTogether(httpServer) {
     }
     if (req.url.startsWith('/lt-invite/')) {
       // 邀请链接重定向页面
-      const roomId = req.url.replace('/lt-invite/', '').toUpperCase();
-      const room = rooms.get(roomId);
+      const roomId = escapeHtml(req.url.replace('/lt-invite/', '').toUpperCase());
+      const room = rooms.get(req.url.replace('/lt-invite/', '').toUpperCase());
       res.writeHead(200, { 'Content-Type': 'text/html;charset=utf-8' });
       res.end(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>一起听 - MOMusic</title><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>body{background:#121212;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
@@ -825,7 +871,7 @@ h2{margin-bottom:8px;color:#8ab4f8}p{color:rgba(255,255,255,.5);font-size:14px;l
 .meta{font-size:11px;color:rgba(255,255,255,.3);margin-top:16px}
 </style></head><body>
 <div class="card"><h2>🎧 一起听歌</h2>
-<p>${room ? (room.name ? '加入「' + room.name + '」' : '') + '<br>已有 <strong>' + room.memberCount + '</strong> 人在线' : '该房间不存在'}</p>
+<p>${room ? (room.name ? '加入「' + escapeHtml(room.name) + '」' : '') + '<br>已有 <strong>' + room.memberCount + '</strong> 人在线' : '该房间不存在'}</p>
 <div class="code">${roomId}</div>
 <p style="font-size:12px">打开 MOMusic → 一起听 → 输入房间号加入</p>
 ${room ? '<p class="meta">房间创建于 ' + new Date(room.createdAt).toLocaleString('zh-CN') + '</p>' : ''}

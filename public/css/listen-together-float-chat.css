@@ -1,0 +1,603 @@
+/**
+ * MOMusic - 一起听 · 悬浮聊天系统
+ *
+ * 组件：
+ * 1. #lt-float-chat       悬浮聊天框（拖动 / 边缘吸附半隐藏 / 展开）
+ * 2. #lt-toast-stack      新消息弹丸提示条（从吸附边缘弹出，点击展开聊天）
+ * 3. .ltcb-*              气泡渲染器（面板内聊天区与悬浮框共用）
+ *
+ * 设计语言：与主界面同源的深色玻璃拟态 —— 蓝主调 rgba(80,140,240)、
+ * 自己一侧绿色 rgba(120,200,140)、transform-only 动画 +
+ * cubic-bezier(.16,1,.3,1) 指数缓动。
+ */
+
+:root {
+  --ltfc-accent: 80, 140, 240;      /* 他人气泡 / 主强调 */
+  --ltfc-self: 120, 200, 140;       /* 自己气泡 */
+  --ltfc-ease: cubic-bezier(.16, 1, .3, 1);
+  --ltfc-panel-bg: linear-gradient(165deg, rgba(30, 32, 40, .82), rgba(14, 15, 20, .78));
+  --ltfc-handle-w: 40px;            /* 吸附后露出的把手宽度 */
+}
+
+/* ═══════════════════════ 1. 悬浮聊天框 ═══════════════════════ */
+
+#lt-float-chat {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: clamp(280px, 24vw, 340px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  background: var(--ltfc-panel-bg);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, .42),
+              0 0 0 1px rgba(255, 255, 255, .03),
+              inset 0 1px 0 rgba(255, 255, 255, .07);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: transform .38s var(--ltfc-ease),
+              opacity .28s ease,
+              visibility 0s linear .38s;
+  will-change: transform;
+  user-select: none;
+}
+
+#lt-float-chat.ltfc-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: transform .38s var(--ltfc-ease), opacity .28s ease;
+}
+
+/* 拖动中：禁用过渡、放大反馈 */
+#lt-float-chat.ltfc-dragging {
+  transition: none;
+  box-shadow: 0 26px 70px rgba(0, 0, 0, .55),
+              0 0 0 1px rgba(var(--ltfc-accent), .18),
+              inset 0 1px 0 rgba(255, 255, 255, .09);
+}
+
+/* —— 吸附半隐藏状态：只露出把手 —— */
+#lt-float-chat.ltfc-dock-left {
+  transform: translate3d(calc(-100% + var(--ltfc-handle-w)), 0, 0);
+}
+#lt-float-chat.ltfc-dock-right {
+  transform: translate3d(calc(100% - var(--ltfc-handle-w)), 0, 0);
+}
+/* 悬停把手时的预览（peek） */
+#lt-float-chat.ltfc-dock-left.ltfc-peek {
+  transform: translate3d(calc(-100% + min(46%, 150px)), 0, 0);
+}
+#lt-float-chat.ltfc-dock-right.ltfc-peek {
+  transform: translate3d(calc(100% - min(46%, 150px)), 0, 0);
+}
+
+/* —— 头部（拖动把手区） —— */
+.ltfc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  cursor: grab;
+  flex-shrink: 0;
+  touch-action: none;
+}
+#lt-float-chat.ltfc-dragging .ltfc-header { cursor: grabbing; }
+
+.ltfc-header-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(var(--ltfc-self), .9);
+  box-shadow: 0 0 8px rgba(var(--ltfc-self), .6);
+  flex-shrink: 0;
+  animation: ltfc-pulse 2.4s ease-in-out infinite;
+}
+@keyframes ltfc-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.78); }
+}
+
+.ltfc-header-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ltfc-header-title small {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .32);
+  letter-spacing: .04em;
+}
+
+.ltfc-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .5);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.ltfc-icon-btn:hover {
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, .18);
+  transform: translateY(-1px);
+}
+.ltfc-icon-btn:active { transform: translateY(0) scale(.94); }
+
+/* —— 吸附把手（docked 时可点的热区 = 整个露出条） —— */
+.ltfc-edge-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--ltfc-handle-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .24s ease .1s;
+  z-index: 2;
+}
+#lt-float-chat.ltfc-dock-left  .ltfc-edge-handle { right: 0; }
+#lt-float-chat.ltfc-dock-right .ltfc-edge-handle { left: 0; }
+#lt-float-chat.ltfc-dock-left  .ltfc-edge-handle,
+#lt-float-chat.ltfc-dock-right .ltfc-edge-handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ltfc-edge-glyph {
+  writing-mode: vertical-rl;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .3em;
+  color: rgba(255, 255, 255, .45);
+  text-indent: .3em;
+}
+.ltfc-edge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(var(--ltfc-accent), .8);
+  box-shadow: 0 0 8px rgba(var(--ltfc-accent), .5);
+}
+
+/* 未读角标 */
+.ltfc-unread {
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #ff6b6b, #e84545);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(232, 69, 69, .45);
+  display: none;
+}
+.ltfc-unread.ltfc-has-unread { display: block; animation: ltfc-unread-pop .34s var(--ltfc-ease); }
+@keyframes ltfc-unread-pop {
+  0% { transform: scale(.4); }
+  70% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* —— 消息区 —— */
+.ltfc-messages {
+  height: clamp(180px, 32vh, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+.ltfc-messages::-webkit-scrollbar { width: 4px; }
+.ltfc-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .12);
+  border-radius: 2px;
+}
+.ltfc-messages::-webkit-scrollbar-track { background: transparent; }
+
+.ltfc-empty {
+  margin: auto;
+  text-align: center;
+  color: rgba(255, 255, 255, .25);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.ltfc-empty svg { opacity: .4; margin-bottom: 6px; }
+
+/* —— 输入行 —— */
+.ltfc-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 9px 10px;
+  border-top: 1px solid rgba(255, 255, 255, .06);
+  flex-shrink: 0;
+}
+.ltfc-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 11px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, .88);
+  font-size: 12px;
+  outline: none;
+  transition: border-color .16s ease, background .16s ease;
+}
+.ltfc-input:focus {
+  border-color: rgba(var(--ltfc-accent), .45);
+  background: rgba(255, 255, 255, .07);
+}
+.ltfc-input::placeholder { color: rgba(255, 255, 255, .22); }
+
+.ltfc-send {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(var(--ltfc-accent), .34);
+  border-radius: 10px;
+  background: rgba(var(--ltfc-accent), .16);
+  color: #8ab4f8;
+  cursor: pointer;
+  transition: background .16s ease, transform .16s ease, border-color .16s ease;
+}
+.ltfc-send:hover { background: rgba(var(--ltfc-accent), .28); border-color: rgba(var(--ltfc-accent), .5); }
+.ltfc-send:active { transform: scale(.9); }
+.ltfc-send svg { transform: translateX(1px); }
+
+/* ═══════════════════════ 2. 气泡渲染器（共用） ═══════════════════════ */
+
+.ltcb-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  max-width: 100%;
+  animation: ltcb-in .34s var(--ltfc-ease);
+}
+@keyframes ltcb-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* 自己的消息 → 右侧；他人的消息 → 左侧 */
+.ltcb-row.ltcb-self  { flex-direction: row-reverse; }
+.ltcb-row.ltcb-other { flex-direction: row; }
+
+.ltcb-avatar {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .92);
+  background: var(--ltcb-av-bg, rgba(var(--ltfc-accent), .4));
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 2px 6px rgba(0, 0, 0, .3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+}
+.ltcb-avatar .ltcb-login-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  font-size: 9px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5));
+}
+
+.ltcb-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  max-width: calc(100% - 40px);
+}
+.ltcb-row.ltcb-self  .ltcb-main { align-items: flex-end; }
+.ltcb-row.ltcb-other .ltcb-main { align-items: flex-start; }
+
+.ltcb-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, .3);
+  padding: 0 3px;
+  white-space: nowrap;
+}
+.ltcb-meta .ltcb-nick { font-weight: 700; color: rgba(255, 255, 255, .48); }
+.ltcb-row.ltcb-self  .ltcb-meta .ltcb-nick { color: rgba(var(--ltfc-self), .85); }
+.ltcb-row.ltcb-other .ltcb-meta .ltcb-nick { color: rgba(var(--ltfc-accent), .85); }
+
+.ltcb-bubble {
+  position: relative;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .88);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border: 1px solid transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .22);
+}
+/* 自己：绿色系，右下小圆角 */
+.ltcb-row.ltcb-self .ltcb-bubble {
+  background: linear-gradient(150deg, rgba(var(--ltfc-self), .22), rgba(var(--ltfc-self), .1));
+  border-color: rgba(var(--ltfc-self), .28);
+  border-bottom-right-radius: 4px;
+}
+/* 他人：蓝色系，左下小圆角 */
+.ltcb-row.ltcb-other .ltcb-bubble {
+  background: linear-gradient(150deg, rgba(var(--ltfc-accent), .24), rgba(var(--ltfc-accent), .11));
+  border-color: rgba(var(--ltfc-accent), .3);
+  border-bottom-left-radius: 4px;
+}
+
+/* 系统提示（进入房间等） */
+.ltcb-system {
+  align-self: center;
+  max-width: 88%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .06);
+  font-size: 10px;
+  color: rgba(255, 255, 255, .38);
+  text-align: center;
+  animation: ltcb-in .34s var(--ltfc-ease);
+}
+
+/* ═══════════════════════ 2.5 自定义头像（img / preset emoji） ═══════════════════════ */
+
+.ltcb-avatar.ltcb-avatar-img,
+.lttp-avatar.ltcb-avatar-img,
+.lt-member-av.ltcb-avatar-img {
+  overflow: hidden;
+  background: rgba(255, 255, 255, .06);
+}
+.ltcb-avatar img,
+.lttp-avatar img,
+.lt-member-av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+/* preset emoji 尺寸按容器分级 */
+.ltcb-avatar.ltcb-avatar-emoji { font-size: 15px; }
+.lttp-avatar.ltcb-avatar-emoji { font-size: 16px; }
+.lt-member-av.ltcb-avatar-emoji { font-size: 10px; }
+
+/* ═══════════════════════ 3. 弹丸提示条 ═══════════════════════ */
+
+#lt-toast-stack {
+  position: fixed;
+  z-index: 61;
+  top: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(320px, 78vw);
+}
+#lt-toast-stack.ltts-left  { left: 12px; align-items: flex-start; }
+#lt-toast-stack.ltts-right { right: 12px; align-items: flex-end; }
+
+.lt-toast-pill {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 100%;
+  padding: 8px 14px 8px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--ltfc-accent), .3);
+  background: linear-gradient(160deg, rgba(32, 36, 48, .9), rgba(16, 18, 24, .86));
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45),
+              0 0 0 1px rgba(255, 255, 255, .04),
+              inset 0 1px 0 rgba(255, 255, 255, .08);
+  cursor: pointer;
+  transition: transform .42s var(--ltfc-ease), opacity .3s ease;
+  will-change: transform, opacity;
+}
+.ltts-left  .lt-toast-pill { transform: translate3d(calc(-100% - 20px), 0, 0); }
+.ltts-right .lt-toast-pill { transform: translate3d(calc(100% + 20px), 0, 0); }
+.lt-toast-pill.lttp-in     { transform: translate3d(0, 0, 0); }
+.lt-toast-pill.lttp-out {
+  opacity: 0;
+  transition: transform .3s ease-in, opacity .26s ease-in;
+}
+.ltts-left  .lt-toast-pill.lttp-out { transform: translate3d(-24px, 0, 0) scale(.94); }
+.ltts-right .lt-toast-pill.lttp-out { transform: translate3d(24px, 0, 0) scale(.94); }
+
+.lt-toast-pill:hover {
+  border-color: rgba(var(--ltfc-accent), .55);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .5),
+              0 0 18px rgba(var(--ltfc-accent), .12),
+              inset 0 1px 0 rgba(255, 255, 255, .1);
+}
+
+.lttp-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .94);
+  background: var(--ltcb-av-bg, rgba(var(--ltfc-accent), .4));
+  border: 1px solid rgba(255, 255, 255, .16);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+}
+
+.lttp-body { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.lttp-nick {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(var(--ltfc-accent), .95);
+  white-space: nowrap;
+}
+.lttp-text {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, .78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+.lttp-hint {
+  font-size: 9px;
+  color: rgba(255, 255, 255, .28);
+  flex-shrink: 0;
+  padding-left: 2px;
+}
+
+/* ═══════════════════════ 5. 头像选择器（一起听面板内） ═══════════════════════ */
+
+.lt-avatar-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: var(--ltm-av-bg, rgba(80, 140, 240, .35));
+  color: rgba(255, 255, 255, .94);
+  font-size: 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .15), 0 2px 8px rgba(0, 0, 0, .3);
+  transition: transform .16s var(--ltfc-ease), box-shadow .16s ease;
+}
+.lt-avatar-btn:hover {
+  transform: scale(1.07);
+  box-shadow: 0 0 0 3px rgba(80, 140, 240, .2), 0 3px 10px rgba(0, 0, 0, .35);
+}
+.lt-avatar-btn:active { transform: scale(.96); }
+.lt-avatar-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.lt-avatar-pop {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 252px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  background: linear-gradient(165deg, rgba(30, 32, 40, .97), rgba(14, 15, 20, .95));
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .07);
+  animation: lt-view-in .24s cubic-bezier(.16, 1, .3, 1);
+}
+@keyframes lt-view-in {
+  from { opacity: 0; transform: translate3d(0, -6px, 0) scale(.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.lt-avatar-pop-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, .5);
+  letter-spacing: .04em;
+}
+.lt-avatar-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+  margin: 10px 0 12px;
+}
+.lt-avatar-cell {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: var(--ltm-av-bg, rgba(80, 140, 240, .35));
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .14s var(--ltfc-ease), box-shadow .14s ease;
+}
+.lt-avatar-cell:hover {
+  transform: scale(1.14);
+  box-shadow: 0 0 0 2px rgba(80, 140, 240, .4);
+}
+.lt-avatar-cell:active { transform: scale(.94); }
+.lt-avatar-pop-actions { display: flex; gap: 6px; }
+.lt-avatar-pop-actions .lt-btn { flex: 1; }
+
+/* ═══════════════════════ 4. 响应式 ═══════════════════════ */
+
+@media (max-width: 640px) {
+  #lt-float-chat { width: min(84vw, 340px); }
+  .ltfc-messages { height: clamp(150px, 30vh, 260px); }
+  #lt-toast-stack { top: 72px; max-width: min(300px, 82vw); }
+  .lttp-text { max-width: 180px; }
+}
+
+@media (max-height: 500px) {
+  .ltfc-messages { height: clamp(120px, 40vh, 200px); }
+}
+
+/* 减少动态偏好 */
+@media (prefers-reduced-motion: reduce) {
+  #lt-float-chat,
+  .lt-toast-pill,
+  .ltcb-row,
+  .ltfc-unread { animation: none; transition-duration: .01s; }
+  .ltfc-header-pulse { animation: none; }
+}

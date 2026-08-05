@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 var mouseWorld = new THREE.Vector3(-999, -999, 0);
 var mouseActive = false;
 var mouseDownAt = { x: 0, y: 0, t: 0, hadDrag: false };
@@ -657,7 +657,7 @@ if (coverMask > 0.02) {
   //  双层深度 (旋臂盘 + 背景星域) + 核球辉光
   //  音频驱动: 低频膨胀 / 中频密度波 / 高频星屑闪烁 / 鼓点冲击波
   // ====================================================
-  else if (uPreset > 7.5) {
+  else if (uPreset > 7.5 && uPreset < 8.5) {
 float galT = t * uGalaxySpin * 0.08;
 float roleSeed = hash11(aRand * 1733.7);
 float bgMask = step(0.80, roleSeed);
@@ -879,7 +879,7 @@ pos.xy = mat2(cs, -sn, sn, cs) * pos.xy;
   vColor = mix(vColor, tintedColor, clamp(uTintStrength, 0.0, 1.0) * (1.0 - blackParticleGuard));
 
   vBright = 0.82 + maxRippleAmp * 0.55 + uBass * 0.10 + edgeBoost * 0.30 + uEnergy * 0.05 + uBurstAmt * 0.40;
-  if (uPreset > 7.5) {
+  if (uPreset > 7.5 && uPreset < 8.5) {
 vBright = 0.78 + maxRippleAmp * 0.42 + uBass * 0.09 + uEnergy * 0.04 + uBurstAmt * 0.12;
   } else if (uPreset > 4.5) {
 vBright = 0.94 + maxRippleAmp * 0.34 + uBass * 0.020 + uEnergy * 0.026 + uBurstAmt * 0.025;
@@ -928,7 +928,7 @@ loadingMistSize = 1.26 + mistBreath * 0.24 + abs(mistRibbon) * 0.14 + glowPick *
   float depthSize = 36.0 / max(0.5, -mvPos.z);
   float audioBoost = 1.0 + maxRippleAmp * 0.7 + edgeBoost * 0.55 + uBeat * 0.30 + uBurstAmt * 0.5;
   float sz = clamp(depthSize * audioBoost, 1.05, 4.95);
-  if (uPreset > 7.5) {
+  if (uPreset > 7.5 && uPreset < 8.5) {
 float galDrive = uBass * 0.14 + uMid * 0.07 + uTreble * 0.10 + uBurstAmt * 0.12 + uBeat * 0.07;
 sz = clamp(depthSize * (0.95 + galDrive), 0.80, 4.50);
   } else if (uPreset > 4.5) {
@@ -1122,6 +1122,7 @@ function backgroundStarRiverTargetAlpha() {
   if (!fx || fx.backgroundStarRiver === false) return 0;
   if (Number(fx.preset) === 5) return 0;
   if (typeof SONIC_PRESET_INDEX !== 'undefined' && Number(fx.preset) === SONIC_PRESET_INDEX) return 0;
+  if (typeof GOLDEN_CORE_PRESET_INDEX !== 'undefined' && Number(fx.preset) === GOLDEN_CORE_PRESET_INDEX) return 0;
   if (typeof SKULL_PRESET_INDEX !== 'undefined' && Number(fx.preset) === SKULL_PRESET_INDEX) return 0.38;
   return 0.34;
 }

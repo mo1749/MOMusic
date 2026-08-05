@@ -638,7 +638,7 @@ function drawSonicAudioMonitorPanel() {
   }
   sonicAudioMonitorState.lastDrawAt = now;
   var ctx = canvas.getContext && canvas.getContext('2d');
-  if (!ctx) return;
+  if (!ctx) { sonicAudioMonitorState.raf = 0; return; }
   var w = canvas.width;
   var h = canvas.height;
   var raw = sonicAudioMonitorState.raw || [];

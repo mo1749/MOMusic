@@ -363,10 +363,12 @@ function tweenFloatAlpha(from, to, durationMs) {
 function revealIdleParticles(target, durationMs) {
   if (!uniforms || !uniforms.uFloatAlpha) return;
   if (floatAlphaTween) { cancelAnimationFrame(floatAlphaTween.raf); floatAlphaTween = null; }
-  uniforms.uFloatAlpha.value = 0;
-  if (floatGroup) destroyFloatLayer();
-  return;
   var next = typeof target === 'number' ? target : IDLE_PARTICLE_ALPHA;
+  if (next <= 0) {
+    uniforms.uFloatAlpha.value = 0;
+    if (floatGroup) destroyFloatLayer();
+    return;
+  }
   var from = uniforms.uFloatAlpha.value || 0;
   if (from >= next - 0.01) return;
   tweenFloatAlpha(from, next, durationMs || 1800);

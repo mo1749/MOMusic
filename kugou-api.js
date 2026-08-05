@@ -1490,6 +1490,14 @@ function kugouAudioReferer(audioUrl) {
 
 let kugouFavoriteListCache = { listId: '', userId: '', at: 0 };
 const kugouLikeFileIdByHash = new Map();
+const KUGOU_LIKE_FILE_ID_CACHE_MAX = 2048;
+function rememberKugouLikeFileId(hash, fileId) {
+  if (kugouLikeFileIdByHash.size >= KUGOU_LIKE_FILE_ID_CACHE_MAX) {
+    const oldest = kugouLikeFileIdByHash.keys().next().value;
+    if (oldest !== undefined) kugouLikeFileIdByHash.delete(oldest);
+  }
+  kugouLikeFileIdByHash.set(hash, fileId);
+}
 
 function extractKugouGatewayPlaylistLists(data) {
   data = (data && data.data) || data || {};
@@ -1601,7 +1609,7 @@ async function fetchKugouFavoriteHashSet(cookie, hashSet, maxPages) {
       const hash = String(track.hash || track.fileHash || '').toLowerCase();
       if (!hash || !hashSet.has(hash)) return;
       liked[hash] = true;
-      if (track.fileId) kugouLikeFileIdByHash.set(hash, String(track.fileId));
+      if (track.fileId) rememberKugouLikeFileId(hash, String(track.fileId));
     });
     if (Object.keys(liked).length >= hashSet.size) break;
   }
@@ -1666,7 +1674,7 @@ async function findKugouFavoriteFileId(song, cookie, listId) {
       const trackHash = String(track.hash || track.fileHash || '').toLowerCase();
       if (trackHash !== hash) continue;
       if (track.fileId) {
-        kugouLikeFileIdByHash.set(hash, String(track.fileId));
+        rememberKugouLikeFileId(hash, String(track.fileId));
         return String(track.fileId);
       }
     }

@@ -85,7 +85,7 @@ document.addEventListener('pointermove', function (e) {
   var bar = document.getElementById('bottom-bar');
   if (!bar || !bar.classList.contains('collapsed')) return;
   var restoreBtn = document.getElementById('bottom-bar-restore-btn');
-  if (!restoreBtn) return;
+  if (!restoreBtn || restoreBtn.hidden) return;
   var r = restoreBtn.getBoundingClientRect();
   // 鼠标在按钮附近 (底部中央区域) 时显示
   if (e.clientX >= r.left - 60 && e.clientX <= r.right + 60 &&

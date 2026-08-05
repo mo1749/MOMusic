@@ -4303,7 +4303,8 @@ while ($true) {
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    desktopLyricsMousePoller.stdout.on('data', (chunk) => {
+    const poller = desktopLyricsMousePoller;
+    poller.stdout.on('data', (chunk) => {
       desktopLyricsMousePollerBuffer += chunk.toString('utf8');
       const lines = desktopLyricsMousePollerBuffer.split(/\r?\n/);
       desktopLyricsMousePollerBuffer = lines.pop() || '';
@@ -4311,11 +4312,13 @@ while ($true) {
         if (line.trim() === 'MMB') handleDesktopLyricsGlobalMiddleClick();
       });
     });
-    desktopLyricsMousePoller.on('exit', () => {
+    poller.on('exit', () => {
+      if (desktopLyricsMousePoller !== poller) return;
       desktopLyricsMousePoller = null;
       desktopLyricsMousePollerBuffer = '';
     });
-    desktopLyricsMousePoller.on('error', () => {
+    poller.on('error', () => {
+      if (desktopLyricsMousePoller !== poller) return;
       desktopLyricsMousePoller = null;
       desktopLyricsMousePollerBuffer = '';
     });
@@ -4475,6 +4478,7 @@ public static class MOMusicShellMessage {
     try {
       win.hookWindowMessage(messageId, () => {
         setTimeout(() => {
+          if (!win || win.isDestroyed()) return;
           reconcileFullDesktopMode('explorer-restarted').catch((reconcileError) => {
             console.warn('[FullDesktopMode] Explorer restart reconcile failed:', reconcileError && reconcileError.message || reconcileError);
           });
@@ -5343,6 +5347,35 @@ ipcMain.handle('MOMusic-open-update-installer', async (_event, filePath) => {
     return error ? { ok: false, error } : { ok: true };
   } catch (e) {
     return { ok: false, error: e.message || 'OPEN_UPDATE_FAILED' };
+  }
+});
+
+// 静默安装更新：以 /S 参数启动 NSIS 安装器（不弹任何界面），随后退出当前应用，
+// 安装完成后安装器会自动启动新版本。
+ipcMain.handle('MOMusic-silent-install-update', async (_event, filePath) => {
+  try {
+    const target = path.resolve(String(filePath || ''));
+    const updateDir = path.resolve(getUpdateDownloadDir());
+    if (!target || !target.startsWith(updateDir + path.sep)) {
+      return { ok: false, error: 'INVALID_UPDATE_PATH' };
+    }
+    if (!fs.existsSync(target)) return { ok: false, error: 'UPDATE_FILE_MISSING' };
+    const installer = spawn(target, ['/S'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    installer.on('error', (err) => {
+      console.error('[Update] silent install spawn failed:', err && err.message);
+    });
+    installer.unref();
+    // 先退出当前应用，让安装器可以覆盖正在运行的程序文件
+    setTimeout(() => {
+      try { app.exit(0); } catch (_) {}
+    }, 800);
+    return { ok: true, silent: true };
+  } catch (e) {
+    return { ok: false, error: e.message || 'SILENT_INSTALL_FAILED' };
   }
 });
 

@@ -642,6 +642,7 @@ async function switchCurrentSongSource(provider) {
   provider = normalizePlaybackProvider(provider);
   var song = currentControlSong();
   if (!song) return;
+  var switchIdx = currentIdx;
   var currentProvider = songProviderKey(song);
   var previousSong = cloneSong(song);
   if (provider === currentProvider) {
@@ -662,6 +663,11 @@ async function switchCurrentSongSource(provider) {
       if (controlSourceSwitcherState.matches) controlSourceSwitcherState.matches[provider] = lookup || { song: null, issue: issue || 'no_source' };
     }
     if (requestId !== controlSourceSwitcherState.requestId) return;
+    if (switchIdx < 0 || switchIdx >= playQueue.length || currentIdx !== switchIdx || playQueue[switchIdx] !== song) {
+      showSourceFallbackNotice('播放状态已变化', '切换音源期间播放了其他歌曲，请重新操作。');
+      closeControlSourceSwitcher();
+      return;
+    }
     if (!match) {
       showSourceFallbackNotice('未找到可切换音源', controlSourceProviderTitle(provider) + ' 暂时没有匹配到同名同歌手版本。');
       showSourceFallbackNotice('该平台无正版音源', controlSourceProviderTitle(provider) + ': ' + controlSourceIssueLabel(issue));
@@ -671,12 +677,12 @@ async function switchCurrentSongSource(provider) {
     }
     match.manualSourceSwitchFrom = currentProvider;
     match.manualSourceSwitchAt = Date.now();
-    playQueue[currentIdx] = hydrateCustomCover(match);
+    playQueue[switchIdx] = hydrateCustomCover(match);
     closeControlSourceSwitcher();
     safeRenderQueuePanel('manual-source-switch', { scrollCurrent: miniQueueOpen });
-    updateControlTrackInfo(playQueue[currentIdx]);
+    updateControlTrackInfo(playQueue[switchIdx]);
     showSourceFallbackNotice('正在切换音源', (song.name || '当前歌曲') + ' -> ' + controlSourceProviderTitle(provider));
-    await playQueueAt(currentIdx, {
+    await playQueueAt(switchIdx, {
       manual: true,
       resumeAt: currentResumeSeconds(0),
       preserveHomeState: true,
@@ -684,10 +690,10 @@ async function switchCurrentSongSource(provider) {
     });
   } catch (err) {
     console.warn('[SourceSwitch]', provider, err);
-    if (currentIdx >= 0 && currentIdx < playQueue.length) {
-      playQueue[currentIdx] = hydrateCustomCover(previousSong);
+    if (switchIdx >= 0 && switchIdx < playQueue.length && playQueue[switchIdx] === song) {
+      playQueue[switchIdx] = hydrateCustomCover(previousSong);
       safeRenderQueuePanel('manual-source-switch-restore', { scrollCurrent: miniQueueOpen });
-      updateControlTrackInfo(playQueue[currentIdx]);
+      updateControlTrackInfo(playQueue[switchIdx]);
     }
     showSourceFallbackNotice('音源切换失败', '已保留当前播放队列，请稍后再试。');
   } finally {
@@ -707,6 +713,8 @@ window.addEventListener('resize', function () {
 });
 function songRequiresVip(song) {
   song = song || {};
+  // 网易云 fee 语义：0 免费，1 VIP，4 试听，8 付费单曲 —— 任何 >0 都属受限内容
+  if (songProviderKey(song) === 'netease' && Number(song.fee) > 0) return true;
   if (song.fee === 1 || song.vip === true || song.isVip === true || song.isVIP === true) return true;
   if (song.vipRequired === true || song.needVip === true || song.need_vip === true || song.onlyVipPlayable === true || song.only_vip_playable === true) return true;
   if (song.trial === true || song.preview === true) return true;

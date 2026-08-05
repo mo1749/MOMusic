@@ -954,7 +954,7 @@ function renderHomePlatformDailyWindow(force) {
   var list = document.getElementById('home-platform-recommend-list');
   var grid = document.getElementById('home-platform-daily-grid');
   if (!list || !grid) return;
-  var songs = Array.isArray(homeDiscoverState.songs) ? homeDiscoverState.songs : [];
+  var songs = homePlatformNeteaseSongs();
   var columns = homePlatformRecommendationGridColumns(grid);
   var range = homePlatformRecommendationDailyRange(
     songs.length,
@@ -1021,7 +1021,7 @@ function renderHomePlatformRecommendations() {
     }
     var sections = [];
     var playlists = Array.isArray(homeDiscoverState.playlists) ? homeDiscoverState.playlists.slice(0, 6) : [];
-    var songs = Array.isArray(homeDiscoverState.songs) ? homeDiscoverState.songs : [];
+    var songs = homePlatformNeteaseSongs();
     if (playlists.length) {
       sections.push('<section><h3>推荐歌单</h3><div class="home-platform-recommend-grid">' + playlists.map(function (item, index) {
         return homePlatformRecommendationCard('netease-playlist', index, item, '网易云推荐歌单');
@@ -1166,6 +1166,27 @@ async function loadHomePlatformRecommendations(source, force) {
   renderHomePlatformRecommendations();
 }
 
+function homePlatformNeteaseSongs() {
+  return (Array.isArray(homeDiscoverState.songs) ? homeDiscoverState.songs : []).filter(function (s) {
+    return !s || !s.provider || s.provider === 'netease';
+  });
+}
+function playHomePlatformNeteaseSong(index) {
+  var songs = homePlatformNeteaseSongs();
+  if (!songs.length) return;
+  playQueue = songs.map(cloneSong);
+  currentIdx = Math.max(0, Math.min(playQueue.length - 1, Number(index) || 0));
+  homeForcedOpen = false;
+  homeSuppressed = false;
+  if (typeof setHomeControlsLocked === 'function') setHomeControlsLocked(false);
+  if (typeof safeRenderQueuePanel === 'function') safeRenderQueuePanel('home-platform-netease', { scrollCurrent: true });
+  if (typeof safeShelfRebuild === 'function') safeShelfRebuild('home-platform-netease', true);
+  if (typeof forcePlaybackControlsInteractive === 'function') forcePlaybackControlsInteractive();
+  Promise.resolve(playQueueAt(currentIdx, {
+    manual: true,
+    context: { type: 'home-platform-recommendation', playlistName: '网易云每日推荐' },
+  })).catch(function (error) { console.warn('[HomePlatformNeteasePlay]', error); });
+}
 function playHomePlatformFeedSong(source, index) {
   var config = homePlatformRecommendationFeedConfig(source);
   var feedState = homePlatformRecommendationState.feeds[source];
@@ -1219,7 +1240,7 @@ function bindHomePlatformRecommendationControls() {
     var index = Number(card.getAttribute('data-home-recommend-index')) || 0;
     closeHomePlatformRecommendations();
     if (kind === 'netease-playlist' && typeof openHomePlaylist === 'function') openHomePlaylist(index);
-    else if (kind === 'netease-song' && typeof playHomeSong === 'function') playHomeSong(index);
+    else if (kind === 'netease-song' && typeof playHomePlatformNeteaseSong === 'function') playHomePlatformNeteaseSong(index);
     else if (/^(qishui|kugou|spotify)-song$/.test(kind)) playHomePlatformFeedSong(kind.replace(/-song$/, ''), index);
   });
   if (list) list.addEventListener('scroll', scheduleHomePlatformDailyWindowRender, { passive: true });

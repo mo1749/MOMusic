@@ -1061,7 +1061,7 @@ async function playQueueAt(idx, opts) {
       return localStarted === true;
     }
     safePlaybackStep('show-loading', function () { showLoading({ trackSwitch: true, seamlessCover: true }); });
-    if (!qualitySwitch) lyricSunEnergy = 0; lyricSunTarget = 0; lyricSunHold = 0; lyricSunAvg = 0; lyricSunPeak = 0.55;
+    if (!qualitySwitch) { lyricSunEnergy = 0; lyricSunTarget = 0; lyricSunHold = 0; lyricSunAvg = 0; lyricSunPeak = 0.55; }
 
     // 首次播放: 粒子从暗处浮出 (Apple 风格)
     if (firstVisualPlay) {

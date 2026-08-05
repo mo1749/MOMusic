@@ -73,10 +73,16 @@ function setPreset(p, opts) {
   if (changed && prev === SKULL_PRESET_INDEX && p !== SKULL_PRESET_INDEX) clearSkullPresetResidue();
   if (p === SKULL_PRESET_INDEX) loadSkullParticleAsset();
   if (changed && window.MOMusicSonicTopography) MOMusicSonicTopography.onPresetChange(prev, p, { scene: scene, fx: fx });
+  if (changed && window.MOMusicGoldenCore) MOMusicGoldenCore.onPresetChange(prev, p, { scene: scene, fx: fx });
+  if (changed && window.MOMusicPixelKaomoji) MOMusicPixelKaomoji.onPresetChange(prev, p, { scene: scene, fx: fx });
+  if (changed && window.MOMusicTreeCanopy) MOMusicTreeCanopy.onPresetChange(prev, p, { scene: scene, fx: fx });
   uniforms.uPreset.value = p;
   refreshPresetGrid();
   if (typeof updateSonicSeriesControlVisibility === 'function') updateSonicSeriesControlVisibility();
   if (typeof updateSonicWorkshopColorControls === 'function') updateSonicWorkshopColorControls();
+  if (typeof updateGoldenCoreControlVisibility === 'function') updateGoldenCoreControlVisibility();
+  if (typeof updatePixelKaomojiControlVisibility === 'function') updatePixelKaomojiControlVisibility();
+  if (typeof updateTreeCanopyControlVisibility === 'function') updateTreeCanopyControlVisibility();
   if (changed && !opts.skipTransition) triggerPresetParticleTransition(prev, p);
   // 每个预设对应的相机基线 (改 userOrbit)
   if (changed && !opts.preserveCamera) {

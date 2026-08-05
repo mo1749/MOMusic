@@ -98,9 +98,12 @@ var LYRIC_LAYOUT_STORE_KEY = 'MOMusic-lyric-layout-v1';
 var CURRENT_FX_AUTOSAVE_STORE_KEY = 'MOMusic-current-fx-autosave-v1';
 var CURRENT_FX_AUTOSAVE_SCHEMA = 'current-fx-autosave-v2';
 var VISUAL_PRESET_SCHEMA = 'skull-preset-v2';
-var MAX_VISUAL_PRESET_INDEX = 8;
+var MAX_VISUAL_PRESET_INDEX = 11;
 var SONIC_PRESET_INDEX = 7;
-var LEGACY_REMOVED_VISUAL_PRESET_INDEX = 10;
+var GOLDEN_CORE_PRESET_INDEX = 9;
+var PIXEL_KAOMOJI_PRESET_INDEX = 10;
+var TREE_CANOPY_PRESET_INDEX = 11;
+var LEGACY_REMOVED_VISUAL_PRESET_INDEX = -1; // 保留旧版索引兼容
 function normalizeSavedVisualPresetIndex(value) {
   var preset = Number(value);
   if (!isFinite(preset)) preset = 0;

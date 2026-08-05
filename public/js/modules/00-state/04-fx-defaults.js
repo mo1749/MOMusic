@@ -154,6 +154,34 @@ var fxDefaults = {
   galaxyCore: 0.60,
   galaxySpread: 1.0,
   galaxySpin: 0.50,
+  goldenCoreGlow: 1.0,          // 几何能量核心：核心发光强度
+  goldenCoreColor: '#ffc46b',   // 核心颜色（暖金）
+  goldenCoreHaloColor: '#ff9a3c', // 光晕颜色（琥珀橙）
+  goldenCoreOrbitCount: 6,      // 粒子轨道数量
+  goldenCoreOrbitSize: 1.0,     // 轨道尺寸
+  goldenCoreDensity: 1.0,       // 轨道粒子密度
+  goldenCoreSpin: 0.7,          // 旋转速度
+  goldenCoreStardust: 0.9,      // 背景星尘浓度
+  goldenCoreBreath: 0.55,       // 核心呼吸脉动强度
+  pixelKaomojiEnabled: true,       // 像素颜文字：是否开启像素表情粒子
+  pixelKaomojiLyrics: true,        // 像素颜文字：预设激活时是否强制像素歌词字体
+  pixelLyricsEnabled: false,       // 全局像素歌词：不依赖预设，直接把歌词设为像素字体
+  pixelKaomojiColorMode: 'cover',  // 颜色模式 cover/custom
+  pixelKaomojiCustomColor: '#ff6b9d', // 自定义表情颜色
+  pixelKaomojiSize: 1.0,           // 表情尺寸
+  pixelKaomojiSpeed: 1.0,          // 动画速度
+  pixelKaomojiBgMode: 'stars',     // 背景模式 grid/dots/stars/none
+  treeCanopyTreeColor: '#b8e4d6',  // 树梢乐谱：树干与树叶颜色
+  treeCanopyStaffColor: '#a9d9ff', // 树梢乐谱：五线谱颜色
+  treeCanopyNoteColor: '#fff0b8',  // 树梢乐谱：音符颜色
+  treeCanopyGlow: 1.15,            // 发光强度
+  treeCanopyWind: 0.82,            // 五线谱漂动速度
+  treeCanopySway: 0.78,            // 树梢摆动幅度
+  treeCanopyStaffCount: 5,         // 五线谱组数
+  treeCanopyNoteDensity: 1.0,      // 音符密度
+  treeCanopyNoteSize: 1.0,         // 音符大小
+  treeCanopyBeatResponse: 1.1,     // 节拍响应
+  treeCanopyAmbient: 1.2,          // 环境粒子密度
   particleLyrics: true,    // v7.2: 粒子歌词
   backCover: false,        // 旧的封面背面粒子层关闭；浮空粒子层会跟随封面翻转
   shelf: 'side',

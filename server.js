@@ -64,6 +64,13 @@ const { once } = require('events');
 const { fileURLToPath } = require('url');
 const { analyzePodcastDjStream, analyzePodcastDjIntro } = require('./dj-analyzer');
 const { TrackDecryptor } = require('./qishui-audio-decryptor/track-decryptor');
+// 全局异常兜底: 任何未捕获异常/拒绝都不能让服务进程崩溃 (音源沙箱等第三方代码可能逃逸)
+process.on('uncaughtException', function (err) {
+  try { console.error('[Fatal-兜底] uncaughtException:', (err && err.stack) || err); } catch (e) { }
+});
+process.on('unhandledRejection', function (err) {
+  try { console.error('[Fatal-兜底] unhandledRejection:', (err && err.stack) || err); } catch (e) { }
+});
 const {
   normalizeQQVipPayload: normalizeQQVipPayloadStrict,
   resolveQQVipFromProbes,
@@ -129,6 +136,7 @@ const {
 const {
   handleLsSongUrl,
 } = require('./lx-source-api');
+const lxSourceSync = require('./lx-source-sync');
 const {
   testCustomSource,
   tryCustomSourcesForUrl,
@@ -431,6 +439,47 @@ function clearAllRuntimeLoginCredentials(reason) {
 }
 
 // ---------- 工具 ----------
+// CORS 白名单: 允许无 Origin(本地客户端/Android)、file:// (Origin 为 null) 与本地主机页面
+function isTrustedRequestOrigin(req) {
+  const origin = String((req && req.headers && req.headers.origin) || '');
+  if (!origin || origin === 'null') return true;
+  try {
+    const hostname = new URL(origin).hostname.toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch (e) {
+    return false;
+  }
+}
+// SSRF 防护: 代理接口拒绝回环/私网/链路本地/云元数据目标
+function isBlockedProxyTarget(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+    if (host === 'localhost' || host === '::1' || host === '0.0.0.0') return true;
+    if (host === '169.254.169.254') return true;
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (ipv4) {
+      const a = Number(ipv4[1]), b = Number(ipv4[2]);
+      if (a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) ||
+          (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
+          (a === 192 && b === 168) || a >= 224) return true;
+    }
+  } catch (e) {}
+  return false;
+}
+function corsHeaderFor(req) {
+  const origin = String((req && req.headers && req.headers.origin) || '');
+  if (origin && isTrustedRequestOrigin(req)) return origin;
+  return origin ? '' : '*';
+}
+// Map 有界写入: 超过 maxSize 时按插入序淘汰最旧条目
+function boundedCacheSet(cache, key, value, maxSize) {
+  if (maxSize > 0 && cache.size >= maxSize) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(key, value);
+}
 function serveStatic(res, filePath) {
   const ext = path.extname(filePath);
   fs.readFile(filePath, (err, data) => {
@@ -448,13 +497,15 @@ function serveStatic(res, filePath) {
   });
 }
 function sendJSON(res, data, status) {
-  res.writeHead(status || 200, {
+  const headers = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
-  });
+  };
+  const cors = corsHeaderFor(res && res.req);
+  if (cors) headers['Access-Control-Allow-Origin'] = cors;
+  res.writeHead(status || 200, headers);
   res.end(JSON.stringify(data));
 }
 function readPackageInfo() {
@@ -506,7 +557,7 @@ function readUpdateConfig(pkg) {
     configured: !!(owner && repo),
     disabled: false,
     preview: local.preview !== false,
-    preferMirrors: local.preferMirrors !== false,
+    preferMirrors: local.preferMirrors === true,
     mirrors: readUpdateMirrors(local),
     manifest: process.env.MOMusic_UPDATE_MANIFEST
       || process.env.MOMusic_UPDATE_MANIFEST_URL
@@ -998,7 +1049,7 @@ function parseLatestYmlUpdateInfo(text, reason) {
       patch: null,
       patchAvailable: false,
       summary: '发现新版本，已启用备用更新线路。',
-      notes: ['更新检测已切换到备用线路', '下载时会自动选择国内加速线路', '下载失败会显示具体原因和当前速度'],
+      notes: ['优先使用 GitHub 直连下载', '直连失败时自动切换国内加速线路', '下载失败会显示具体原因和当前速度'],
     },
     source: 'latest-yml',
     reason: reason || '',
@@ -1300,6 +1351,10 @@ async function downloadUpdateAssetWithMirrors(job) {
     try {
       try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
       ensureMirrorCanBeVerified(job, candidate);
+      // 切换线路时重置进度统计，避免上一线路的部分下载污染当前进度
+      job.received = 0;
+      job.speedBps = 0;
+      job.etaSeconds = 0;
       prepareUpdateJobAttempt(job, candidate, i, candidates.length);
       job.message = job.total ? '正在下载完整安装包' : '正在下载完整安装包，等待服务器返回大小';
 
@@ -3441,10 +3496,10 @@ async function fetchQQVipStatus(cookieObj, opts) {
       negativeTtlMs: 30 * 1000,
     });
     if (cacheKey && ttlMs > 0) {
-      qqVipInfoCache.set(cacheKey, {
+      boundedCacheSet(qqVipInfoCache, cacheKey, {
         expiresAt: Date.now() + ttlMs,
         value,
-      });
+      }, 256);
     }
     return value;
   }
@@ -3577,7 +3632,7 @@ function rememberQishuiDecryptedAudio(key, payload) {
   if (!payload || !Buffer.isBuffer(payload.buffer)) return;
   qishuiAudioDecryptCache.set(key, Object.assign({ at: Date.now() }, payload));
   qishuiAudioDecryptCacheBytes += payload.buffer.length;
-  while (qishuiAudioDecryptCacheBytes > QISHUI_AUDIO_DECRYPT_CACHE_MAX_BYTES && qishuiAudioDecryptCache.size > 1) {
+  while (qishuiAudioDecryptCacheBytes > QISHUI_AUDIO_DECRYPT_CACHE_MAX_BYTES && qishuiAudioDecryptCache.size > 0) {
     const oldest = [...qishuiAudioDecryptCache.entries()].sort((a, b) => (a[1].at || 0) - (b[1].at || 0))[0];
     if (!oldest) break;
     qishuiAudioDecryptCache.delete(oldest[0]);
@@ -3594,7 +3649,7 @@ async function getQishuiDecryptedAudio(audioUrl) {
     cached.at = Date.now();
     return cached;
   }
-  const up = await fetch(parsed.cleanUrl, { headers: audioProxyHeadersFor(parsed.cleanUrl, '') });
+  const up = await fetchWithTimeout(parsed.cleanUrl, { headers: audioProxyHeadersFor(parsed.cleanUrl, '') }, 9000);
   if (!up.ok) throw new Error('Qishui encrypted audio fetch failed: HTTP ' + up.status);
   const encryptedBuffer = Buffer.from(await up.arrayBuffer());
   const result = qishuiAudioDecryptor.decrypt({ encryptedBuffer, spadeA: parsed.auth });
@@ -5179,7 +5234,7 @@ async function fetchNeteaseVipInfo(userId) {
       console.warn('[Login] vip_info failed:', err.message);
     }
   }
-  if (body) neteaseVipInfoCache.set(userId, { at: Date.now(), value: body });
+  if (body) boundedCacheSet(neteaseVipInfoCache, userId, { at: Date.now(), value: body }, 512);
   return body;
 }
 function normalizeNeteaseVip(profile, account, extra) {
@@ -5190,11 +5245,10 @@ function normalizeNeteaseVip(profile, account, extra) {
   const vipExtra = extra.vipExtra || extra.vip_info || extra.vipInfoV2 || {};
   const vipData = vipExtra.data || vipExtra;
   const objects = [account, profile, vipInfo, extra, vipData];
-  const vipType = firstPositiveNumberFrom(objects, [
-    'vipType', 'vip_type', 'viptype', 'musicVipType', 'music_vip_type',
-    'musicVipLevel', 'music_vip_level', 'redVipLevel', 'red_vip_level',
-    'blackVipLevel', 'black_vip_level', 'luxuryVipLevel', 'luxury_vip_level',
-  ]);
+  // vipType 语义(网易云): 0=非会员 1=免费红名(曾开通/已过期) 2=付费红名
+  const vipType = firstPositiveNumberFrom(objects, ['vipType', 'vip_type', 'viptype']);
+  const blackLevel = firstPositiveNumberFrom(objects, ['blackVipLevel', 'black_vip_level']);
+  const luxuryLevel = firstPositiveNumberFrom(objects, ['luxuryVipLevel', 'luxury_vip_level']);
   const text = collectVipStringValues({ account, profile, vipInfo, extra, vipData }, [], 0).join(' ').toLowerCase();
   const redplus = vipData.redplus || vipData.redPlus || vipInfo.redplus || vipInfo.redPlus || extra.redplus || extra.redPlus;
   const associator = vipData.associator || vipInfo.associator || extra.associator;
@@ -5202,18 +5256,27 @@ function normalizeNeteaseVip(profile, account, extra) {
   const svipType = firstPositiveNumberFrom(objects, [
     'svipType', 'svip_type', 'superVipLevel', 'super_vip_level', 'superVipType', 'super_vip_type',
   ]);
+  // 付费会员等级: vip_info_v2 返回红vip付费等级 (musicPackage.redVipLevel), 需配合过期时间
+  const redVipLevel = firstPositiveNumberFrom(
+    [musicPackage, vipInfo, vipData, vipExtra, extra],
+    ['redVipLevel', 'red_vip_level', 'vipLevel', 'vip_level', 'level']
+  );
+  const redExpire = Number(musicPackage && (musicPackage.expireTime || musicPackage.expire_time || musicPackage.expire || musicPackage.endTime)) || 0;
+  // 免费红名(vipType=1)时等级/包数据多为残留: 必须 expireTime 明确未过期才算有效
+  const redLevelActive = redVipLevel > 0 && (
+    vipType !== 1 ? (!redExpire || redExpire > Date.now()) : (redExpire > Date.now())
+  );
   const svipFlag = objects.some(obj => obj && (
     obj.isSvip === true || obj.is_svip === true || obj.svip === true ||
     Number(obj.isSvip || obj.is_svip || obj.svip || obj.svipType || obj.svip_type || obj.superVipLevel || obj.super_vip_level || 0) > 0
   )) || /svip|supervip|super_vip|黑胶svip|超级会员/.test(text);
-  const vipFlag = objects.some(obj => obj && (
-    obj.isVip === true || obj.is_vip === true || obj.vip === true ||
-    Number(obj.isVip || obj.is_vip || obj.vip || obj.vipFlag || obj.vipflag || 0) > 0
-  )) || /vip|黑胶|会员/.test(text);
-  const svipResolved = svipFlag || svipType > 0 || activeNeteaseVipPackage(redplus);
-  const vipResolved = vipFlag || activeNeteaseVipPackage(associator) || activeNeteaseVipPackage(musicPackage);
+  // 付费(黑胶/绿钻)会员判定: 以付费等级与有效包为准, 免费红名 vipType===1 不视为 VIP
+  const svipResolved = svipFlag || svipType > 0 || activeNeteaseVipPackage(redplus) || blackLevel > 1 || luxuryLevel > 1;
+  // 免费红名(vipType=1)时包数据多为残留, 不采信 musicPackage/associator 兜底, 避免误判
+  const paidVip = svipResolved || blackLevel > 0 || redLevelActive || vipType === 2 ||
+    (vipType !== 1 && (activeNeteaseVipPackage(musicPackage) || activeNeteaseVipPackage(associator)));
   const isSvip = svipResolved;
-  const isVip = isSvip || vipResolved || vipType > 0;
+  const isVip = isSvip || paidVip;
   const vipLevel = isSvip ? 'svip' : (isVip ? 'vip' : 'none');
   return {
     vipType,
@@ -6554,25 +6617,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (pn === '/api/qq/vip/debug') {
-    try {
-      const info = await getQQLoginInfo({ forceVip: true, forceCookie: true });
-      const cookieObj = qqCookieObject();
-      const probeRaw = await qqMusicRequest({
-        comm: { uin: qqCookieUin(cookieObj), format: 'json', ct: 24, cv: 0, authst: qqCookieMusicKey(cookieObj) },
-        req_1: {
-          module: 'userInfo.VipQueryServer',
-          method: 'SRFVipQuery_V2',
-          param: { uin_list: [String(qqCookieUin(cookieObj))] },
-        },
-      }, { cookie: true, timeoutMs: 5000 }).catch(e => ({ error: e.message }));
-      sendJSON(res, { info, probeRaw });
-    } catch (err) {
-      sendJSON(res, { error: err.message }, 500);
-    }
-    return;
-  }
-
   if (pn === '/api/qq/login/cookie') {
     try {
       const body = await readRequestBody(req);
@@ -6674,6 +6718,40 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ============ 落雪音源（LS）= 渲染API(huibq) 播放URL + QQ搜索/歌词代理 ============
+
+  // 链式尝试: 服务器自动同步的缓存音源(juhe/ikun/flower/grass/sixyin...) -> onrender huibq 回退
+  async function tryLsChain(songId, source, quality) {
+    const scripts = lxSourceSync.getCachedSourceScripts();
+    if (scripts.length) {
+      const custom = await tryCustomSourcesForUrl(scripts, songId, source, quality);
+      if (custom && custom.url) {
+        return {
+          code: 0, url: custom.url,
+          quality: String(quality || '128k').trim(), source: source,
+          provider: 'ls', from: 'custom-source', sourceId: custom.sourceId,
+        };
+      }
+    }
+    return handleLsSongUrl(songId, source, quality);
+  }
+
+  if (pn === '/api/ls/sources/status') {
+    // 音源同步状态(诊断用): 全量含混淆源, usable 供链式使用
+    try {
+      const all = lxSourceSync.getCachedSourceScripts(true);
+      const usable = lxSourceSync.getCachedSourceScripts(false);
+      sendJSON(res, {
+        ok: true,
+        count: all.length,
+        usableCount: usable.length,
+        sources: all.map(function (s) { return { id: s.id, name: s.name, url: s.url, obfuscated: !!s.obfuscated }; }),
+      });
+    } catch (err) {
+      sendJSON(res, { ok: false, error: err.message });
+    }
+    return;
+  }
+
   if (pn === '/api/ls/search') {
     // LS 搜索代理到 QQ 搜索（QQ歌曲带songmid可直接喂给render_api获取播放URL）
     try {
@@ -6711,7 +6789,7 @@ const server = http.createServer(async (req, res) => {
       const quality = String(url.searchParams.get('quality') || url.searchParams.get('type') || '128k').trim();
       const source = String(url.searchParams.get('source') || 'tx').trim(); // 默认 tx(QQ)
       if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
-      const result = await handleLsSongUrl(songId, source, quality);
+      const result = await tryLsChain(songId, source, quality);
       sendJSON(res, result);
     } catch (err) {
       sendJSON(res, { provider: 'ls', error: err.message }, 500);
@@ -6753,7 +6831,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const body = await readRequestBody(req);
       const scriptUrl = String((body && body.url) || '').trim();
-      if (!scriptUrl || !/^https?:\/\//.test(scriptUrl)) {
+      if (!scriptUrl || !/^https?:\/\//.test(scriptUrl) || isBlockedProxyTarget(scriptUrl)) {
         sendJSON(res, { ok: false, error: 'URL 无效' }); return;
       }
       const script = await new Promise((resolve, reject) => {
@@ -6771,6 +6849,7 @@ const server = http.createServer(async (req, res) => {
             resolve(new Promise((res2, rej2) => {
               const loc = resp.headers.location;
               const u2 = new URL(loc, scriptUrl);
+              if (isBlockedProxyTarget(u2.href)) { rej2(new Error('redirect blocked')); return; }
               const lib2 = u2.protocol === 'http:' ? http : https;
               lib2.get({
                 hostname: u2.hostname,
@@ -6875,12 +6954,12 @@ const server = http.createServer(async (req, res) => {
             if (!song) continue;
             try {
               const mid = song.mid || song.songmid || song.id;
-              const r = await handleLsSongUrl(mid, 'tx', '128k');
+              const r = await tryLsChain(mid, 'tx', '128k');
               if (r && r.code === 0 && r.url) {
                 song.playUrl = r.url;
                 playable.push(song);
               }
-            } catch (e) { /* 静默跳过 */ }
+            } catch (e) { /* 落雪不可用时跳过该曲, 由后续轮次继续凑数 */ }
           }
         }
         const workers = [];
@@ -7823,8 +7902,9 @@ const server = http.createServer(async (req, res) => {
     try {
       const coverUrl = url.searchParams.get('url');
       // URL 校验: 必须是 http(s) 开头, 否则直接 404 (不要让 fetch 抛错)
-      if (!coverUrl || !/^https?:\/\//i.test(coverUrl)) {
-        res.writeHead(400, { 'Access-Control-Allow-Origin': '*' });
+      if (!coverUrl || !/^https?:\/\//i.test(coverUrl) || isBlockedProxyTarget(coverUrl)) {
+        const cors = corsHeaderFor(req);
+        res.writeHead(400, cors ? { 'Access-Control-Allow-Origin': cors } : {});
         res.end('Invalid cover url');
         return;
       }
@@ -7843,12 +7923,13 @@ const server = http.createServer(async (req, res) => {
       });
       const ct  = resp.headers.get('content-type') || 'image/jpeg';
       const cl  = resp.headers.get('content-length');
+      const cors = corsHeaderFor(req);
       const hdr = {
         'Content-Type': ct,
-        'Access-Control-Allow-Origin': '*',
         'Cross-Origin-Resource-Policy': 'cross-origin',
         'Cache-Control': 'public, max-age=86400',
       };
+      if (cors) hdr['Access-Control-Allow-Origin'] = cors;
       if (cl) hdr['Content-Length'] = cl;
       res.writeHead(resp.status, hdr);
       const reader = resp.body.getReader();
@@ -7862,7 +7943,7 @@ const server = http.createServer(async (req, res) => {
   if (pn === '/api/audio') {
     try {
       const audioUrl = url.searchParams.get('url');
-      if (!audioUrl) { res.writeHead(400); res.end('Missing url'); return; }
+      if (!audioUrl || isBlockedProxyTarget(audioUrl)) { res.writeHead(400); res.end('Invalid audio url'); return; }
       const range = req.headers.range || '';
       if (audioUrl.includes('#auth=')) {
         const decrypted = await getQishuiDecryptedAudio(audioUrl);
@@ -7873,12 +7954,13 @@ const server = http.createServer(async (req, res) => {
       }
       const hdr = audioProxyHeadersFor(audioUrl, range);
       const up = await fetchWithTimeout(audioUrl, { headers: hdr }, 9000);
+      const cors = corsHeaderFor(req);
       const out = {
         'Content-Type': audioContentTypeForUrl(audioUrl, up.headers.get('content-type')),
-        'Access-Control-Allow-Origin': '*',
         'Accept-Ranges': 'bytes',
         'Cache-Control': 'no-store',
       };
+      if (cors) out['Access-Control-Allow-Origin'] = cors;
       const cl = up.headers.get('content-length'); if (cl) out['Content-Length'] = cl;
       const cr = up.headers.get('content-range');  if (cr) out['Content-Range']  = cr;
       res.writeHead(up.status, out);
@@ -7932,6 +8014,10 @@ server.listen(PORT, HOST, () => {
   console.log(' 粒子音乐可视化 v2  →  http://localhost:' + PORT);
   console.log(' 登录态: ' + (userCookie ? '已登录(cookie已加载)' : '未登录'));
   console.log('======================================================');
+  // 后台同步落雪音源(博客页爬取), 不阻塞启动
+  lxSourceSync.ensureSynced().then(function (r) {
+    if (!r.ok && r.error) console.warn('[LxSync] 启动同步失败: ' + r.error);
+  });
 });
 
 server.clearAllLoginCredentials = clearAllRuntimeLoginCredentials;

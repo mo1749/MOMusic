@@ -232,7 +232,10 @@ function platformStatus(provider) {
 }
 function providerVipType(provider, status) {
   status = status || platformStatus(provider) || {};
-  return Number(status.vipType || status.vip_type || status.vip || status.isVip || status.is_vip || 0) || 0;
+  var vt = Number(status.vipType || status.vip_type || 0) || 0;
+  // 网易云 vipType 语义: 0=非会员 1=免费红名(曾开通/已过期, 不应视为 VIP) 2=付费
+  if (provider === 'netease' && vt === 1) vt = 0;
+  return Number(status.vip || status.isVip || status.is_vip || vt) || 0;
 }
 function providerFlagEnabled(status, keys) {
   status = status || {};

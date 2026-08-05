@@ -74,8 +74,9 @@ function setPeek(el, on, key) {
   if (on && !diyPlayerMode && key === 'fx') return;
   if (!on && key === 'search' && emptyHomeActive && !immersiveMode) return;
   if (!on && key === 'pl' && playlistPanelPinned) return;
-  if (on && key === 'fx') document.body.classList.remove('fullscreen-diy-peek');
   if (on) {
+    if (key === 'search') el.classList.remove('hover-armed');
+    if (key === 'fx') document.body.classList.remove('fullscreen-diy-peek');
     if (key === 'pl') resetSecondaryPlaylistEdgeGuard();
     var wasPeek = el.classList.contains('peek');
     if (peekTimers[key]) { clearTimeout(peekTimers[key]); peekTimers[key] = null; }
@@ -114,6 +115,9 @@ function setPeek(el, on, key) {
       if (key === 'fx') {
         var fabOff = document.getElementById('fx-fab');
         if (fabOff && !el.classList.contains('show')) fabOff.classList.remove('active');
+      }
+      if (key === 'search' && !emptyHomeActive && !immersiveMode && !el.classList.contains('peek')) {
+        el.classList.add('hover-armed');
       }
       peekTimers[key] = null;
     }, playlistPeekHideDelay(key));
@@ -409,14 +413,16 @@ window.addEventListener('mousemove', function (e) {
   }
   updateShelfHoverCueFromPointer(e);
   updateShelfCardHoverSelection(e);
-  // 搜索 (上): 顶部 48px 内进入; 已显示时鼠标在 280px 内保留
+  // 搜索 (上): 鼠标进入顶部中央探测带即自动展开; 已显示时鼠标在面板附近保留
   var saOn = sa.classList.contains('peek');
   var saRect = sa.getBoundingClientRect();
   var searchFocused = document.activeElement === $input;
   var uploadTip = document.getElementById('upload-tip');
   var uploadTipOpen = !!(uploadTip && uploadTip.classList.contains('show'));
   var uploadImportOpen = typeof isUploadImportActive === 'function' && isUploadImportActive();
-  var inSearchPanel = saOn && ex >= saRect.left - 24 && ex <= saRect.right + 24 && ey >= saRect.top - 22 && ey <= saRect.bottom + 42;
+  var inSearchPanel = saOn
+    ? (ex >= saRect.left - 24 && ex <= saRect.right + 24 && ey >= saRect.top - 22 && ey <= saRect.bottom + 42)
+    : (ey <= Math.max(96, saRect.height + 56) && ex >= W * 0.15 && ex <= W * 0.85);
   if (inSearchPanel || searchFocused || uploadTipOpen || uploadImportOpen) setPeek(sa, true, 'search');
   else if ((saOn || isSearchPeekRevealPending()) && !emptyHomeActive) setPeek(sa, false, 'search');
   // 视觉控制台不再由鼠标位置触发，仅通过 fx-fab 按钮点击打开/关闭

@@ -9,6 +9,9 @@ var presetMeta = [
   { name: '安魂', desc: '骷髅·YUI7W', descHtml: '骷髅·<span class="pc-yui7w">YUI7W</span>' },
   { name: '音域回响', nameHtml: '音域回响 <span class="pc-name-en">Sonic-Topography</span>', desc: '作者 Ajin', descHtml: '作者 <span class="pc-author-ajin">Ajin</span>' },
   { name: '银河旋臂', nameHtml: '银河旋臂 <span class="pc-name-en">Galaxy-Spiral</span>', desc: '对数螺旋 · 星系律动', descHtml: '对数螺旋 · <span class="pc-author-ajin">星系律动</span>' },
+  { name: '几何能量核心', nameHtml: '几何能量核心 <span class="pc-name-en">Golden-Core</span>', desc: '金色多面体 · 粒子星轨', descHtml: '金色多面体 · <span class="pc-author-ajin">粒子星轨</span>' },
+  { name: '像素颜文字', nameHtml: '像素颜文字 <span class="pc-name-en">Pixel-Kaomoji</span>', desc: '像素表情 · 节拍律动', descHtml: '像素表情 · <span class="pc-author-ajin">节拍律动</span>' },
+  { name: '树梢乐谱', nameHtml: '树梢乐谱 <span class="pc-name-en">Canopy-Score</span>', desc: '树梢飘谱 · 音符随拍', descHtml: '树梢飘谱 · <span class="pc-author-ajin">音符随拍</span>' },
 ];
 var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 14c3-2 5-2 8 0s5 2 8 0M3 10c3-2 5-2 8 0s5 2 8 0M3 18c3-2 5-2 8 0s5 2 8 0"/></svg>',
@@ -20,8 +23,11 @@ var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2h4v6.2h4.2v3.8H14v7.6h-4v-7.6H5.8V9.4H10z"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M3 12c2-2.5 4-2.5 6 0s4 2.5 6 0 4-2.5 6 0"/><path d="M3 6c2-2 4-2 6 0s4 2 6 0 4-2 6 0"/><circle cx="18" cy="5" r="1.2" fill="currentColor"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c4.4 0 8 3.6 8 8 0 3.3-2.7 6-6 6-2.2 0-4-1.8-4-4 0-1.7 1.3-3 3-3"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5" transform="rotate(120 12 12)"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/><path d="M8 15h8"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V6.5c4-2.2 6.8-2.2 10 0v12.5"/><path d="M5 9c-2 0-3 1.4-3 2.8S3 14.5 5 14.5"/><path d="M15 7.5c2.3-.1 4.1 1.1 4.1 2.8S17.4 13 15 13"/><path d="M9 5c1.7-2.3 3.4-2.7 5.4-1.4"/><path d="M15 4v-2"/><path d="M18 6l2-1.1"/><path d="M9 21h8"/><path d="M14 17h5"/></svg>',
 ];
-var presetDisplayOrder = [0, 6, 7, 8, 5, 4, 2, 1, 3];
+var presetDisplayOrder = [0, 6, 7, 8, 9, 10, 11, 5, 4, 2, 1, 3];
 var lyricColorPresets = [
   { name: '雾蓝', color: '#a9b8c8' },
   { name: '银蓝', color: '#9db8cf' },
@@ -263,7 +269,35 @@ var USER_FX_SHARE_KEYS = [
   'galaxyTwist',
   'galaxyCore',
   'galaxySpread',
-  'galaxySpin'
+  'galaxySpin',
+  'goldenCoreGlow',
+  'goldenCoreColor',
+  'goldenCoreHaloColor',
+  'goldenCoreOrbitCount',
+  'goldenCoreOrbitSize',
+  'goldenCoreDensity',
+  'goldenCoreSpin',
+  'goldenCoreStardust',
+  'goldenCoreBreath',
+  'pixelKaomojiEnabled',
+  'pixelKaomojiLyrics',
+  'pixelLyricsEnabled',
+  'pixelKaomojiColorMode',
+  'pixelKaomojiCustomColor',
+  'pixelKaomojiSize',
+  'pixelKaomojiSpeed',
+  'pixelKaomojiBgMode',
+  'treeCanopyTreeColor',
+  'treeCanopyStaffColor',
+  'treeCanopyNoteColor',
+  'treeCanopyGlow',
+  'treeCanopyWind',
+  'treeCanopySway',
+  'treeCanopyStaffCount',
+  'treeCanopyNoteDensity',
+  'treeCanopyNoteSize',
+  'treeCanopyBeatResponse',
+  'treeCanopyAmbient'
 ];
 
 function defaultUserFxArchiveName(index) {
@@ -312,6 +346,10 @@ function normalizeFxArchiveSnapshot(raw) {
   if (!raw || typeof raw !== 'object') return null;
   var savedPreset = normalizeSavedVisualPresetIndex(raw.preset);
   if (savedPreset === 3 && raw.visualPresetSchema !== VISUAL_PRESET_SCHEMA) savedPreset = 5;
+  // 像素歌词独立化迁移：旧存档里的 pixelKaomojiEnabled 是歌词开关，不再关闭颜文字粒子
+  var pixelKaomojiNewSchema = Object.prototype.hasOwnProperty.call(raw, 'pixelKaomojiLyrics');
+  var savedPixelKaomojiEnabled = pixelKaomojiNewSchema ? raw.pixelKaomojiEnabled !== false : true;
+  var savedPixelKaomojiLyrics = pixelKaomojiNewSchema ? raw.pixelKaomojiLyrics !== false : raw.pixelKaomojiEnabled !== false;
   var archiveShelfMode = archiveMode(raw, 'shelf', /^(off|side|stage)$/, fxDefaults.shelf);
   var archiveShelfPresence = archiveShelfMode === 'off' ? 'auto' : archiveMode(raw, 'shelfPresence', /^(auto|always)$/, fxDefaults.shelfPresence);
   var archiveShelfPinnedOpen = archiveShelfMode === 'side' && archiveShelfPresence === 'always' && raw.shelfPinnedOpen === true;
@@ -476,6 +514,34 @@ function normalizeFxArchiveSnapshot(raw) {
     galaxyCore: archiveNumber(raw, 'galaxyCore', fxDefaults.galaxyCore, 0, 1),
     galaxySpread: archiveNumber(raw, 'galaxySpread', fxDefaults.galaxySpread, 0.5, 2),
     galaxySpin: archiveNumber(raw, 'galaxySpin', fxDefaults.galaxySpin, 0, 2),
+    goldenCoreGlow: archiveNumber(raw, 'goldenCoreGlow', fxDefaults.goldenCoreGlow, 0.2, 2),
+    goldenCoreColor: normalizeHexColor(raw.goldenCoreColor || fxDefaults.goldenCoreColor, fxDefaults.goldenCoreColor),
+    goldenCoreHaloColor: normalizeHexColor(raw.goldenCoreHaloColor || fxDefaults.goldenCoreHaloColor, fxDefaults.goldenCoreHaloColor),
+    goldenCoreOrbitCount: Math.round(archiveNumber(raw, 'goldenCoreOrbitCount', fxDefaults.goldenCoreOrbitCount, 2, 10)),
+    goldenCoreOrbitSize: archiveNumber(raw, 'goldenCoreOrbitSize', fxDefaults.goldenCoreOrbitSize, 0.5, 2),
+    goldenCoreDensity: archiveNumber(raw, 'goldenCoreDensity', fxDefaults.goldenCoreDensity, 0.3, 2),
+    goldenCoreSpin: archiveNumber(raw, 'goldenCoreSpin', fxDefaults.goldenCoreSpin, 0, 2),
+    goldenCoreStardust: archiveNumber(raw, 'goldenCoreStardust', fxDefaults.goldenCoreStardust, 0, 1.5),
+    goldenCoreBreath: archiveNumber(raw, 'goldenCoreBreath', fxDefaults.goldenCoreBreath, 0, 1),
+    pixelKaomojiEnabled: savedPixelKaomojiEnabled,
+    pixelKaomojiLyrics: savedPixelKaomojiLyrics,
+    pixelLyricsEnabled: raw.pixelLyricsEnabled === true,
+    pixelKaomojiColorMode: archiveMode(raw, 'pixelKaomojiColorMode', /^(cover|custom)$/, fxDefaults.pixelKaomojiColorMode),
+    pixelKaomojiCustomColor: normalizeHexColor(raw.pixelKaomojiCustomColor || fxDefaults.pixelKaomojiCustomColor, fxDefaults.pixelKaomojiCustomColor),
+    pixelKaomojiSize: archiveNumber(raw, 'pixelKaomojiSize', fxDefaults.pixelKaomojiSize, 0.5, 2),
+    pixelKaomojiSpeed: archiveNumber(raw, 'pixelKaomojiSpeed', fxDefaults.pixelKaomojiSpeed, 0.5, 2),
+    pixelKaomojiBgMode: archiveMode(raw, 'pixelKaomojiBgMode', /^(grid|dots|stars|none)$/, fxDefaults.pixelKaomojiBgMode),
+    treeCanopyTreeColor: normalizeHexColor(raw.treeCanopyTreeColor || fxDefaults.treeCanopyTreeColor, fxDefaults.treeCanopyTreeColor),
+    treeCanopyStaffColor: normalizeHexColor(raw.treeCanopyStaffColor || fxDefaults.treeCanopyStaffColor, fxDefaults.treeCanopyStaffColor),
+    treeCanopyNoteColor: normalizeHexColor(raw.treeCanopyNoteColor || fxDefaults.treeCanopyNoteColor, fxDefaults.treeCanopyNoteColor),
+    treeCanopyGlow: archiveNumber(raw, 'treeCanopyGlow', fxDefaults.treeCanopyGlow, 0.2, 2),
+    treeCanopyWind: archiveNumber(raw, 'treeCanopyWind', fxDefaults.treeCanopyWind, 0, 2),
+    treeCanopySway: archiveNumber(raw, 'treeCanopySway', fxDefaults.treeCanopySway, 0, 2),
+    treeCanopyStaffCount: Math.round(archiveNumber(raw, 'treeCanopyStaffCount', fxDefaults.treeCanopyStaffCount, 2, 7)),
+    treeCanopyNoteDensity: archiveNumber(raw, 'treeCanopyNoteDensity', fxDefaults.treeCanopyNoteDensity, 0.4, 2),
+    treeCanopyNoteSize: archiveNumber(raw, 'treeCanopyNoteSize', fxDefaults.treeCanopyNoteSize, 0.5, 2),
+    treeCanopyBeatResponse: archiveNumber(raw, 'treeCanopyBeatResponse', fxDefaults.treeCanopyBeatResponse, 0, 2),
+    treeCanopyAmbient: archiveNumber(raw, 'treeCanopyAmbient', fxDefaults.treeCanopyAmbient, 0, 2),
     particleLyrics: raw.particleLyrics !== false,
     backCover: !!raw.backCover,
     shelf: archiveShelfMode,

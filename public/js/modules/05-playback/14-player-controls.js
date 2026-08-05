@@ -680,12 +680,17 @@ function shuffleQueue() {
 }
 function clearQueue() {
   if (typeof cancelPlaylistQueueHydration === 'function') cancelPlaylistQueueHydration('clear-queue');
+  var wasPlaying = typeof audio !== 'undefined' && audio && !audio.paused && audio.readyState >= 2;
   playQueue = []; currentIdx = -1;
   currentLocalSong = null;
   startupRestoreHomePending = false;
   pendingPlaybackResumeAt = 0;
   restoredLastPlaybackSnapshot = null;
   try { localStorage.removeItem(LAST_PLAYBACK_STORE_KEY); } catch (e) { }
+  if (wasPlaying && typeof fadeOutAndPauseAudio === 'function') {
+    fadeOutAndPauseAudio();
+    if (typeof setPlayIcon === 'function') setPlayIcon(false);
+  }
   safeRenderQueuePanel('clear-queue');
   safeShelfRebuild('clear-queue');
   updateCustomCoverButton();

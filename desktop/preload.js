@@ -63,6 +63,7 @@ contextBridge.exposeInMainWorld('desktopWindow', {
     listRooms: () => ipcRenderer.invoke('listen-together-list-rooms'),
   },
   openUpdateInstaller: (filePath) => ipcRenderer.invoke('MOMusic-open-update-installer', filePath),
+  silentInstallUpdate: (filePath) => ipcRenderer.invoke('MOMusic-silent-install-update', filePath),
   restartApp: () => ipcRenderer.invoke('MOMusic-restart-app'),
   configureGlobalHotkeys: (bindings) => ipcRenderer.invoke('MOMusic-hotkeys-configure-global', bindings || []),
   copyText: (text) => {

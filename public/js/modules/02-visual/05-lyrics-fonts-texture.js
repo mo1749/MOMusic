@@ -1,5 +1,5 @@
 function builtinLyricFontKeyPattern() {
-  return /^(sans|hei|song|bold-song|stone-song|kai-song|serif-en|gothic|editorial|humanist|round|mono|display)$/;
+  return /^(sans|hei|song|bold-song|stone-song|kai-song|serif-en|gothic|editorial|humanist|round|mono|display|pixel)$/;
 }
 function customLyricFontKey(id) {
   id = String(id || '').replace(/[^a-z0-9_-]/gi, '').slice(0, 32);
@@ -93,6 +93,7 @@ function lyricFontStackForKey(key) {
   key = normalizeLyricFontKey(key);
   var customFont = customLyricFontRecordForKey(key);
   if (customFont) return quotedCssFontFamily(customFont.family) + ',"Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
+  if (key === 'pixel') return '"Courier New",Consolas,"Lucida Console",monospace';
   if (key === 'hei') return '"Noto Sans SC","Microsoft YaHei",SimHei,"PingFang SC",sans-serif';
   if (key === 'song') return '"Noto Serif SC","Source Han Serif SC",SimSun,"Songti SC",serif';
   if (key === 'bold-song') return '"Source Han Serif SC Heavy","Source Han Serif SC","Noto Serif SC Black","Noto Serif SC","STZhongsong","SimSun",serif';
@@ -109,6 +110,7 @@ function lyricFontStackForKey(key) {
 }
 function lyricFontWeightValue() {
   if (normalizeLyricFontKey(fx && fx.lyricFont) === 'stone-song') return 900;
+  if (normalizeLyricFontKey(fx && fx.lyricFont) === 'pixel') return 700;
   return Math.round(clampRange(Number(fx && fx.lyricWeight) || 900, 500, 900) / 50) * 50;
 }
 function lyricFontCss(fontSize, weight) {
@@ -307,6 +309,22 @@ function applyStonePrintTexture(ctx, W, H, fontSize, randomFn) {
     ctx.ellipse(cx, cy, radius * (0.7 + random() * 1.4), radius * (0.25 + random() * 0.55), random() * Math.PI, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
+}
+function applyPixelEffect(ctx, W, H, fontSize) {
+  if (normalizeLyricFontKey(fx && fx.lyricFont) !== 'pixel') return;
+  var block = Math.max(3, Math.min(8, Math.round((fontSize || 128) / 22)));
+  var sw = Math.max(2, Math.floor(W / block));
+  var sh = Math.max(2, Math.floor(H / block));
+  var small = document.createElement('canvas');
+  small.width = sw; small.height = sh;
+  var sctx = small.getContext('2d');
+  sctx.imageSmoothingEnabled = false;
+  sctx.drawImage(ctx.canvas, 0, 0, sw, sh);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(small, 0, 0, sw, sh, 0, 0, W, H);
   ctx.restore();
 }
 function hexToRgb(hex) {

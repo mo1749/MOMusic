@@ -117,6 +117,71 @@ function updateLyricFontControls() {
     btn.classList.toggle('active', btn.dataset.font === normalizeLyricFontKey(fx.lyricFont));
   });
 }
+var PIXEL_KAOMOJI_FX_CONTROL_IDS = [
+  'fx-pixel-kaomoji-section',
+  'pixel-kaomoji-toggle-grid',
+  'pixel-kaomoji-color-mode-seg',
+  'pixel-kaomoji-color-row',
+  'fx-pixelkaomojisize',
+  'fx-pixelkaomojispeed',
+  'pixel-kaomoji-bg-mode-seg'
+];
+function updatePixelKaomojiControlVisibility() {
+  var preset = Number(fx && fx.preset) || 0;
+  var active = typeof PIXEL_KAOMOJI_PRESET_INDEX !== 'undefined' && preset === PIXEL_KAOMOJI_PRESET_INDEX;
+  setFxPanelControlsHidden(PIXEL_KAOMOJI_FX_CONTROL_IDS, !active);
+}
+function updatePixelKaomojiColorControls() {
+  var fallback = fxDefaults.pixelKaomojiCustomColor || '#ff6b9d';
+  var color = normalizeHexColor((fx && fx.pixelKaomojiCustomColor) || fallback, fallback);
+  var picker = document.getElementById('pixel-kaomoji-color-picker');
+  var value = document.getElementById('pixel-kaomoji-color-value');
+  if (picker) picker.value = color;
+  if (value) value.textContent = color.toUpperCase();
+  var modeSeg = document.getElementById('pixel-kaomoji-color-mode-seg');
+  if (modeSeg) {
+    modeSeg.querySelectorAll('button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-pixel-kaomoji-color-mode') === (fx && fx.pixelKaomojiColorMode || 'cover'));
+    });
+  }
+  var bgSeg = document.getElementById('pixel-kaomoji-bg-mode-seg');
+  if (bgSeg) {
+    bgSeg.querySelectorAll('button').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-pixel-kaomoji-bg-mode') === (fx && fx.pixelKaomojiBgMode || 'grid'));
+    });
+  }
+  var toggle = document.getElementById('t-pixelKaomojiEnabled');
+  if (toggle) toggle.classList.toggle('on', !!(fx && fx.pixelKaomojiEnabled !== false));
+  var lyricsToggle = document.getElementById('t-pixelKaomojiLyricsPanel');
+  if (lyricsToggle) lyricsToggle.classList.toggle('on', !!(fx && fx.pixelKaomojiLyrics !== false));
+}
+function setPixelKaomojiColorMode(mode, silent) {
+  mode = mode === 'custom' ? 'custom' : 'cover';
+  fx.pixelKaomojiColorMode = mode;
+  updatePixelKaomojiColorControls();
+  saveLyricLayout({ user: true, reason: 'pixelKaomojiColorMode' });
+  if (!silent) showToast('表情颜色: ' + (mode === 'custom' ? '自定义' : '封面取色'));
+}
+function setPixelKaomojiBgMode(mode, silent) {
+  mode = /^(grid|dots|stars|none)$/.test(mode) ? mode : 'grid';
+  fx.pixelKaomojiBgMode = mode;
+  updatePixelKaomojiColorControls();
+  saveLyricLayout({ user: true, reason: 'pixelKaomojiBgMode' });
+  if (!silent) showToast('像素背景: ' + ({ grid: '网格', dots: '圆点', stars: '星点', none: '关闭' }[mode] || mode));
+}
+function setPixelKaomojiColor(color, silent) {
+  var fallback = fxDefaults.pixelKaomojiCustomColor || '#ff6b9d';
+  fx.pixelKaomojiCustomColor = normalizeHexColor(color || fallback, fallback);
+  updatePixelKaomojiColorControls();
+  saveLyricLayout({ user: true, reason: 'pixelKaomojiCustomColor' });
+  if (!silent) showToast('表情颜色: ' + fx.pixelKaomojiCustomColor.toUpperCase());
+}
+function resetPixelKaomojiColor() {
+  fx.pixelKaomojiCustomColor = normalizeHexColor(fxDefaults.pixelKaomojiCustomColor || '#ff6b9d', '#ff6b9d');
+  updatePixelKaomojiColorControls();
+  saveLyricLayout({ user: true, reason: 'pixelKaomojiCustomColor' });
+  showToast('表情颜色已恢复默认');
+}
 function setLyricFont(key) {
   fx.lyricFont = normalizeLyricFontKey(key);
   var customFont = customLyricFontRecordForKey(fx.lyricFont);

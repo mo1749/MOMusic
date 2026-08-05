@@ -133,6 +133,8 @@ function setRedDustInnRadarCategory(cat) {
   redDustInnRadarCategory = cat;
   redDustInnState.category = cat;
   saveRedDustInnPreference();
+  applyRedDustInnUi();
+  if (typeof renderHomeDashboardQuickCards === 'function') renderHomeDashboardQuickCards();
   showToast('雷达分类：' + cat);
 }
 

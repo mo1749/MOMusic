@@ -213,6 +213,13 @@ function defaultOrbitStateForPreset(p) {
   if (p === 4) return { theta: 0.0, phi: 0.04, radius: 6.5 };
   if (p === 6) return { theta: 0.18, phi: 0.10, radius: 7.4 };
   if (p === 8) return { theta: 0.0, phi: 0.32, radius: 8.6 };
+  if (typeof GOLDEN_CORE_PRESET_INDEX !== 'undefined' && p === GOLDEN_CORE_PRESET_INDEX) {
+    return { theta: 0.0, phi: 0.14, radius: 9.6 };
+  }
+  if (typeof TREE_CANOPY_PRESET_INDEX !== 'undefined' && p === TREE_CANOPY_PRESET_INDEX) {
+    // 树梢乐谱内容较宽，相机拉远保证五线谱完整入画
+    return { theta: 0.06, phi: 0.12, radius: 9.4 };
+  }
   if (typeof SONIC_PRESET_INDEX !== 'undefined' && p === SONIC_PRESET_INDEX) {
     return {
       theta: SONIC_ORBIT_BASELINE.theta,

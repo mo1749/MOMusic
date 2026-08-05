@@ -597,12 +597,15 @@ function animate() {
   // v7.2 旋转 = 头部+眼球追踪 + 鼠标/手势拖动 + 惯性
   tickGestureRotation(dt);
   var skullPresetActive = fx && fx.preset === SKULL_PRESET_INDEX;
+  var goldenCorePresetActive = fx && typeof GOLDEN_CORE_PRESET_INDEX !== 'undefined' && Number(fx.preset) === GOLDEN_CORE_PRESET_INDEX;
+  var pixelKaomojiPresetActive = fx && typeof PIXEL_KAOMOJI_PRESET_INDEX !== 'undefined' && Number(fx.preset) === PIXEL_KAOMOJI_PRESET_INDEX;
+  var treeCanopyPresetActive = fx && typeof TREE_CANOPY_PRESET_INDEX !== 'undefined' && Number(fx.preset) === TREE_CANOPY_PRESET_INDEX;
   var presetUsesStarRiverParticles = fx && (Number(fx.preset) === 5 || (typeof SONIC_PRESET_INDEX !== 'undefined' && Number(fx.preset) === SONIC_PRESET_INDEX));
   var presetStarRiverMuted = presetUsesStarRiverParticles && fx.backgroundStarRiver === false;
-  particles.visible = !skullPresetActive && !presetStarRiverMuted;
-  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
-  if (floatGroup) floatGroup.visible = !skullPresetActive;
-  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive;
+  particles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !presetStarRiverMuted;
+  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
+  if (floatGroup) floatGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive;
+  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive;
   var targetRotY = orbit.centerLocked ? 0 : (headParallax.active ? headParallax.x * 0.5 : 0) + gestureRotation.y;
   var targetRotX = orbit.centerLocked ? 0 : (headParallax.active ? -headParallax.y * 0.35 : 0) + gestureRotation.x;
   particles.rotation.y += (targetRotY - particles.rotation.y) * 0.055;
@@ -635,6 +638,48 @@ function animate() {
     });
   }
   if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.sonic-topography', sonicPerfStart);
+  var goldenCorePerfStart = performance.now();
+  if (window.MOMusicGoldenCore) {
+    MOMusicGoldenCore.update(dt, {
+      scene: scene,
+      fx: fx,
+      time: uniforms.uTime.value,
+      screenHeight: window.innerHeight,
+      dpr: renderer.getPixelRatio ? renderer.getPixelRatio() : (window.devicePixelRatio || 1),
+      visualRotation: particles && particles.rotation ? particles.rotation : null,
+      visualRotationActive: !!(orbit && orbit.rotating),
+      audio: sonicAudioFrame || { bass: bass, mid: mid, treble: treble, beat: beatPulse, energy: audioEnergy }
+    });
+  }
+  if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.golden-core', goldenCorePerfStart);
+  var pixelKaomojiPerfStart = performance.now();
+  if (window.MOMusicPixelKaomoji) {
+    MOMusicPixelKaomoji.update(dt, {
+      scene: scene,
+      fx: fx,
+      time: uniforms.uTime.value,
+      screenHeight: window.innerHeight,
+      dpr: renderer.getPixelRatio ? renderer.getPixelRatio() : (window.devicePixelRatio || 1),
+      visualRotation: particles && particles.rotation ? particles.rotation : null,
+      visualRotationActive: !!(orbit && orbit.rotating),
+      audio: sonicAudioFrame || { bass: bass, mid: mid, treble: treble, beat: beatPulse, energy: audioEnergy }
+    });
+  }
+  if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.pixel-kaomoji', pixelKaomojiPerfStart);
+  var treeCanopyPerfStart = performance.now();
+  if (window.MOMusicTreeCanopy) {
+    MOMusicTreeCanopy.update(dt, {
+      scene: scene,
+      fx: fx,
+      time: uniforms.uTime.value,
+      screenHeight: window.innerHeight,
+      dpr: renderer.getPixelRatio ? renderer.getPixelRatio() : (window.devicePixelRatio || 1),
+      visualRotation: particles && particles.rotation ? particles.rotation : null,
+      visualRotationActive: !!(orbit && orbit.rotating),
+      audio: sonicAudioFrame || { bass: bass, mid: mid, treble: treble, beat: beatPulse, energy: audioEnergy }
+    });
+  }
+  if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.tree-canopy', treeCanopyPerfStart);
   var stageLyricsPerfStart = performance.now();
   var stageLyricsStepDt = consumeFrameGate(mainFrameGates.stageLyrics, now, dt, targetMainStageLyricsFps(now), false, 'stage-lyrics');
   if (stageLyricsStepDt > 0) updateStageLyrics3D(stageLyricsStepDt);

@@ -229,7 +229,7 @@ function finalizeListenSession(completed) {
     ? Math.round(audio.duration * 1000)
     : listenSnapshotDurationMs(session.song);
   listenSession = null;
-  var effective = completed || session.listenMs >= 45000 || session.maxProgress >= 0.5 || (!audio || !audio.duration ? session.listenMs >= 30000 : false);
+  var effective = (completed || session.listenMs >= 45000 || session.maxProgress >= 0.5) || (!audio || !audio.duration ? session.listenMs >= 30000 : false);
   if (!effective) return;
   var now = Date.now();
   var snap = session.song || {};

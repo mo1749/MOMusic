@@ -96,15 +96,26 @@ function lxRequest(url, options, callback) {
       res.on('data', function (c) { chunks.push(c); });
       res.on('end', function () {
         var buf = Buffer.concat(chunks);
-        callback(null, {
-          statusCode: res.statusCode,
-          headers: res.headers,
-          body: buf,
-          raw: buf,
-        });
+        var body = buf;
+        var ct = String(res.headers && (res.headers['content-type'] || res.headers['Content-Type']) || '');
+        if (/json|javascript|xml|text\//.test(ct)) {
+          var text = buf.toString('utf8');
+          try { body = JSON.parse(text); } catch (e) { body = text; }
+        }
+        // 用户脚本回调可能抛异常, 不能让其逃逸到宿主 EventEmitter 崩溃进程
+        try {
+          callback(null, {
+            statusCode: res.statusCode,
+            headers: res.headers,
+            body: body,
+            raw: buf,
+          });
+        } catch (e) { /* 忽略用户回调异常, 由调用方超时兜底 */ }
       });
     });
-    req.on('error', function (err) { callback(err); });
+    req.on('error', function (err) {
+      try { callback(err); } catch (e) { /* 忽略用户回调异常 */ }
+    });
     req.setTimeout(timeout, function () {
       req.destroy(new Error('request timeout'));
     });
@@ -112,7 +123,7 @@ function lxRequest(url, options, callback) {
     req.end();
     return function () { try { req.destroy(); } catch (e) {} };
   } catch (e) {
-    callback(e);
+    try { callback(e); } catch (e2) { /* 忽略用户回调异常 */ }
     return function () {};
   }
 }
@@ -164,6 +175,7 @@ function createSandboxedSource(rawScript, options) {
           });
           state.sources = filtered;
           state.initialized = true;
+          state.pendingInitResult = filtered;
           if (state.pendingInitResolve) state.pendingInitResolve(filtered);
           resolve(true);
         } else if (eventName === 'updateAlert') {
@@ -178,6 +190,7 @@ function createSandboxedSource(rawScript, options) {
       return new Promise(function (resolve) {
         if (eventName === 'request') {
           state.requestHandler = handler;
+          sandbox.__lxDispatchRequest = handler;
         }
         resolve(true);
       });
@@ -230,11 +243,19 @@ function createSandboxedSource(rawScript, options) {
   // 创建沙箱上下文
   var sandbox = {
     lx: lx,
-    console: { log: function () {}, warn: function () {}, error: function () {}, info: function () {} },
+    console: { log: function () {}, warn: function () {}, error: function () {}, info: function () {}, debug: function () {}, group: function () {}, groupEnd: function () {}, groupCollapsed: function () {}, table: function () {}, time: function () {}, timeEnd: function () {}, trace: function () {}, count: function () {}, countReset: function () {}, clear: function () {} },
     setTimeout: setTimeout,
     clearTimeout: clearTimeout,
-    setInterval: function () { return 0; },
-    clearInterval: function () {},
+    setInterval: function (cb, ms) {
+      if (typeof cb !== 'function') return 0;
+      var h = setInterval(function () {
+        try { cb(); } catch (e) {}
+      }, Math.max(ms || 100, 10));
+      sandbox._timers = sandbox._timers || [];
+      sandbox._timers.push(h);
+      return h;
+    },
+    clearInterval: function (h) { clearInterval(h); },
     Buffer: Buffer,
     URL: URL,
     URLSearchParams: URLSearchParams,
@@ -256,13 +277,34 @@ function createSandboxedSource(rawScript, options) {
     isNaN: isNaN,
   };
 
+  // 兼容部分混淆/环境检测音源脚本：补齐浏览器与进程相关全局
+  sandbox.globalThis = sandbox;
+  sandbox.global = sandbox;
+  sandbox.window = sandbox;
+  sandbox.self = sandbox;
+  sandbox.navigator = { userAgent: 'lx-music-desktop/2.0.0 (MoMusic)' };
+  sandbox.process = {
+    env: {},
+    platform: 'win32',
+    version: 'v2.0.0',
+    versions: { node: '14.0.0' },
+    browser: true,
+  };
+  sandbox.requestAnimationFrame = function (cb) { return setTimeout(cb, 0); };
+  sandbox.cancelAnimationFrame = function () {};
+
   try {
     var context = vm.createContext(sandbox);
+    // 每次请求经 vm 入口派发, 让同步死循环也能被 requestTimeout 拦截
+    var vmRequestDispatch = new vm.Script('__lxDispatchRequest(__lxRequestPayload)', {
+      filename: 'lx-user-source-request.js',
+    });
     // 执行脚本
     vm.runInContext(rawScript, context, { timeout: initTimeout, filename: 'lx-user-source.js' });
   } catch (e) {
     state.error = e.message || String(e);
     state.initialized = false;
+    state.initPromise = Promise.reject(new Error(state.error));
     return state;
   }
 
@@ -270,6 +312,11 @@ function createSandboxedSource(rawScript, options) {
   state.pendingInitPromise = new Promise(function (resolve, reject) {
     state.pendingInitResolve = resolve;
     state.pendingInitReject = reject;
+    // 脚本在顶层同步调用 send('inited') 时, 结果已在 pendingInitResult 中
+    if (state.initialized && state.pendingInitResult !== undefined) {
+      resolve(state.pendingInitResult);
+      return;
+    }
     setTimeout(function () {
       if (!state.initialized) {
         state.error = state.error || '初始化超时 (脚本未调用 lx.send("inited"))';
@@ -300,9 +347,21 @@ function createSandboxedSource(rawScript, options) {
       var timer = setTimeout(function () {
         if (!settled) { settled = true; reject(new Error('request timeout')); }
       }, requestTimeout);
+      var ret;
       try {
-        var ret = state.requestHandler({ source: source, action: action, info: info || {} });
-        Promise.resolve(ret).then(function (result) {
+        // 从 vm 入口同步派发请求处理器, 同步死循环由 vm timeout 拦截
+        // v2 协议 request 事件载荷为 { action, source, info } 包裹结构
+        sandbox.__lxRequestPayload = { action: action, source: source, info: info || {} };
+        ret = vmRequestDispatch.runInContext(context, { timeout: requestTimeout });
+      } catch (e) {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          reject(new Error('request handler error: ' + (e.message || String(e))));
+        }
+        return;
+      }
+      Promise.resolve(ret).then(function (result) {
           if (settled) return;
           settled = true;
           clearTimeout(timer);
@@ -325,9 +384,6 @@ function createSandboxedSource(rawScript, options) {
           clearTimeout(timer);
           reject(err);
         });
-      } catch (e) {
-        if (!settled) { settled = true; clearTimeout(timer); reject(e); }
-      }
     });
   };
 
@@ -346,6 +402,28 @@ async function testCustomSource(rawScript) {
   }
 }
 
+// 沙箱实例缓存: 同一脚本内容复用已初始化的沙箱, 避免每次请求重新解析执行
+var scriptStateCache = new Map();
+var SCRIPT_STATE_TTL = 10 * 60 * 1000;
+
+function getSandboxedSource(rawScript) {
+  var key = crypto.createHash('md5').update(String(rawScript)).digest('hex');
+  var now = Date.now();
+  var hit = scriptStateCache.get(key);
+  if (hit && hit.at > now - SCRIPT_STATE_TTL && hit.state && hit.state.initialized) {
+    return { state: hit.state, fresh: false };
+  }
+  var state = createSandboxedSource(rawScript, { initTimeout: 6000, requestTimeout: 15000 });
+  scriptStateCache.set(key, { at: now, state: state });
+  if (scriptStateCache.size > 64) {
+    for (var k of scriptStateCache.keys()) {
+      var v = scriptStateCache.get(k);
+      if (now - v.at > SCRIPT_STATE_TTL) scriptStateCache.delete(k);
+    }
+  }
+  return { state: state, fresh: true };
+}
+
 // 链式尝试多个脚本,获取播放URL
 // scripts: [{ script, id }] 数组,按顺序尝试
 // 返回第一个成功的结果,全部失败时返回 null
@@ -355,14 +433,18 @@ async function tryCustomSourcesForUrl(scripts, songmid, source, quality) {
   for (var i = 0; i < scripts.length; i++) {
     var item = scripts[i];
     if (!item || !item.script) continue;
-    var state = createSandboxedSource(item.script, { initTimeout: 6000, requestTimeout: 15000 });
+    var entry = getSandboxedSource(item.script);
+    var state = entry.state;
     try {
-      await state.initPromise;
+      if (entry.fresh) await state.initPromise;
       if (!state.sources || !state.sources[lxSource]) continue;
-      var url = await state.request('musicUrl', {
-        type: quality || '128k',
-        musicInfo: { songmid: songmid, id: songmid },
-      }, lxSource);
+      var url = await Promise.race([
+        state.request('musicUrl', {
+          type: quality || '128k',
+          musicInfo: { songmid: songmid, id: songmid },
+        }, lxSource),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('chain-source-timeout')); }, 8000); }),
+      ]);
       return { url: url, sourceId: item.id, source: lxSource };
     } catch (err) {
       // 静默跳过,尝试下一个
@@ -379,9 +461,10 @@ async function tryCustomSourcesForLyric(scripts, songmid, source) {
   for (var i = 0; i < scripts.length; i++) {
     var item = scripts[i];
     if (!item || !item.script) continue;
-    var state = createSandboxedSource(item.script, { initTimeout: 6000, requestTimeout: 15000 });
+    var entry = getSandboxedSource(item.script);
+    var state = entry.state;
     try {
-      await state.initPromise;
+      if (entry.fresh) await state.initPromise;
       // 歌词只在 local 源支持,但部分脚本会在 tx/wy 上也声明,放宽校验
       if (!state.sources || !state.sources[lxSource]) continue;
       var srcInfo = state.sources[lxSource];

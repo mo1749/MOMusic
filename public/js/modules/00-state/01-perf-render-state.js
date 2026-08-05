@@ -65,6 +65,7 @@ var updatePreviewState = {
   mode: 'installer',
   installerPath: '',
   installerOpened: false,
+  silentInstalling: false,
   cached: false,
   currentVersion: (typeof window.__APP_VERSION__ !== 'undefined') ? window.__APP_VERSION__ : '1.0.0',
   version: (typeof window.__APP_VERSION__ !== 'undefined') ? window.__APP_VERSION__ : '1.0.0',

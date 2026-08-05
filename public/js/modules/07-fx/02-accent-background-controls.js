@@ -782,6 +782,46 @@ function setSonicGroundColorFromPicker(pickerId, color, silent) {
   if (item) setSonicGroundColor(item.key, color, silent);
 }
 
+var GOLDEN_CORE_COLOR_CONTROLS = [
+  { key: 'goldenCoreColor', picker: 'golden-core-color-picker', value: 'golden-core-color-value', label: '核心颜色' },
+  { key: 'goldenCoreHaloColor', picker: 'golden-core-halo-picker', value: 'golden-core-halo-value', label: '光晕颜色' }
+];
+function goldenCoreColorControl(key) {
+  for (var i = 0; i < GOLDEN_CORE_COLOR_CONTROLS.length; i++) {
+    if (GOLDEN_CORE_COLOR_CONTROLS[i].key === key || GOLDEN_CORE_COLOR_CONTROLS[i].picker === key) return GOLDEN_CORE_COLOR_CONTROLS[i];
+  }
+  return null;
+}
+function updateGoldenCoreColorControls() {
+  GOLDEN_CORE_COLOR_CONTROLS.forEach(function (item) {
+    var fallback = fxDefaults[item.key] || '#ffc46b';
+    var color = normalizeHexColor(fx[item.key] || fallback, fallback);
+    var picker = document.getElementById(item.picker);
+    var value = document.getElementById(item.value);
+    if (picker) picker.value = color;
+    if (value) value.textContent = color.toUpperCase();
+  });
+}
+function setGoldenCoreColor(key, color, silent) {
+  var item = goldenCoreColorControl(key);
+  if (!item) return;
+  var fallback = fxDefaults[item.key] || '#ffc46b';
+  fx[item.key] = normalizeHexColor(color || fallback, fallback);
+  updateGoldenCoreColorControls();
+  syncFxUniforms();
+  saveLyricLayout({ user: true, reason: item.key });
+  if (!silent) showToast(item.label + ': ' + fx[item.key].toUpperCase());
+}
+function resetGoldenCoreColor(key) {
+  var item = goldenCoreColorControl(key);
+  if (!item) return;
+  fx[item.key] = normalizeHexColor(fxDefaults[item.key] || '#ffc46b', '#ffc46b');
+  updateGoldenCoreColorControls();
+  syncFxUniforms();
+  saveLyricLayout({ user: true, reason: item.key });
+  showToast(item.label + '已恢复默认');
+}
+
 var SONIC_WORKSHOP_THEME_ALIASES = {
   'minimal-mono': 'minimal-monochrome',
   'arctic-blue': 'arctic-aurora',

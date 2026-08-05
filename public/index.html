@@ -13,7 +13,8 @@
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260716-we-continuity-vsync">
+  <link rel="stylesheet" href="css/index.css?v=20260804-fix-white-buttons">
+  <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
 </head>
 
 <body>
@@ -703,6 +704,7 @@
             <button type="button" data-font="humanist" onclick="setLyricFont('humanist')">Humanist</button>
             <button type="button" data-font="mono" onclick="setLyricFont('mono')">等宽</button>
             <button type="button" data-font="display" onclick="setLyricFont('display')">标题</button>
+            <button type="button" data-font="pixel" onclick="setLyricFont('pixel')" style="font-family:'Courier New',monospace">像素</button>
             <button type="button" class="font-upload-btn" onclick="triggerLyricFontUpload()">上传字体</button>
           </div>
           <div class="fx-slider"><label>字间距</label><input id="fx-lyricspacing" type="range" min="-0.04" max="0.18"
@@ -744,6 +746,8 @@
                 class="dot"></span></div>
             <div class="fx-toggle" id="t-lyricGlowParticles" onclick="toggleFx('lyricGlowParticles')">
               <span>歌词光粒</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-pixelLyricsEnabled" onclick="toggleFx('pixelLyricsEnabled')"
+              title="全局像素歌词：不依赖像素颜文字预设，直接把歌词字体设为像素字体"><span>像素歌词</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-backgroundStarRiver" onclick="toggleFx('backgroundStarRiver')">
               <span>背景星河</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-lyricVerticalFloat" onclick="toggleFx('lyricVerticalFloat')">
@@ -828,6 +832,84 @@
               max="2" step="0.05"><output></output></div>
           <div class="fx-slider"><label>旋转速度</label><input id="fx-galaxyspin" type="range" min="0" max="2"
               step="0.05"><output></output></div>
+          <div class="fx-section-label" id="fx-golden-core-section">几何能量核心</div>
+          <div class="fx-slider"><label>核心发光</label><input id="fx-goldencoreglow" type="range" min="0.2"
+              max="2" step="0.05"><output></output></div>
+          <div class="lyric-color-row" id="golden-core-color-row">
+            <input id="golden-core-color-picker" class="lyric-color-picker" type="color" value="#ffc46b" title="核心颜色">
+            <div class="fx-color-row-label">核心颜色<small id="golden-core-color-value">#FFC46B</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetGoldenCoreColor('goldenCoreColor')">默认</button>
+          </div>
+          <div class="lyric-color-row" id="golden-core-halo-row">
+            <input id="golden-core-halo-picker" class="lyric-color-picker" type="color" value="#ff9a3c" title="光晕颜色">
+            <div class="fx-color-row-label">光晕颜色<small id="golden-core-halo-value">#FF9A3C</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetGoldenCoreColor('goldenCoreHaloColor')">默认</button>
+          </div>
+          <div class="fx-slider"><label>轨道数量</label><input id="fx-goldencoreorbitcount" type="range" min="2"
+              max="10" step="1"><output></output></div>
+          <div class="fx-slider"><label>轨道尺寸</label><input id="fx-goldencoreorbitsize" type="range" min="0.5"
+              max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>粒子密度</label><input id="fx-goldencoredensity" type="range" min="0.3"
+              max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>旋转速度</label><input id="fx-goldencorespin" type="range" min="0" max="2"
+              step="0.05"><output></output></div>
+          <div class="fx-slider"><label>星尘浓度</label><input id="fx-goldencorestardust" type="range" min="0"
+              max="1.5" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>呼吸脉动</label><input id="fx-goldencorebreath" type="range" min="0" max="1"
+              step="0.05"><output></output></div>
+          <div class="fx-section-label" id="fx-pixel-kaomoji-section">像素颜文字</div>
+          <div class="fx-toggle-grid" id="pixel-kaomoji-toggle-grid">
+            <div class="fx-toggle" id="t-pixelKaomojiEnabled" onclick="toggleFx('pixelKaomojiEnabled')"
+              title="开启/关闭像素颜文字表情"><span>像素风格</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-pixelKaomojiLyricsPanel" onclick="toggleFx('pixelKaomojiLyrics')"
+              title="开启/关闭像素歌词（与歌词分类下的像素歌词开关联动）"><span>像素歌词</span><span class="dot"></span></div>
+          </div>
+          <div class="fx-seg" id="pixel-kaomoji-color-mode-seg">
+            <button data-pixel-kaomoji-color-mode="cover" class="active" onclick="setPixelKaomojiColorMode('cover')">封面取色</button>
+            <button data-pixel-kaomoji-color-mode="custom" onclick="setPixelKaomojiColorMode('custom')">自定义</button>
+          </div>
+          <div class="lyric-color-row" id="pixel-kaomoji-color-row">
+            <input id="pixel-kaomoji-color-picker" class="lyric-color-picker" type="color" value="#ff6b9d"
+              title="表情颜色" oninput="setPixelKaomojiColor(this.value)">
+            <div class="fx-color-row-label">表情颜色<small id="pixel-kaomoji-color-value">#FF6B9D</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetPixelKaomojiColor()">默认</button>
+          </div>
+          <div class="fx-slider"><label>表情尺寸</label><input id="fx-pixelkaomojisize" type="range" min="0.5" max="2"
+              step="0.05"><output></output></div>
+          <div class="fx-slider"><label>动画速度</label><input id="fx-pixelkaomojispeed" type="range" min="0.5" max="2"
+              step="0.05"><output></output></div>
+          <div class="fx-section-label">像素背景</div>
+          <div class="fx-seg" id="pixel-kaomoji-bg-mode-seg">
+            <button data-pixel-kaomoji-bg-mode="grid" class="active" onclick="setPixelKaomojiBgMode('grid')">网格</button>
+            <button data-pixel-kaomoji-bg-mode="dots" onclick="setPixelKaomojiBgMode('dots')">圆点</button>
+            <button data-pixel-kaomoji-bg-mode="stars" onclick="setPixelKaomojiBgMode('stars')">星点</button>
+            <button data-pixel-kaomoji-bg-mode="none" onclick="setPixelKaomojiBgMode('none')">关闭</button>
+          </div>
+          <div class="fx-section-label" id="fx-tree-canopy-section">树梢乐谱</div>
+          <div class="fx-section-label" id="tree-canopy-color-section">乐谱颜色</div>
+          <div class="lyric-color-row" id="tree-canopy-tree-row">
+            <input id="tree-canopy-tree-picker" class="lyric-color-picker" type="color" value="#b8e4d6" title="树梢颜色">
+            <div class="fx-color-row-label">树梢颜色<small id="tree-canopy-tree-value">#B8E4D6</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetTreeCanopyColor('treeCanopyTreeColor')">默认</button>
+          </div>
+          <div class="lyric-color-row" id="tree-canopy-staff-row">
+            <input id="tree-canopy-staff-picker" class="lyric-color-picker" type="color" value="#a9d9ff" title="五线谱颜色">
+            <div class="fx-color-row-label">五线谱颜色<small id="tree-canopy-staff-value">#A9D9FF</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetTreeCanopyColor('treeCanopyStaffColor')">默认</button>
+          </div>
+          <div class="lyric-color-row" id="tree-canopy-note-row">
+            <input id="tree-canopy-note-picker" class="lyric-color-picker" type="color" value="#fff0b8" title="音符颜色">
+            <div class="fx-color-row-label">音符颜色<small id="tree-canopy-note-value">#FFF0B8</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetTreeCanopyColor('treeCanopyNoteColor')">默认</button>
+          </div>
+          <div class="fx-slider"><label>发光强度</label><input id="fx-treecanopyglow" type="range" min="0.2" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>谱线风速</label><input id="fx-treecanopywind" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>树梢摆幅</label><input id="fx-treecanopysway" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>五线谱组数</label><input id="fx-treecanopystaffcount" type="range" min="2" max="7" step="1"><output></output></div>
+          <div class="fx-slider"><label>音符密度</label><input id="fx-treecanopynotedensity" type="range" min="0.4" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>音符大小</label><input id="fx-treecanopynotesize" type="range" min="0.5" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>节拍响应</label><input id="fx-treecanopybeat" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>环境粒子</label><input id="fx-treecanopyambient" type="range" min="0" max="2" step="0.05"><output></output></div>
         </div>
       </div>
 
@@ -2002,9 +2084,22 @@
         </button>
       </div>
 
-      <!-- 昵称 -->
-      <div style="margin-bottom:10px">
-        <input id="lt-nickname-input" class="lt-input" type="text" placeholder="输入你的昵称" maxlength="16" style="width:100%;text-align:center" onkeydown="if(event.key==='Enter')document.getElementById('lt-room-name-input').focus()">
+      <!-- 昵称 + 自定义头像 -->
+      <div style="margin-bottom:10px;position:relative">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="lt-avatar-btn" class="lt-avatar-btn" type="button" title="点击更换头像" aria-label="更换头像" onclick="handleLtAvatarToggle(event)"></button>
+          <input id="lt-nickname-input" class="lt-input" type="text" placeholder="输入你的昵称" maxlength="16" style="flex:1;text-align:center" onkeydown="if(event.key==='Enter')document.getElementById('lt-room-name-input').focus()">
+        </div>
+        <!-- 头像选择浮层 -->
+        <div id="lt-avatar-pop" class="lt-avatar-pop" style="display:none">
+          <div class="lt-avatar-pop-title">选择头像</div>
+          <div id="lt-avatar-grid" class="lt-avatar-grid"></div>
+          <div class="lt-avatar-pop-actions">
+            <button class="lt-btn lt-btn-sm" type="button" onclick="handleLtAvatarUploadClick()">📷 上传图片</button>
+            <button class="lt-btn lt-btn-sm" type="button" onclick="handleLtAvatarReset()">恢复默认</button>
+          </div>
+          <input type="file" id="lt-avatar-file" accept="image/*" style="display:none">
+        </div>
       </div>
 
       <!-- 房间模式切换 -->
@@ -2015,8 +2110,8 @@
 
       <!-- 创建/加入分段 -->
       <div class="lt-segmented">
-        <button class="lt-seg-tab active" onclick="showLtCreateForm()">创建房间</button>
-        <button class="lt-seg-tab" onclick="showLtJoinForm()">加入房间</button>
+        <button class="lt-seg-tab active" data-lt-form="create" onclick="showLtCreateForm()">创建房间</button>
+        <button class="lt-seg-tab" data-lt-form="join" onclick="showLtJoinForm()">加入房间</button>
       </div>
 
       <!-- 创建房间 -->
@@ -2098,6 +2193,7 @@
 </div>
 <script src="js/listen-together-client.js"></script>
   <script src="js/listen-together-ui.js"></script>
+  <script src="js/listen-together-float-chat.js"></script>
   <script src="js/index-loader.js"></script>
   <script>
     // 初始化一起听 UI（必须在 index-loader 加载完所有模块后，依赖 playQueue/audio 等全局变量）

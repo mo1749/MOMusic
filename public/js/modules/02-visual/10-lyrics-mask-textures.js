@@ -347,12 +347,14 @@ function makeLyricMask(input, layoutOverride) {
   ctx.font = lyricFontCss(fontSize);
   var stoneSeed = lyricMaskStoneSeed(lines, entries, fontSize);
   applyStonePrintTexture(ctx, W, H, fontSize, lyricSeededRandom(stoneSeed));
+  applyPixelEffect(ctx, W, H, fontSize);
   applyLyricVerticalEdgeFade(ctx, W, H, lyricEdgeFadeValue() * (payload.contextLayer ? 1.15 : 0.74), activeLine, lines.length);
   var tex = new THREE.CanvasTexture(canvas);
   tex.userData = tex.userData || {};
   tex.userData.__MOMusicLyricOwned = true;
-  tex.minFilter = THREE.LinearFilter;
-  tex.magFilter = THREE.LinearFilter;
+  var _isPixelFont = typeof fx !== 'undefined' && normalizeLyricFontKey(fx && fx.lyricFont) === 'pixel';
+  tex.minFilter = _isPixelFont ? THREE.NearestFilter : THREE.LinearFilter;
+  tex.magFilter = _isPixelFont ? THREE.NearestFilter : THREE.LinearFilter;
   tex.generateMipmaps = false;
   tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
   return { texture: tex, width: W, height: H, textWidth: width, activeTextWidth: activeWidth, textHeight: blockH, fontSize: fontSize, lineHeight: lineHeight, lineY0: y0, lineCount: lines.length, lines: lines, entries: entries, activeLine: activeLine, contextLayer: payload.contextLayer, activeLayer: payload.activeLayer, fitScaleX: fitScaleX, textMin: layout.textMin, textMax: layout.textMax, stoneSeed: stoneSeed };
@@ -464,6 +466,7 @@ function makeLyricQualityTexture(mask, tier) {
   ctx.globalAlpha = 1;
   var stoneSeed = Number(mask.stoneSeed) || lyricMaskStoneSeed(lines, entries, fontSize);
   applyStonePrintTexture(ctx, logicalW, logicalH, fontSize, lyricSeededRandom(stoneSeed));
+  applyPixelEffect(ctx, logicalW, logicalH, fontSize);
   applyLyricVerticalEdgeFade(ctx, logicalW, logicalH, lyricEdgeFadeValue() * (mask.contextLayer ? 1.15 : 0.74), activeLine, lines.length);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   var texture = new THREE.CanvasTexture(canvas);
@@ -471,8 +474,9 @@ function makeLyricQualityTexture(mask, tier) {
   texture.userData.__MOMusicLyricOwned = true;
   texture.userData.__MOMusicLyricQuality = true;
   texture.userData.__MOMusicLyricQualityBytes = target.bytes;
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
+  var _isPixelFontQ = typeof fx !== 'undefined' && normalizeLyricFontKey(fx && fx.lyricFont) === 'pixel';
+  texture.minFilter = _isPixelFontQ ? THREE.NearestFilter : THREE.LinearFilter;
+  texture.magFilter = _isPixelFontQ ? THREE.NearestFilter : THREE.LinearFilter;
   texture.generateMipmaps = false;
   texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1);
   return { texture: texture, tier: target.tier, width: target.width, height: target.height, bytes: target.bytes, key: target.tier + 'x|' + target.width + 'x' + target.height + '|' + stoneSeed };

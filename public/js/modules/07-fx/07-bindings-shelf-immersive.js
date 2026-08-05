@@ -10,6 +10,10 @@ function bindFxPanel() {
   buildPresetGrid();
   renderUserFxArchives();
   buildLyricColorControls();
+  // 启动时若全局像素歌词已开启，恢复强制像素歌词字体（按钮状态由 updateFxInputs 同步）
+  if (fx && fx.pixelLyricsEnabled === true && typeof applyGlobalPixelLyrics === 'function') {
+    applyGlobalPixelLyrics(true);
+  }
   var ids = [
     ['fx-intensity', 'intensity'], ['fx-depth', 'depth'], ['fx-coverres', 'coverResolution'], ['fx-cineshake', 'cinemaShake'], ['fx-lyricglow', 'lyricGlowStrength'], ['fx-lyricbgadapt', 'lyricBackgroundAdapt'],
     ['fx-sonicamp', 'sonicGroundAmplitude'], ['fx-sonicspeed', 'sonicGroundMotionSpeed'], ['fx-sonicdensity', 'sonicGroundDensity'],
@@ -23,6 +27,9 @@ function bindFxPanel() {
     ['fx-desktoplyricssize', 'desktopLyricsSize'], ['fx-desktoplyricsopacity', 'desktopLyricsOpacity'], ['fx-desktoplyricsy', 'desktopLyricsY'], ['fx-wallpaperopacity', 'wallpaperOpacity'],
     ['fx-danmakusize', 'danmakuSize'], ['fx-danmakuspeed', 'danmakuSpeed'], ['fx-danmakuopacity', 'danmakuOpacity'],
     ['fx-galaxyarms', 'galaxyArms'], ['fx-galaxytwist', 'galaxyTwist'], ['fx-galaxycore', 'galaxyCore'], ['fx-galaxyspread', 'galaxySpread'], ['fx-galaxyspin', 'galaxySpin'],
+     ['fx-goldencoreglow', 'goldenCoreGlow'], ['fx-goldencoreorbitcount', 'goldenCoreOrbitCount'], ['fx-goldencoreorbitsize', 'goldenCoreOrbitSize'], ['fx-goldencoredensity', 'goldenCoreDensity'], ['fx-goldencorespin', 'goldenCoreSpin'], ['fx-goldencorestardust', 'goldenCoreStardust'], ['fx-goldencorebreath', 'goldenCoreBreath'],
+     ['fx-pixelkaomojisize', 'pixelKaomojiSize'], ['fx-pixelkaomojispeed', 'pixelKaomojiSpeed'],
+     ['fx-treecanopyglow', 'treeCanopyGlow'], ['fx-treecanopywind', 'treeCanopyWind'], ['fx-treecanopysway', 'treeCanopySway'], ['fx-treecanopystaffcount', 'treeCanopyStaffCount'], ['fx-treecanopynotedensity', 'treeCanopyNoteDensity'], ['fx-treecanopynotesize', 'treeCanopyNoteSize'], ['fx-treecanopybeat', 'treeCanopyBeatResponse'], ['fx-treecanopyambient', 'treeCanopyAmbient'],
     ['fx-shelfsize', 'shelfSize'], ['fx-shelfx', 'shelfOffsetX'], ['fx-shelfy', 'shelfOffsetY'], ['fx-shelfz', 'shelfOffsetZ'], ['fx-shelfangle', 'shelfAngleY'], ['fx-shelfopacity', 'shelfOpacity'], ['fx-shelfbgalpha', 'shelfBgOpacity'],
     ['fx-shelfdetailx', 'shelfDetailOffsetX'], ['fx-shelfdetaily', 'shelfDetailOffsetY'], ['fx-shelfdetailz', 'shelfDetailOffsetZ'], ['fx-shelfdetailscale', 'shelfDetailScale'], ['fx-shelfdetailanglex', 'shelfDetailAngleX'], ['fx-shelfdetailangley', 'shelfDetailAngleY'], ['fx-shelfdetailrowgap', 'shelfDetailRowGap'],
     ['fx-shelfdetailopen', 'shelfDetailOpenDuration'], ['fx-shelfdetailclose', 'shelfDetailCloseDuration'], ['fx-shelfdetailrowtime', 'shelfDetailRowDuration'], ['fx-shelfdetailintro', 'shelfDetailIntroStrength'], ['fx-shelfdetailparallax', 'shelfDetailParallax'],
@@ -111,6 +118,21 @@ function bindFxPanel() {
       if (pair[1] === 'galaxyCore') fx.galaxyCore = clampRange(fx.galaxyCore, 0, 1);
       if (pair[1] === 'galaxySpread') fx.galaxySpread = clampRange(fx.galaxySpread, 0.5, 2);
       if (pair[1] === 'galaxySpin') fx.galaxySpin = clampRange(fx.galaxySpin, 0, 2);
+      if (pair[1] === 'goldenCoreGlow') fx.goldenCoreGlow = clampRange(fx.goldenCoreGlow, 0.2, 2);
+      if (pair[1] === 'goldenCoreOrbitCount') fx.goldenCoreOrbitCount = Math.round(clampRange(fx.goldenCoreOrbitCount, 2, 10));
+      if (pair[1] === 'goldenCoreOrbitSize') fx.goldenCoreOrbitSize = clampRange(fx.goldenCoreOrbitSize, 0.5, 2);
+      if (pair[1] === 'goldenCoreDensity') fx.goldenCoreDensity = clampRange(fx.goldenCoreDensity, 0.3, 2);
+       if (pair[1] === 'goldenCoreSpin') fx.goldenCoreSpin = clampRange(fx.goldenCoreSpin, 0, 2);
+       if (pair[1] === 'goldenCoreStardust') fx.goldenCoreStardust = clampRange(fx.goldenCoreStardust, 0, 1.5);
+       if (pair[1] === 'goldenCoreBreath') fx.goldenCoreBreath = clampRange(fx.goldenCoreBreath, 0, 1);
+       if (pair[1] === 'treeCanopyGlow') fx.treeCanopyGlow = clampRange(fx.treeCanopyGlow, 0.2, 2);
+       if (pair[1] === 'treeCanopyWind') fx.treeCanopyWind = clampRange(fx.treeCanopyWind, 0, 2);
+       if (pair[1] === 'treeCanopySway') fx.treeCanopySway = clampRange(fx.treeCanopySway, 0, 2);
+       if (pair[1] === 'treeCanopyStaffCount') fx.treeCanopyStaffCount = Math.round(clampRange(fx.treeCanopyStaffCount, 2, 7));
+       if (pair[1] === 'treeCanopyNoteDensity') fx.treeCanopyNoteDensity = clampRange(fx.treeCanopyNoteDensity, 0.4, 2);
+       if (pair[1] === 'treeCanopyNoteSize') fx.treeCanopyNoteSize = clampRange(fx.treeCanopyNoteSize, 0.5, 2);
+       if (pair[1] === 'treeCanopyBeatResponse') fx.treeCanopyBeatResponse = clampRange(fx.treeCanopyBeatResponse, 0, 2);
+       if (pair[1] === 'treeCanopyAmbient') fx.treeCanopyAmbient = clampRange(fx.treeCanopyAmbient, 0, 2);
       if (pair[1] === 'shelfSize') fx.shelfSize = clampRange(fx.shelfSize, 0.65, 1.45);
       if (pair[1] === 'shelfOffsetX') fx.shelfOffsetX = clampRange(fx.shelfOffsetX, -1.2, 1.2);
       if (pair[1] === 'shelfOffsetY') fx.shelfOffsetY = clampRange(fx.shelfOffsetY, -0.9, 0.9);
@@ -154,7 +176,7 @@ function bindFxPanel() {
       if (pair[1] === 'lyricGlitchJitter') fx.lyricGlitchJitter = clampRange(fx.lyricGlitchJitter, 0, 1.8);
       if (out) out.textContent = pair[1] === 'coverResolution'
         ? coverParticleCountLabel(fx.coverResolution)
-        : (pair[1] === 'lyricWeight' || /^sonicGround/.test(pair[1]) || /^sonicAudio/.test(pair[1]) || pair[1] === 'sonicWorkshopInputGain' || pair[1] === 'controlGlassChromaticOffset' || pair[1] === 'playlistPanelGlassBlur' || pair[1] === 'backgroundMediaCropX' || pair[1] === 'backgroundMediaCropY' || pair[1] === 'lyricTiltX' || pair[1] === 'lyricTiltY' || pair[1] === 'shelfAngleY' || pair[1] === 'shelfDetailAngleX' || pair[1] === 'shelfDetailAngleY' || pair[1] === 'danmakuSize' || pair[1] === 'galaxyArms' ? String(Math.round(fx[pair[1]])) : Number(el.value).toFixed(pair[1] === 'lyricLetterSpacing' ? 3 : 2));
+       : (pair[1] === 'lyricWeight' || /^sonicGround/.test(pair[1]) || /^sonicAudio/.test(pair[1]) || pair[1] === 'sonicWorkshopInputGain' || pair[1] === 'controlGlassChromaticOffset' || pair[1] === 'playlistPanelGlassBlur' || pair[1] === 'backgroundMediaCropX' || pair[1] === 'backgroundMediaCropY' || pair[1] === 'lyricTiltX' || pair[1] === 'lyricTiltY' || pair[1] === 'shelfAngleY' || pair[1] === 'shelfDetailAngleX' || pair[1] === 'shelfDetailAngleY' || pair[1] === 'danmakuSize' || pair[1] === 'galaxyArms' || pair[1] === 'treeCanopyStaffCount' ? String(Math.round(fx[pair[1]])) : Number(el.value).toFixed(pair[1] === 'lyricLetterSpacing' ? 3 : 2));
       if (typeof refreshSonicAudioMonitorUi === 'function' && /^sonicAudio/.test(pair[1])) refreshSonicAudioMonitorUi();
       if (/^sonicWorkshop/.test(pair[1]) && window.MOMusicSonicWorkshop && typeof MOMusicSonicWorkshop.pushProperties === 'function') MOMusicSonicWorkshop.pushProperties(true);
       syncFxUniforms();
@@ -220,6 +242,25 @@ function bindFxPanel() {
     picker.addEventListener('input', function () { setSonicGroundColor(pair[1], picker.value, true); });
     picker.addEventListener('change', function () { setSonicGroundColor(pair[1], picker.value); });
   });
+  [
+   ['golden-core-color-picker', 'goldenCoreColor'],
+   ['golden-core-halo-picker', 'goldenCoreHaloColor']
+  ].forEach(function (pair) {
+    var picker = document.getElementById(pair[0]);
+    if (!picker) return;
+    picker.addEventListener('input', function () { setGoldenCoreColor(pair[1], picker.value, true); });
+     picker.addEventListener('change', function () { setGoldenCoreColor(pair[1], picker.value); });
+   });
+  [
+    ['tree-canopy-tree-picker', 'treeCanopyTreeColor'],
+    ['tree-canopy-staff-picker', 'treeCanopyStaffColor'],
+    ['tree-canopy-note-picker', 'treeCanopyNoteColor']
+  ].forEach(function (pair) {
+    var picker = document.getElementById(pair[0]);
+    if (!picker) return;
+    picker.addEventListener('input', function () { setTreeCanopyColor(pair[1], picker.value, true); });
+    picker.addEventListener('change', function () { setTreeCanopyColor(pair[1], picker.value); });
+  });
   var homeAccentPicker = document.getElementById('home-accent-picker');
   if (homeAccentPicker) {
     homeAccentPicker.addEventListener('input', function () { setHomeAccentColor(homeAccentPicker.value, true); });
@@ -261,7 +302,7 @@ function bindFxPanel() {
       e.target.value = '';
     });
   }
-  ['ui-accent-picker', 'visual-tint-picker', 'sonic-ground-base-picker', 'sonic-ground-cool-picker', 'sonic-ground-warm-picker', 'sonic-ground-accent-picker', 'home-accent-picker', 'home-icon-picker', 'visual-icon-picker', 'bg-color-picker', 'shelf-accent-picker', 'lyric-color-picker', 'lyric-highlight-picker', 'lyric-glow-picker', 'danmaku-color-picker'].forEach(function (id) {
+  ['ui-accent-picker', 'visual-tint-picker', 'sonic-ground-base-picker', 'sonic-ground-cool-picker', 'sonic-ground-warm-picker', 'sonic-ground-accent-picker', 'golden-core-color-picker', 'golden-core-halo-picker', 'home-accent-picker', 'home-icon-picker', 'visual-icon-picker', 'bg-color-picker', 'shelf-accent-picker', 'lyric-color-picker', 'lyric-highlight-picker', 'lyric-glow-picker', 'danmaku-color-picker'].forEach(function (id) {
     bindColorLabPicker(document.getElementById(id));
   });
   bindColorLabRows();
@@ -401,6 +442,36 @@ function toggleWallpaperModeFromUi() {
     return result;
   });
 }
+// 全局像素歌词（歌词「颜色与光效」区开关）：不依赖像素颜文字预设，
+// 直接把歌词字体强制为像素；关闭时恢复开启前选择的字体。
+var globalPixelLyricPrevFont = null;
+function applyGlobalPixelLyrics(enabled) {
+  if (!fx || typeof normalizeLyricFontKey !== 'function') return;
+  var current = normalizeLyricFontKey(fx.lyricFont);
+  if (enabled) {
+    if (current !== 'pixel') {
+      globalPixelLyricPrevFont = fx.lyricFont || 'sans';
+      fx.lyricFont = 'pixel';
+    } else if (!globalPixelLyricPrevFont) {
+      globalPixelLyricPrevFont = fx.lyricFont || 'sans';
+    }
+  } else {
+    // 仅当歌词仍是像素字体时恢复开启前的字体；用户手动改过的保留用户选择
+    if (current === 'pixel') {
+      fx.lyricFont = globalPixelLyricPrevFont ? normalizeLyricFontKey(globalPixelLyricPrevFont) : 'sans';
+    }
+    globalPixelLyricPrevFont = null;
+    // 让像素颜文字预设的歌词开关重新接管（预设激活且开关开启时重新强制像素字体）
+    if (typeof window !== 'undefined' && window.MOMusicPixelKaomoji && typeof window.MOMusicPixelKaomoji.resyncLyricFont === 'function') {
+      try { window.MOMusicPixelKaomoji.resyncLyricFont(); } catch (_) {}
+    }
+  }
+  if (typeof clearLyricTextMeasureCache === 'function') clearLyricTextMeasureCache();
+  if (typeof invalidateLyricQualityTextures === 'function') invalidateLyricQualityTextures('pixel-toggle');
+  if (typeof refreshCurrentLyricStyle === 'function') refreshCurrentLyricStyle();
+  if (typeof updateLyricFontControls === 'function') updateLyricFontControls();
+  if (typeof pushDesktopLyricsState === 'function') pushDesktopLyricsState(true);
+}
 function toggleFx(key) {
   if (isDevelopmentLockedFx(key)) {
     normalizeDevelopmentLockedFxState();
@@ -416,18 +487,28 @@ function toggleFx(key) {
     return;
   }
   fx[key] = !fx[key];
-  var toggleId = 't-' + (key === 'floatLayer' ? 'float' : key === 'aiDepth' ? 'aidepth' : key);
+  // 像素歌词两个按钮互不干扰：
+  //   pixelKaomojiLyrics —— 像素颜文字面板开关（仅预设激活时强制像素歌词字体）
+  //   pixelLyricsEnabled —— 歌词「颜色与光效」区开关（全局像素歌词，不依赖预设）
+  var toggleId = 't-' + (key === 'floatLayer' ? 'float' : key === 'aiDepth' ? 'aidepth' : key === 'pixelKaomojiEnabled' ? 'pixelKaomojiEnabled' : key === 'pixelKaomojiLyrics' ? 'pixelKaomojiLyricsPanel' : key);
   var toggle = document.getElementById(toggleId);
   if (toggle) toggle.classList.toggle('on', fx[key]);
+  if (key === 'pixelLyricsEnabled') {
+    applyGlobalPixelLyrics(fx.pixelLyricsEnabled !== false);
+  }
   if (key === 'lyricGlow' || key === 'lyricGlowBeat') updateLyricGlowControls();
   syncFxUniforms();
-  if (key === 'lyricCameraLock' || key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles' || key === 'lyricVerticalFloat' || key === 'backgroundStarRiver' || key === 'lyricPauseHold' || key === 'bloom' || key === 'edge' || key === 'cinema' || key === 'aiDepth' || key === 'desktopLyrics' || key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight' || key === 'wallpaperMode' || key === 'sonicGroundFloatingEnabled' || key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack' || key === 'shelfShowPodcasts' || key === 'shelfMergeCollections' || key === 'liveBackgroundKeep' || key === 'memoryAutoTrimApp' || key === 'memoryAutoTrimOnBackground' || key === 'memoryAutoSystemTrim' || key === 'memorySystemAutoElevate' || key === 'danmakuBold') saveLyricLayout({ user: true, reason: key });
+  if (key === 'lyricCameraLock' || key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles' || key === 'lyricVerticalFloat' || key === 'backgroundStarRiver' || key === 'lyricPauseHold' || key === 'bloom' || key === 'edge' || key === 'cinema' || key === 'aiDepth' || key === 'desktopLyrics' || key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight' || key === 'wallpaperMode' || key === 'sonicGroundFloatingEnabled' || key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack' || key === 'shelfShowPodcasts' || key === 'shelfMergeCollections' || key === 'liveBackgroundKeep' || key === 'memoryAutoTrimApp' || key === 'memoryAutoTrimOnBackground' || key === 'memoryAutoSystemTrim' || key === 'memorySystemAutoElevate' || key === 'danmakuBold' || key === 'pixelKaomojiEnabled' || key === 'pixelKaomojiLyrics' || key === 'pixelLyricsEnabled') saveLyricLayout({ user: true, reason: key });
   if ((key === 'sonicAudioMonitorEnabled' || key === 'sonicAudioAutoTrack') && typeof refreshSonicAudioMonitorUi === 'function') refreshSonicAudioMonitorUi();
   if (key === 'floatLayer') { if (fx.floatLayer) createFloatLayer(); else destroyFloatLayer(); saveLyricLayout({ user: true, reason: key }); }
   if (key === 'desktopLyrics') applyDesktopLyricsState(true);
   if (key === 'desktopLyricsClickThrough' || key === 'desktopLyricsCinema' || key === 'desktopLyricsHighlight') pushDesktopLyricsState(true);
   if (key === 'danmakuBold' && typeof applyDanmakuFxToLayer === 'function') applyDanmakuFxToLayer();
   if (key === 'lyricGlow' || key === 'lyricGlowBeat' || key === 'lyricGlowParticles') pushDesktopLyricsState(true);
+  if (key === 'pixelKaomojiSize' || key === 'pixelKaomojiSpeed') {
+    fx[key] = clampRange(fx[key], 0.5, 2);
+    saveLyricLayout({ user: true, reason: key });
+  }
   if (key === 'backgroundStarRiver') {
     if (typeof updateBackgroundStarRiverState === 'function') updateBackgroundStarRiverState(0.016, true);
     showToast(fx.backgroundStarRiver !== false ? '背景星河已开启' : '背景星河已关闭');
@@ -474,6 +555,16 @@ function toggleFx(key) {
   if (key === 'bloom') showToast(fx.bloom ? '溢光已开启' : '溢光已关闭');
   if (key === 'edge') showToast(fx.edge ? '已开启轮廓高亮' : '已关闭轮廓高亮');
   if (key === 'cinema') showToast(fx.cinema ? '已开启电影镜头' : '已关闭电影镜头');
+  if (key === 'pixelKaomojiEnabled') {
+    showToast(fx.pixelKaomojiEnabled ? '像素风格已开启' : '像素风格已关闭');
+  }
+  if (key === 'pixelKaomojiLyrics') {
+    showToast(fx.pixelKaomojiLyrics ? '像素歌词已开启' : '像素歌词已关闭');
+    if (typeof invalidateLyricQualityTextures === 'function') invalidateLyricQualityTextures('pixel-toggle');
+  }
+  if (key === 'pixelLyricsEnabled') {
+    showToast(fx.pixelLyricsEnabled ? '全局像素歌词已开启' : '全局像素歌词已关闭');
+  }
   if (key === 'aiDepth') {
     if (fx.aiDepth) {
       aiDepthFailUntil = 0;
