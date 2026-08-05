@@ -5344,7 +5344,16 @@ ipcMain.handle('MOMusic-open-update-installer', async (_event, filePath) => {
     }
     if (!fs.existsSync(target)) return { ok: false, error: 'UPDATE_FILE_MISSING' };
     const error = await shell.openPath(target);
-    return error ? { ok: false, error } : { ok: true };
+    if (!error) return { ok: true };
+    // 系统打开失败（关联/拦截等）时回退：直接启动安装器进程
+    console.warn('[Update] shell.openPath failed, falling back to spawn:', error);
+    const child = spawn(target, [], { detached: true, stdio: 'ignore', windowsHide: false });
+    child.on('error', (err) => {
+      console.error('[Update] installer spawn failed:', err && err.message);
+      return { ok: false, error: err && err.message || 'OPEN_UPDATE_FAILED' };
+    });
+    child.unref();
+    return { ok: true, fallback: 'spawn' };
   } catch (e) {
     return { ok: false, error: e.message || 'OPEN_UPDATE_FAILED' };
   }

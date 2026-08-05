@@ -438,7 +438,7 @@ async function restartForAppliedPatch() {
 
 async function openDownloadedUpdateInstaller(filePath) {
   if (!filePath) return;
-  if (updatePreviewState.installerOpened) return;
+  // 用户主动点击时始终重新尝试打开，避免 installerOpened 卡死后点击无任何反馈
   updatePreviewState.status = 'opening';
   syncUpdatePreviewStateClass();
   try {
@@ -448,7 +448,7 @@ async function openDownloadedUpdateInstaller(filePath) {
       updatePreviewState.installerOpened = true;
       updatePreviewState.status = 'ready';
       syncUpdatePreviewStateClass();
-      showToast('安装包已打开');
+      showToast('安装包已打开；如未弹出安装窗口，请先退出 MOMusic 后重试');
       return;
     }
     throw new Error('DESKTOP_BRIDGE_MISSING');
@@ -456,7 +456,7 @@ async function openDownloadedUpdateInstaller(filePath) {
     updatePreviewState.status = 'ready';
     syncUpdatePreviewStateClass();
     if (updatePreviewState.releaseUrl) window.open(updatePreviewState.releaseUrl, '_blank');
-    showToast('无法自动打开安装包，已尝试打开更新页面');
+    showToast('无法自动打开安装包，已打开更新页面；也可退出 MOMusic 后手动安装');
   }
 }
 
