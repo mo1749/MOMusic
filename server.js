@@ -136,7 +136,10 @@ const {
 const {
   handleLsSongUrl,
 } = require('./lx-source-api');
-const lxSourceSync = require('./lx-source-sync');
+let lxSourceSync = null;
+try { lxSourceSync = require('./lx-source-sync'); } catch (e) {
+  console.warn('[LxSync] 模块不可用，落雪音源缓存同步降级:', e && e.message);
+}
 const {
   testCustomSource,
   tryCustomSourcesForUrl,
@@ -6721,7 +6724,7 @@ const server = http.createServer(async (req, res) => {
 
   // 链式尝试: 服务器自动同步的缓存音源(juhe/ikun/flower/grass/sixyin...) -> onrender huibq 回退
   async function tryLsChain(songId, source, quality) {
-    const scripts = lxSourceSync.getCachedSourceScripts();
+    const scripts = lxSourceSync ? lxSourceSync.getCachedSourceScripts() : [];
     if (scripts.length) {
       const custom = await tryCustomSourcesForUrl(scripts, songId, source, quality);
       if (custom && custom.url) {
@@ -6738,8 +6741,8 @@ const server = http.createServer(async (req, res) => {
   if (pn === '/api/ls/sources/status') {
     // 音源同步状态(诊断用): 全量含混淆源, usable 供链式使用
     try {
-      const all = lxSourceSync.getCachedSourceScripts(true);
-      const usable = lxSourceSync.getCachedSourceScripts(false);
+      const all = lxSourceSync ? lxSourceSync.getCachedSourceScripts(true) : [];
+      const usable = lxSourceSync ? lxSourceSync.getCachedSourceScripts(false) : [];
       sendJSON(res, {
         ok: true,
         count: all.length,
@@ -8015,9 +8018,11 @@ server.listen(PORT, HOST, () => {
   console.log(' 登录态: ' + (userCookie ? '已登录(cookie已加载)' : '未登录'));
   console.log('======================================================');
   // 后台同步落雪音源(博客页爬取), 不阻塞启动
-  lxSourceSync.ensureSynced().then(function (r) {
-    if (!r.ok && r.error) console.warn('[LxSync] 启动同步失败: ' + r.error);
-  });
+  if (lxSourceSync) {
+    lxSourceSync.ensureSynced().then(function (r) {
+      if (!r.ok && r.error) console.warn('[LxSync] 启动同步失败: ' + r.error);
+    });
+  }
 });
 
 server.clearAllLoginCredentials = clearAllRuntimeLoginCredentials;
