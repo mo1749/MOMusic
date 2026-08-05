@@ -13,21 +13,6 @@ desktop/build/
 desktop/dist/
 desktop/out/
 
-# ============ 安卓 ============
-android/.gradle/
-android/build/
-android/app/build/
-android/captures/
-android/.idea/
-android/local.properties
-android/*.iml
-
-# 安卓签名密钥（绝对不能提交！）
-android/momusic.keystore
-android/keystore.properties
-android/*.keystore
-android/*.jks
-
 # ============ IDE ============
 .idea/
 *.iml
