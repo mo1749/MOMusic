@@ -14,6 +14,19 @@ function bindFxPanel() {
   if (fx && fx.pixelLyricsEnabled === true && typeof applyGlobalPixelLyrics === 'function') {
     applyGlobalPixelLyrics(true);
   }
+  // 启动收敛：全局像素歌词未开启时，若存档残留 pixel 歌词字体则恢复默认，
+  // 避免每次进入软件歌词都显示为像素字体
+  if (fx && fx.pixelLyricsEnabled !== true
+    && typeof normalizeLyricFontKey === 'function'
+    && normalizeLyricFontKey(fx.lyricFont) === 'pixel') {
+    fx.lyricFont = 'sans';
+    if (typeof clearLyricTextMeasureCache === 'function') clearLyricTextMeasureCache();
+    if (typeof invalidateLyricQualityTextures === 'function') invalidateLyricQualityTextures('pixel-startup-clean');
+    if (typeof refreshCurrentLyricStyle === 'function') refreshCurrentLyricStyle();
+    if (typeof updateLyricFontControls === 'function') updateLyricFontControls();
+    if (typeof pushDesktopLyricsState === 'function') pushDesktopLyricsState(true);
+    if (typeof saveLyricLayout === 'function') saveLyricLayout({ reason: 'pixel-startup-clean' });
+  }
   var ids = [
     ['fx-intensity', 'intensity'], ['fx-depth', 'depth'], ['fx-coverres', 'coverResolution'], ['fx-cineshake', 'cinemaShake'], ['fx-lyricglow', 'lyricGlowStrength'], ['fx-lyricbgadapt', 'lyricBackgroundAdapt'],
     ['fx-sonicamp', 'sonicGroundAmplitude'], ['fx-sonicspeed', 'sonicGroundMotionSpeed'], ['fx-sonicdensity', 'sonicGroundDensity'],
@@ -449,14 +462,14 @@ function applyGlobalPixelLyrics(enabled) {
   if (!fx || typeof normalizeLyricFontKey !== 'function') return;
   var current = normalizeLyricFontKey(fx.lyricFont);
   if (enabled) {
+    // 仅当字体不是像素时才记录原字体并强制；已是像素（残留或用户选择）时不记录，
+    // 这样关闭全局开关时必然回退，避免 prevFont 记成 'pixel' 导致关不掉
     if (current !== 'pixel') {
       globalPixelLyricPrevFont = fx.lyricFont || 'sans';
       fx.lyricFont = 'pixel';
-    } else if (!globalPixelLyricPrevFont) {
-      globalPixelLyricPrevFont = fx.lyricFont || 'sans';
     }
   } else {
-    // 仅当歌词仍是像素字体时恢复开启前的字体；用户手动改过的保留用户选择
+    // 仅当歌词仍是像素字体时恢复开启前的字体；无记录（残留像素）回退默认 sans
     if (current === 'pixel') {
       fx.lyricFont = globalPixelLyricPrevFont ? normalizeLyricFontKey(globalPixelLyricPrevFont) : 'sans';
     }
