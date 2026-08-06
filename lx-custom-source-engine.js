@@ -8,6 +8,7 @@ const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
 const zlib = require('zlib');
+const { makeProxyAgent } = require('./lx-proxy');
 
 // 支持的源白名单 (与落雪一致)
 const SUPPORT_SOURCES = ['kw', 'kg', 'tx', 'wy', 'mg', 'local'];
@@ -112,6 +113,9 @@ function lxRequest(url, options, callback) {
         // 不强制校验证书 (兼容部分自签名音源服务)
         rejectUnauthorized: false,
       };
+      // 支持代理出口（onrender 等音源 API 有 IP 风控，代理可切换出口 IP）
+      var proxyAgent = makeProxyAgent();
+      if (proxyAgent) reqOpts.agent = proxyAgent;
       var req = lib.request(reqOpts, function (res) {
         var chunks = [];
         res.on('data', function (c) { chunks.push(c); });

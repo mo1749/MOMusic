@@ -4,6 +4,7 @@
 // 仅提供播放URL解析，搜索/歌词代理到 QQ 音乐
 // ============================================================
 const https = require('https');
+const { makeProxyAgent } = require('./lx-proxy');
 
 const LX_API_URL = 'https://lxmusicapi.onrender.com';
 const LX_API_KEY = 'share-v3';
@@ -29,6 +30,9 @@ function lxHttpFetch(path, options) {
         'X-Request-Key': LX_API_KEY,
       }, (options && options.headers) || {}),
     };
+    // 支持代理出口（onrender 有 IP 风控，代理可切换出口 IP）
+    var proxyAgent = makeProxyAgent();
+    if (proxyAgent) opts.agent = proxyAgent;
     var req = https.request(opts, function (res) {
       var data = '';
       res.on('data', function (c) { data += c; });

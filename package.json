@@ -36,6 +36,7 @@
       "local-collection.js",
       "lx-custom-source-engine.js",
       "lx-source-sync.js",
+      "lx-proxy.js",
       "lx-sources/**/*",
       "lx-sources-local/**/*",
       "qishui-audio-decryptor/**/*",
