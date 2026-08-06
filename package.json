@@ -37,6 +37,7 @@
       "lx-custom-source-engine.js",
       "lx-source-sync.js",
       "lx-sources/**/*",
+      "lx-sources-local/**/*",
       "qishui-audio-decryptor/**/*",
       "dj-analyzer.js",
       "LICENSE",

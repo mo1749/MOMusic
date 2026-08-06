@@ -13,6 +13,10 @@ const GITHUB_API_LIST = 'https://api.github.com/repos/pdone/lx-music-source/cont
 const CACHE_DIR = path.join(__dirname, 'lx-sources-cache');
 const SCRIPTS_DIR = path.join(CACHE_DIR, 'scripts');
 const MANIFEST_FILE = path.join(CACHE_DIR, 'manifest.json');
+// 本地音源目录：优先于网络同步。可用环境变量 MOMusic_LX_LOCAL_DIR 指定任意目录
+// （如 keep-alive 项目目录），默认使用项目内 lx-sources-local/。
+// 目录下的 .js 脚本按落雪 LX 协议格式自动过滤（MusicFree 等不兼容脚本会被忽略）。
+const LOCAL_SOURCE_DIR = process.env.MOMusic_LX_LOCAL_DIR || path.join(__dirname, 'lx-sources-local');
 const TTL_MS = 12 * 3600 * 1000;
 const MAX_SCRIPT_BYTES = 1024 * 1024;
 // 博客站有 WAF/反爬, 需浏览器 UA 才能拿到完整页面
@@ -134,6 +138,28 @@ function readManifest() {
   return { syncedAt: 0, sources: [] };
 }
 
+// 递归收集本地音源目录下的 .js 文件，仅保留落雪 LX 协议格式的脚本
+function readLocalSourceScripts() {
+  if (!LOCAL_SOURCE_DIR || !fs.existsSync(LOCAL_SOURCE_DIR)) return [];
+  var files = [];
+  function walk(dir) {
+    var entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return; }
+    entries.forEach(function (entry) {
+      var full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); return; }
+      if (!/\.js$/i.test(entry.name)) return;
+      try {
+        var text = fs.readFileSync(full, 'utf8');
+        if (!text || !looksLikeLxScript(text)) return;
+        files.push({ id: 'local-' + entry.name.replace(/\.js$/i, ''), name: path.basename(entry.name).replace(/\.js$/i, ''), url: 'local:' + full, script: text, obfuscated: isObfuscated(text) });
+      } catch (e) { /* 跳过不可读文件 */ }
+    });
+  }
+  walk(LOCAL_SOURCE_DIR);
+  return files;
+}
+
 function writeManifest(manifest) {
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
@@ -142,8 +168,14 @@ function writeManifest(manifest) {
 }
 
 // 同步: 抓取博客页 -> 提取链接 -> 下载脚本 -> 更新缓存
+// 本地音源目录存在时直接使用本地源，跳过网络同步
 // force=true 忽略 TTL 强制刷新
 async function syncLxSources(force) {
+  var local = readLocalSourceScripts();
+  if (local.length) {
+    console.log('[LxSync] 使用本地音源: ' + LOCAL_SOURCE_DIR + ' (' + local.length + ' 个脚本)');
+    return { ok: true, local: true, sources: local, syncedAt: Date.now() };
+  }
   var manifest = readManifest();
   if (!force && manifest.syncedAt && Date.now() - manifest.syncedAt < TTL_MS) {
     return { ok: true, cached: true, sources: manifest.sources, syncedAt: manifest.syncedAt };
@@ -198,9 +230,13 @@ async function syncLxSources(force) {
   return { ok: sources.length > 0, sources: sources, syncedAt: manifest.syncedAt, error: sources.length ? undefined : '全部下载失败' };
 }
 
-// 读取缓存的音源脚本内容
+// 读取可用的音源脚本内容：本地音源优先，其次网络缓存
 // includeObfuscated=true 时连同混淆(jsjiami)源一起返回(诊断用); 默认链式只用非混淆源
 function getCachedSourceScripts(includeObfuscated) {
+  var local = readLocalSourceScripts();
+  if (local.length) {
+    return includeObfuscated ? local : local.filter(function (s) { return !s.obfuscated; });
+  }
   var manifest = readManifest();
   var out = [];
   manifest.sources.forEach(function (s) {
@@ -214,8 +250,12 @@ function getCachedSourceScripts(includeObfuscated) {
   return out;
 }
 
-// 惰性同步: 缓存新鲜则直接返回; 否则后台刷新不阻塞调用方
+// 惰性同步: 本地音源存在则直接返回; 缓存新鲜则直接返回; 否则后台刷新不阻塞调用方
 function ensureSynced() {
+  var local = readLocalSourceScripts();
+  if (local.length) {
+    return Promise.resolve({ ok: true, local: true, sources: local });
+  }
   var manifest = readManifest();
   if (manifest.syncedAt && Date.now() - manifest.syncedAt < TTL_MS) {
     return Promise.resolve({ ok: true, cached: true, sources: manifest.sources });
@@ -233,4 +273,6 @@ module.exports = {
   extractSourceUrls,
   SOURCE_PAGE,
   CACHE_DIR,
+  LOCAL_SOURCE_DIR,
+  readLocalSourceScripts,
 };
