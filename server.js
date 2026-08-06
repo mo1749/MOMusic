@@ -6945,34 +6945,10 @@ const server = http.createServer(async (req, res) => {
       const seenMid = new Set();
       const playable = [];
       const usedSeeds = [];
-      const maxRounds = 6;
+      const maxRounds = 3;
 
-      async function verifyBatch(candidates) {
-        let idx = 0;
-        // onrender 公共 API 有 IP 风控（见 keep-alive README），雷达验证必须低频：
-        // 并发降到 2，且每个验证请求之间间隔 600ms，避免批量验证触发封禁
-        async function worker() {
-          while (idx < candidates.length && playable.length < targetLimit) {
-            const i = idx++;
-            const song = candidates[i];
-            if (!song) continue;
-            const delay = 600 * i;
-            if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-            try {
-              const mid = song.mid || song.songmid || song.id;
-              const r = await tryLsChain(mid, 'tx', '128k');
-              if (r && r.code === 0 && r.url) {
-                song.playUrl = r.url;
-                playable.push(song);
-              }
-            } catch (e) { /* 落雪不可用时跳过该曲, 由后续轮次继续凑数 */ }
-          }
-        }
-        const workers = [];
-        for (let w = 0; w < 2; w++) workers.push(worker());
-        await Promise.all(workers);
-      }
-
+      // 不做逐首可播放性验证：验证会逐首请求 onrender（触发 IP 风控并大幅拖慢推送），
+      // 改为直接推送搜索结果，播放时再按需解析播放地址（低频单曲请求不会触发风控）
       for (let round = 0; round < maxRounds && playable.length < targetLimit; round++) {
         const remaining = seedList.filter(function (s) { return usedSeeds.indexOf(s) < 0; });
         const pool = remaining.length ? remaining : seedList;
@@ -7000,7 +6976,7 @@ const server = http.createServer(async (req, res) => {
           var j = Math.floor(Math.random() * (i + 1));
           var tmp = batch[i]; batch[i] = batch[j]; batch[j] = tmp;
         }
-        await verifyBatch(batch);
+        playable.push.apply(playable, batch);
       }
 
       sendJSON(res, {
