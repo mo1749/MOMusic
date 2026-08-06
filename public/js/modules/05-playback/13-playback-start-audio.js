@@ -1115,20 +1115,26 @@ async function playQueueAt(idx, opts) {
       } else if (isLsPlayback) {
         var _lsId = song.songmid || song.mid || song.id || '';
         var _lsSrc = song.lxSource || 'tx';
-        var _customScripts = (typeof getEnabledCustomLxScripts === 'function') ? getEnabledCustomLxScripts() : [];
-        if (_customScripts.length) {
-          try {
-            var _resp = await fetch('/api/ls/custom-source/url', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ songId: _lsId, source: _lsSrc, quality: requestedQuality, scripts: _customScripts }),
-            });
-            data = await _resp.json();
-          } catch (e) { data = null; }
-        }
-        if (!data || (!data.url && data.code !== 0)) {
-          data = await apiJson('/api/ls/song/url?songId=' + encodeURIComponent(_lsId) +
-            '&source=' + encodeURIComponent(_lsSrc) + qualityParam, { timeoutMs: 9000 });
+        // 优先使用服务端验证过的播放地址（雷达/预解析），
+        // 避免 onrender 冷启动导致重新请求超时后误触发换源提示
+        if (song.playUrl && typeof song.playUrl === 'string' && /^https?:\/\//i.test(song.playUrl)) {
+          data = { code: 0, url: song.playUrl, source: song.playbackSource || _lsSrc };
+        } else {
+          var _customScripts = (typeof getEnabledCustomLxScripts === 'function') ? getEnabledCustomLxScripts() : [];
+          if (_customScripts.length) {
+            try {
+              var _resp = await fetch('/api/ls/custom-source/url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ songId: _lsId, source: _lsSrc, quality: requestedQuality, scripts: _customScripts }),
+              });
+              data = await _resp.json();
+            } catch (e) { data = null; }
+          }
+          if (!data || (!data.url && data.code !== 0)) {
+            data = await apiJson('/api/ls/song/url?songId=' + encodeURIComponent(_lsId) +
+              '&source=' + encodeURIComponent(_lsSrc) + qualityParam, { timeoutMs: 25000 });
+          }
         }
       } else {
         data = await apiJson('/api/song/url?id=' + encodeURIComponent(song.id || '') + neteasePlaybackMatchQuery(song) + qualityParam, { timeoutMs: 14000 });

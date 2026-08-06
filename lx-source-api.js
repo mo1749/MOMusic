@@ -39,7 +39,8 @@ function lxHttpFetch(path, options) {
       });
     });
     req.on('error', reject);
-    req.setTimeout(10000, function () { req.destroy(new Error('timeout')); });
+    // onrender 免费实例冷启动较慢，超时放宽到 25s
+    req.setTimeout(25000, function () { req.destroy(new Error('timeout')); });
     req.end();
   });
 }
@@ -61,7 +62,8 @@ async function handleLsSongUrl(songmid, source, quality) {
   if (!songmid) return { code: 1, msg: '缺少歌曲ID' };
   var lxSource = LX_SOURCE_MAP[source] || 'tx';
   var q = mapLxQuality(quality);
-  try {
+
+  async function fetchOnce() {
     var resp = await lxHttpFetch('/url/' + lxSource + '/' + encodeURIComponent(songmid) + '/' + encodeURIComponent(q));
     var body = resp.body;
     if (body && typeof body === 'object') {
@@ -71,8 +73,17 @@ async function handleLsSongUrl(songmid, source, quality) {
       return { code: body.code || 1, msg: body.msg || '获取播放URL失败' };
     }
     return { code: 1, msg: '服务器返回异常' };
+  }
+
+  try {
+    return await fetchOnce();
   } catch (e) {
-    return { code: 1, msg: e.message || '网络错误' };
+    // onrender 免费实例冷启动/瞬时抖动，重试一次再判定失败
+    try {
+      return await fetchOnce();
+    } catch (e2) {
+      return { code: 1, msg: e2.message || '网络错误' };
+    }
   }
 }
 
