@@ -45,6 +45,26 @@ function lxHttpFetch(path, options) {
   });
 }
 
+// onrender 公共 API 有 IP 风控：批量/高频请求会封禁 IP（见 keep-alive README）。
+// 全局串行节流：同一时刻仅 1 个请求，最小间隔 500ms，避免触发风控。
+var lastLxRequestAt = 0;
+var lxRequestChain = Promise.resolve();
+function throttledLxHttpFetch(path, options) {
+  var run = function () {
+    var now = Date.now();
+    var wait = Math.max(0, 500 - (now - lastLxRequestAt));
+    lastLxRequestAt = now + wait;
+    return new Promise(function (resolve, reject) {
+      setTimeout(function () {
+        lxHttpFetch(path, options).then(resolve, reject);
+      }, wait);
+    });
+  };
+  var p = lxRequestChain.then(run, run);
+  lxRequestChain = p.catch(function () {});
+  return p;
+}
+
 // 将 MOMusic 内部音质档位映射到 render_api 支持的 128k/320k
 // render_api (huibq v1.2.0) 仅支持 128k 与 320k 两档
 function mapLxQuality(quality) {
@@ -64,7 +84,7 @@ async function handleLsSongUrl(songmid, source, quality) {
   var q = mapLxQuality(quality);
 
   async function fetchOnce() {
-    var resp = await lxHttpFetch('/url/' + lxSource + '/' + encodeURIComponent(songmid) + '/' + encodeURIComponent(q));
+    var resp = await throttledLxHttpFetch('/url/' + lxSource + '/' + encodeURIComponent(songmid) + '/' + encodeURIComponent(q));
     var body = resp.body;
     if (body && typeof body === 'object') {
       if (body.code === 0 && body.url) {

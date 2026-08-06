@@ -49,6 +49,25 @@ function parseScriptInfo(rawScript) {
   return info;
 }
 
+// onrender 公共 API 有 IP 风控：批量/高频请求会封禁 IP。
+// 对该域名的请求做全局串行节流（最小间隔 500ms），避免触发风控。
+var lastOnrenderAt = 0;
+var onrenderChain = Promise.resolve();
+function throttleOnrender(hostname, task) {
+  if (hostname !== 'lxmusicapi.onrender.com') return task();
+  var run = function () {
+    var now = Date.now();
+    var wait = Math.max(0, 500 - (now - lastOnrenderAt));
+    lastOnrenderAt = now + wait;
+    return new Promise(function (resolve) {
+      setTimeout(function () { resolve(task()); }, wait);
+    });
+  };
+  var p = onrenderChain.then(run, run);
+  onrenderChain = p.catch(function () {});
+  return p;
+}
+
 // HTTP 请求代理 (lx.request 的后端实现)
 function lxRequest(url, options, callback) {
   if (typeof options === 'function') { callback = options; options = {}; }
@@ -81,47 +100,50 @@ function lxRequest(url, options, callback) {
 
   try {
     var u = new URL(url);
-    var lib = u.protocol === 'http:' ? http : https;
-    var reqOpts = {
-      hostname: u.hostname,
-      port: u.port || (u.protocol === 'http:' ? 80 : 443),
-      path: u.pathname + u.search,
-      method: method,
-      headers: headers,
-      // 不强制校验证书 (兼容部分自签名音源服务)
-      rejectUnauthorized: false,
-    };
-    var req = lib.request(reqOpts, function (res) {
-      var chunks = [];
-      res.on('data', function (c) { chunks.push(c); });
-      res.on('end', function () {
-        var buf = Buffer.concat(chunks);
-        var body = buf;
-        var ct = String(res.headers && (res.headers['content-type'] || res.headers['Content-Type']) || '');
-        if (/json|javascript|xml|text\//.test(ct)) {
-          var text = buf.toString('utf8');
-          try { body = JSON.parse(text); } catch (e) { body = text; }
-        }
-        // 用户脚本回调可能抛异常, 不能让其逃逸到宿主 EventEmitter 崩溃进程
-        try {
-          callback(null, {
-            statusCode: res.statusCode,
-            headers: res.headers,
-            body: body,
-            raw: buf,
-          });
-        } catch (e) { /* 忽略用户回调异常, 由调用方超时兜底 */ }
+    // onrender 等风控敏感主机串行限速，其余主机直接请求
+    return throttleOnrender(u.hostname, function () {
+      var lib = u.protocol === 'http:' ? http : https;
+      var reqOpts = {
+        hostname: u.hostname,
+        port: u.port || (u.protocol === 'http:' ? 80 : 443),
+        path: u.pathname + u.search,
+        method: method,
+        headers: headers,
+        // 不强制校验证书 (兼容部分自签名音源服务)
+        rejectUnauthorized: false,
+      };
+      var req = lib.request(reqOpts, function (res) {
+        var chunks = [];
+        res.on('data', function (c) { chunks.push(c); });
+        res.on('end', function () {
+          var buf = Buffer.concat(chunks);
+          var body = buf;
+          var ct = String(res.headers && (res.headers['content-type'] || res.headers['Content-Type']) || '');
+          if (/json|javascript|xml|text\//.test(ct)) {
+            var text = buf.toString('utf8');
+            try { body = JSON.parse(text); } catch (e) { body = text; }
+          }
+          // 用户脚本回调可能抛异常, 不能让其逃逸到宿主 EventEmitter 崩溃进程
+          try {
+            callback(null, {
+              statusCode: res.statusCode,
+              headers: res.headers,
+              body: body,
+              raw: buf,
+            });
+          } catch (e) { /* 忽略用户回调异常, 由调用方超时兜底 */ }
+        });
       });
+      req.on('error', function (err) {
+        try { callback(err); } catch (e) { /* 忽略用户回调异常 */ }
+      });
+      req.setTimeout(timeout, function () {
+        req.destroy(new Error('request timeout'));
+      });
+      if (bodyData) req.write(bodyData);
+      req.end();
+      return function () { try { req.destroy(); } catch (e) {} };
     });
-    req.on('error', function (err) {
-      try { callback(err); } catch (e) { /* 忽略用户回调异常 */ }
-    });
-    req.setTimeout(timeout, function () {
-      req.destroy(new Error('request timeout'));
-    });
-    if (bodyData) req.write(bodyData);
-    req.end();
-    return function () { try { req.destroy(); } catch (e) {} };
   } catch (e) {
     try { callback(e); } catch (e2) { /* 忽略用户回调异常 */ }
     return function () {};
@@ -443,7 +465,7 @@ async function tryCustomSourcesForUrl(scripts, songmid, source, quality) {
           type: quality || '128k',
           musicInfo: { songmid: songmid, id: songmid },
         }, lxSource),
-        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('chain-source-timeout')); }, 8000); }),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('chain-source-timeout')); }, 30000); }),
       ]);
       return { url: url, sourceId: item.id, source: lxSource };
     } catch (err) {

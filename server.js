@@ -6946,15 +6946,18 @@ const server = http.createServer(async (req, res) => {
       const playable = [];
       const usedSeeds = [];
       const maxRounds = 6;
-      const verifyConcurrency = 8;
 
       async function verifyBatch(candidates) {
         let idx = 0;
+        // onrender 公共 API 有 IP 风控（见 keep-alive README），雷达验证必须低频：
+        // 并发降到 2，且每个验证请求之间间隔 600ms，避免批量验证触发封禁
         async function worker() {
           while (idx < candidates.length && playable.length < targetLimit) {
             const i = idx++;
             const song = candidates[i];
             if (!song) continue;
+            const delay = 600 * i;
+            if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
             try {
               const mid = song.mid || song.songmid || song.id;
               const r = await tryLsChain(mid, 'tx', '128k');
@@ -6966,7 +6969,7 @@ const server = http.createServer(async (req, res) => {
           }
         }
         const workers = [];
-        for (let w = 0; w < verifyConcurrency; w++) workers.push(worker());
+        for (let w = 0; w < 2; w++) workers.push(worker());
         await Promise.all(workers);
       }
 
