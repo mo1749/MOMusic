@@ -24,11 +24,29 @@ function firstImageUploadFile(files) {
   for (var i = 0; i < list.length; i++) if (isImageUploadFile(list[i])) return list[i];
   return null;
 }
-function localSongFromAudioFile(file) {
+function localSongLyricBaseKey(rel) {
+  var parts = String(rel || '').split(/[\\/]/);
+  var name = parts.pop() || '';
+  var dir = parts.join('/');
+  return (dir.toLowerCase() + '|' + name.replace(/\.[^.]+$/, '').toLowerCase());
+}
+function collectLocalLyricFiles(files) {
+  var map = {};
+  Array.prototype.slice.call(files || []).forEach(function (file) {
+    if (!file || !file.name) return;
+    var ext = String(file.name).replace(/^.*\./, '').toLowerCase();
+    if (ext !== 'lrc' && ext !== 'trc') return;
+    var key = localSongLyricBaseKey(String(file.webkitRelativePath || file.name));
+    var entry = map[key] || (map[key] = { lrc: null, trc: null });
+    if (!entry[ext]) entry[ext] = file;
+  });
+  return map;
+}
+function localSongFromAudioFile(file, lyricPair) {
   var rel = String(file.webkitRelativePath || file.name || '');
   var filename = String(file.name || rel || '本地音乐');
   var title = filename.replace(/\.[^.]+$/, '');
-  return hydrateCustomCover({
+  var song = hydrateCustomCover({
     type: 'local',
     source: 'local',
     provider: 'local',
@@ -40,8 +58,81 @@ function localSongFromAudioFile(file) {
     localPath: rel,
     duration: 0
   });
+  if (lyricPair && lyricPair.lrc) song.localLyricUrl = URL.createObjectURL(lyricPair.lrc);
+  if (lyricPair && lyricPair.trc) song.localTlyricUrl = URL.createObjectURL(lyricPair.trc);
+  if (window.desktopWindow && typeof window.desktopWindow.getPathForFile === 'function') {
+    try {
+      var abs = window.desktopWindow.getPathForFile(file);
+      if (abs) song.localAudioPath = abs;
+    } catch (e) { }
+  }
+  return song;
 }
 var uploadFilePickerActiveUntil = 0;
+var localMetadataEnrichQueue = [];
+var localMetadataEnrichBusy = false;
+var localMetadataEnrichAttemptedKeys = {};
+function canEnrichLocalSongMetadata(song) {
+  if (!song || !song.localAudioPath) return false;
+  if (song.localMetaParsed) return false;
+  if (localMetadataEnrichAttemptedKeys[song.localKey]) return false;
+  if (!window.desktopWindow || typeof window.desktopWindow.readLocalMetadata !== 'function') return false;
+  return true;
+}
+function enqueueLocalMetadataEnrich(song) {
+  if (!canEnrichLocalSongMetadata(song)) return;
+  localMetadataEnrichAttemptedKeys[song.localKey] = true;
+  localMetadataEnrichQueue.push(song);
+  pumpLocalMetadataEnrich();
+}
+function pumpLocalMetadataEnrich() {
+  if (localMetadataEnrichBusy || !localMetadataEnrichQueue.length) return;
+  localMetadataEnrichBusy = true;
+  var song = localMetadataEnrichQueue.shift();
+  window.desktopWindow.readLocalMetadata(song.localAudioPath).then(function (r) {
+    if (r && r.ok && r.metadata) applyLocalMetadataToSong(song, r.metadata);
+  }).catch(function () { }).finally(function () {
+    localMetadataEnrichBusy = false;
+    if (localMetadataEnrichQueue.length) setTimeout(pumpLocalMetadataEnrich, 50);
+  });
+}
+function applyLocalMetadataToSong(song, meta) {
+  if (!song || !meta) return;
+  var changed = false;
+  var name = String(meta.title || '').trim();
+  var artist = String(meta.artist || '').trim();
+  var album = String(meta.album || '').trim();
+  if (name && name !== String(song.name || '').trim()) { song.name = name; changed = true; }
+  if (artist && artist !== '本地文件' && artist !== String(song.artist || '').trim()) { song.artist = artist; changed = true; }
+  if (album && album !== String(song.album || '').trim()) { song.album = album; changed = true; }
+  if (meta.albumArtist) song.albumArtist = String(meta.albumArtist).trim();
+  if (meta.year) song.year = String(meta.year).trim();
+  if (isFinite(meta.duration) && meta.duration > 0 && meta.duration !== song.duration) { song.duration = meta.duration; changed = true; }
+  song.localMetaParsed = true;
+  var picture = String(meta.picture || '');
+  if (picture && /^data:image\//i.test(picture)) {
+    try {
+      var key = typeof songCustomCoverKey === 'function' ? songCustomCoverKey(song) : '';
+      if (key) {
+        customCoverMap[key] = picture;
+        saveCustomCoverMap();
+        song.customCover = picture;
+        for (var i = 0; i < playQueue.length; i++) {
+          if (playQueue[i] && typeof songCustomCoverKey === 'function' && songCustomCoverKey(playQueue[i]) === key) playQueue[i].customCover = picture;
+        }
+        if (currentLocalSong && typeof songCustomCoverKey === 'function' && songCustomCoverKey(currentLocalSong) === key) currentLocalSong.customCover = picture;
+        if (typeof applyCoverDataUrl === 'function' && (currentCoverSong() === song || (currentIdx >= 0 && playQueue[currentIdx] === song))) {
+          applyCoverDataUrl(picture, {});
+        }
+      }
+    } catch (e) { }
+  }
+  if (changed) {
+    if (typeof safeRenderQueuePanel === 'function') safeRenderQueuePanel('local-metadata-enrich', { scrollCurrent: miniQueueOpen });
+    if (typeof safeShelfRebuild === 'function') safeShelfRebuild('local-metadata-enrich');
+    if (typeof updateCustomCoverButton === 'function') updateCustomCoverButton();
+  }
+}
 var uploadFilePickerFocusArmed = false;
 var uploadFilePickerFocusTimer = null;
 function uploadImportNow() {
@@ -157,11 +248,13 @@ function importLocalAudioSongs(songs, opts) {
   safeShelfRebuild('local-import', true);
   forcePlaybackControlsInteractive();
   updateEmptyHomeVisibility({ forceLoad: false });
+  for (var i = 0; i < playQueue.length; i++) enqueueLocalMetadataEnrich(playQueue[i]);
   showToast(songs.length > 1 ? ('已导入 ' + songs.length + ' 首本地音乐') : '正在播放本地音乐');
   Promise.resolve(playQueueAt(0, { manual: true })).then(function () {
     if (opts.coverFile && currentIdx === 0 && playQueue[0]) {
       loadCoverFromFile(opts.coverFile, { trackToken: trackSwitchToken, deferHeavy: false, delay: 0, timeout: 260 });
     }
+    if (typeof saveLastPlaybackSnapshot === 'function') saveLastPlaybackSnapshot(true, 'local-import');
   }).catch(function (e) { console.warn('[LocalImport]', e); });
   return true;
 }
@@ -181,7 +274,11 @@ function handleFiles(files, opts) {
   var audioFiles = sortedAudioUploadFiles(files);
   var imgFile = firstImageUploadFile(files);
   if (audioFiles.length) {
-    var songs = audioFiles.map(localSongFromAudioFile);
+    var lyricMap = collectLocalLyricFiles(files);
+    var songs = audioFiles.map(function (file) {
+      var key = localSongLyricBaseKey(String(file.webkitRelativePath || file.name));
+      return localSongFromAudioFile(file, lyricMap[key] || null);
+    });
     importLocalAudioSongs(songs, { coverFile: songs.length === 1 ? imgFile : null, mode: opts.mode || '' });
     return;
   }
