@@ -41,7 +41,89 @@ function lyricEndpointForSong(songOrId) {
 
 // 统一歌词获取: 封装 ls 音源的自定义音源链式回退
 // 非 ls 音源或无自定义音源时, 直接走原来的 GET 接口
+function isLocalMusicSong(song) {
+  return !!(song && (song.type === 'local' || song.source === 'local' || song.provider === 'local' || song.localUrl));
+}
+function decodeLocalLyricBytes(bytes) {
+  var text = '';
+  try { text = new TextDecoder('utf-8').decode(bytes); } catch (e) { text = ''; }
+  if (text.indexOf('\uFFFD') < 0) return text;
+  try {
+    var gbk = new TextDecoder('gbk').decode(bytes);
+    if (gbk.indexOf('\uFFFD') < 0) return gbk;
+  } catch (e) { }
+  return text;
+}
+function decodeLocalLyricBase64(b64) {
+  var bin = atob(String(b64 || '').replace(/\s+/g, ''));
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return decodeLocalLyricBytes(bytes);
+}
+async function readLocalLyricBlobText(url) {
+  if (!url) return '';
+  var resp = await fetch(url);
+  return decodeLocalLyricBytes(new Uint8Array(await resp.arrayBuffer()));
+}
+// 解析 LX Music 下载的 .lrc 复合标签: [awlrc:lrc:Base64,tlrc:Base64,rlrc:Base64,awlrc:Base64]
+function parseLxAwlrcComposite(text) {
+  var m = String(text || '').match(/\[awlrc:([^\]]*)\]/i);
+  if (!m) return null;
+  var out = { lrc: '', tlyric: '', rlyric: '', lxlyric: '' };
+  String(m[1] || '').split(',').forEach(function (part) {
+    var idx = part.indexOf(':');
+    if (idx <= 0) return;
+    var key = String(part.slice(0, idx)).toLowerCase();
+    var val = decodeLocalLyricBase64(part.slice(idx + 1));
+    if (key === 'lrc') out.lrc = val;
+    else if (key === 'tlrc') out.tlyric = val;
+    else if (key === 'rlrc') out.rlyric = val;
+    else if (key === 'awlrc') out.lxlyric = val;
+  });
+  return (out.lrc || out.tlyric || out.rlyric || out.lxlyric) ? out : null;
+}
+function stripLxAwlrcTag(text) {
+  return String(text || '').replace(/\[awlrc:[^\]]*\]/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+// 本地音乐: 优先读取同目录歌词, 支持 LX Music 逐词复合标签
+async function fetchLocalSongLyric(song) {
+  if (!song) return null;
+  var lyricText = '';
+  var tlyricText = '';
+  if (song.localLyricUrl) {
+    try { lyricText = await readLocalLyricBlobText(song.localLyricUrl); } catch (e) { lyricText = ''; }
+  } else if (song.localAudioPath && window.desktopWindow && typeof window.desktopWindow.readLocalLyricFiles === 'function') {
+    try {
+      var r = await window.desktopWindow.readLocalLyricFiles(song.localAudioPath);
+      if (r && r.ok) {
+        if (r.lyric) lyricText = decodeLocalLyricBase64(r.lyric);
+        if (!tlyricText && r.tlyric) tlyricText = decodeLocalLyricBase64(r.tlyric);
+      }
+    } catch (e) { }
+  }
+  if (!lyricText && song.localTlyricUrl) {
+    try { tlyricText = await readLocalLyricBlobText(song.localTlyricUrl); } catch (e) { }
+  }
+  if (!lyricText && !tlyricText) return null;
+  var composite = parseLxAwlrcComposite(lyricText);
+  if (composite) {
+    return {
+      lyric: composite.lrc,
+      tlyric: composite.tlyric || tlyricText,
+      rlyric: composite.rlyric,
+      lxlyric: composite.lxlyric,
+      from: 'lx-composite',
+      local: true,
+    };
+  }
+  return { lyric: stripLxAwlrcTag(lyricText), tlyric: tlyricText, from: 'local-file', local: true };
+}
 async function fetchLyricForSong(song) {
+  if (isLocalMusicSong(song)) {
+    var localLyric = await fetchLocalSongLyric(song);
+    if (localLyric && (localLyric.lyric || localLyric.tlyric || localLyric.lxlyric)) return localLyric;
+    return { lyric: '', tlyric: '', from: 'local-none', local: true };
+  }
   var endpoint = lyricEndpointForSong(song);
   var provider = typeof songProviderKey === 'function' ? songProviderKey(song || {}) : (song && (song.source || song.provider) || '');
   if (provider === 'ls') {
@@ -302,12 +384,16 @@ function withLyricFallbackForSong(song, lines) {
 function parseLyricResponseToOriginalState(song, response) {
   response = response || {};
   var nativeLines = parseYrcText(response.yrc || '');
+  var lxLines = parseLxKaraokeText(response.lxlyric || '');
   var lrcLines = parseLyricText(response.lyric || '');
   var translationPayload = buildLyricTranslationPayload(response);
   var translationLines = translationPayload.lines;
-  var hasNativeKaraoke = nativeLines.some(function (line) { return line.words && line.words.length; });
-  var timingSource = hasNativeKaraoke ? 'yrc-word' : (nativeLines.length ? 'yrc-line' : (lrcLines.length ? 'lrc-line' : 'fallback'));
-  var primaryLines = nativeLines.length ? nativeLines : lrcLines;
+  var hasLxKaraoke = lxLines.some(function (line) { return line.words && line.words.length; });
+  var hasNativeKaraoke = hasLxKaraoke || nativeLines.some(function (line) { return line.words && line.words.length; });
+  var timingSource = hasNativeKaraoke
+    ? (hasLxKaraoke ? 'lx-word' : 'yrc-word')
+    : (lxLines.length ? 'lx-line' : (nativeLines.length ? 'yrc-line' : (lrcLines.length ? 'lrc-line' : 'fallback')));
+  var primaryLines = lxLines.length ? lxLines : (nativeLines.length ? nativeLines : lrcLines);
   var lines = withLyricFallbackForSong(song, attachLyricTranslations(primaryLines, translationLines));
   if (lines.length && lines[0].fallback) timingSource = 'fallback';
   return {
@@ -376,7 +462,7 @@ async function fetchLyric(songOrId, token, attempt) {
       }
     }
     var r = await fetchLyricForSong(song || songOrId);
-    var state = applyFetchedLyricResponse(song, token, r);
+    var state = applyFetchedLyricResponse(song, token, r, { persist: !r || r.from !== 'local-none' });
     if (!state) return;
     if (!state.usableLyric && shouldRetryStartupLyricFetch(song, token, attempt)) scheduleStartupLyricFetchRetry(song, token, attempt);
   } catch (e) {
@@ -657,6 +743,49 @@ function parseYrcText(text) {
       words = words.filter(function (w) { return w.c1 > w.c0; });
     }
     lines.push({ t: lineStartMs / 1000, duration: lineDurMs / 1000, text: fullText, words: words, charCount: Math.max(1, fullText.length), source: words.length ? 'yrc-word' : 'yrc-line' });
+  });
+  return finalizeLyricLineDurations(lines);
+}
+// LX Music 逐词歌词: [分钟:秒.毫秒]<起始毫秒,持续毫秒>词...
+function parseLxKaraokeText(text) {
+  var lines = [];
+  String(text || '').split(/\r?\n/).forEach(function (raw) {
+    var line = String(raw || '').trim();
+    var tag = line.match(/^\[(\d{1,2}):(\d{1,2})(?:\.(\d{1,3}))?\](.*)$/);
+    if (!tag) return;
+    var lineStartSec = (parseInt(tag[1], 10) || 0) * 60 + (parseInt(tag[2], 10) || 0);
+    if (tag[3]) lineStartSec += (parseInt(tag[3], 10) || 0) / Math.pow(10, Math.min(3, tag[3].length));
+    var body = tag[4] || '';
+    var words = [], fullText = '';
+    var lastEndMs = 0;
+    var reg = /<(\d+),(\d+)>([^<]*)/g, wm;
+    while ((wm = reg.exec(body))) {
+      var txt = String(wm[3] || '').replace(/\s+/g, ' ');
+      if (!txt) continue;
+      var s = parseInt(wm[1], 10) || 0;
+      var d = parseInt(wm[2], 10) || 0;
+      lastEndMs = Math.max(lastEndMs, s + d);
+      var c0 = fullText.length;
+      fullText += txt;
+      words.push({ text: txt, t: lineStartSec + s / 1000, d: Math.max(0.06, d / 1000), c0: c0, c1: fullText.length });
+    }
+    if (!fullText) fullText = body.replace(/<\d+,\d+>/g, '').replace(/\s+/g, ' ').trim();
+    if (!fullText) return;
+    if (words.length) {
+      words.forEach(function (w) {
+        w.c0 = Math.max(0, Math.min(fullText.length, w.c0));
+        w.c1 = Math.max(w.c0, Math.min(fullText.length, w.c1));
+      });
+      words = words.filter(function (w) { return w.c1 > w.c0; });
+    }
+    lines.push({
+      t: lineStartSec,
+      duration: words.length ? lastEndMs / 1000 : 0,
+      text: fullText,
+      words: words,
+      charCount: Math.max(1, fullText.length),
+      source: words.length ? 'lx-word' : 'lx-line'
+    });
   });
   return finalizeLyricLineDurations(lines);
 }
