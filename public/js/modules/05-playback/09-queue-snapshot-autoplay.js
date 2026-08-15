@@ -17,12 +17,13 @@ function playbackRestoreSongSnapshot(song) {
     'spotifyId', 'spotifyUri', 'spotifyUrl', 'uri', 'albumUri',
     'hash', 'fileHash', 'audioHash', 'albumId', 'album_id', 'albumMid', 'albummid', 'albumAudioId', 'album_audio_id', 'mixSongId', 'hqHash', 'sqHash', 'resHash',
     'name', 'title', 'artist', 'album', 'cover', 'duration', 'durationMs', 'dt', 'fee',
-    'playable', 'playbackMode', 'recommendationSource', 'programId', 'radioId', 'radioName', 'localKey'
+    'playable', 'playbackMode', 'recommendationSource', 'programId', 'radioId', 'radioName', 'localKey',
+    'localAudioPath'
   ].forEach(function (key) {
     if (song[key] != null && song[key] !== '') snap[key] = song[key];
   });
   if (Array.isArray(song.artists)) snap.artists = song.artists.slice(0, 6);
-  if (song.type === 'local' || song.localKey) snap.localMissing = true;
+  if (song.type === 'local' || song.localKey) snap.localMissing = !song.localAudioPath;
   return snap;
 }
 function readLastPlaybackSnapshot() {
@@ -45,7 +46,9 @@ function saveLastPlaybackSnapshot(force, reason) {
   var durationSec = getPlaybackDurationSeconds();
   var currentSec = getPlaybackCurrentSeconds();
   if (durationSec > 0 && currentSec > durationSec) currentSec = durationSec;
-  var queue = Array.isArray(playQueue) ? playQueue.slice(0, 120).map(playbackRestoreSongSnapshot).filter(function (item) { return item && (item.id || item.mid || item.localKey || item.name); }) : [];
+  var queueAll = Array.isArray(playQueue) ? playQueue : [];
+  var localQueueCount = queueAll.filter(function (item) { return item && (item.type === 'local' || item.localKey); }).length;
+  var queue = queueAll.slice(0, Math.max(120, localQueueCount)).map(playbackRestoreSongSnapshot).filter(function (item) { return item && (item.id || item.mid || item.localKey || item.name); });
   var payload = {
     version: 1,
     savedAt: now,
@@ -82,8 +85,22 @@ function restoreLastPlaybackSnapshot() {
   pendingPlaybackResumeAt = startupResumeSecondsFromSnapshot(snapshot);
   if (isLocal) {
     currentLocalSong = current;
-    currentIdx = -1;
-    playQueue = [];
+    var localQueue = Array.isArray(snapshot.queue)
+      ? snapshot.queue.map(function (song) { return hydrateCustomCover(Object.assign({}, song)); }).filter(function (song) { return song && (song.type === 'local' || song.localKey); })
+      : [];
+    if (!localQueue.length) localQueue = [current];
+    var localIdx = Math.max(0, Math.min(localQueue.length - 1, Number(snapshot.currentIdx) || 0));
+    if (localQueue[localIdx] && queueItemKey(localQueue[localIdx]) !== queueItemKey(current)) {
+      var localFound = -1;
+      for (var li = 0; li < localQueue.length; li++) {
+        if (queueItemKey(localQueue[li]) === queueItemKey(current)) { localFound = li; break; }
+      }
+      if (localFound >= 0) localIdx = localFound;
+      else { localQueue.unshift(current); localIdx = 0; }
+    }
+    playQueue = localQueue;
+    currentIdx = localIdx;
+    rehydrateRestoredLocalQueue();
   } else {
     var queue = Array.isArray(snapshot.queue) ? snapshot.queue.map(function (song) { return hydrateCustomCover(Object.assign({}, song)); }).filter(function (song) { return song && (song.id || song.mid || song.name); }) : [];
     if (!queue.length) queue = [current];
@@ -126,6 +143,49 @@ function canStartupAutoplayRestoredSnapshot() {
   if (!restoredLastPlaybackSnapshot) return false;
   if (currentLocalSong && (!Array.isArray(playQueue) || !playQueue.length)) return false;
   return !!(Array.isArray(playQueue) && currentIdx >= 0 && playQueue[currentIdx]);
+}
+var restoredLocalRehydrationDone = false;
+function isRestoredLocalSong(song) {
+  return !!(song && (song.type === 'local' || song.localKey));
+}
+async function rehydrateRestoredLocalQueue() {
+  if (restoredLocalRehydrationDone) return;
+  restoredLocalRehydrationDone = true;
+  var dw = window.desktopWindow || {};
+  var targets = [];
+  (Array.isArray(playQueue) ? playQueue : []).forEach(function (song) { if (isRestoredLocalSong(song)) targets.push(song); });
+  if (currentLocalSong && isRestoredLocalSong(currentLocalSong) && targets.indexOf(currentLocalSong) < 0) targets.push(currentLocalSong);
+  if (!targets.length) return;
+  var hydratedCount = 0;
+  for (var i = 0; i < targets.length; i++) {
+    var song = targets[i];
+    if (!song.localAudioPath) { song.localMissing = true; continue; }
+    try {
+      var exists = typeof dw.localPathExists === 'function' ? await dw.localPathExists(song.localAudioPath) : null;
+      if (exists && exists.exists !== true) { song.localMissing = true; continue; }
+      if (!song.localUrl && typeof dw.registerLocalMediaPath === 'function') {
+        var reg = await dw.registerLocalMediaPath(song.localAudioPath);
+        if (reg && reg.ok && reg.url) song.localUrl = reg.url;
+        else { song.localMissing = true; continue; }
+      }
+      song.localMissing = false;
+      hydratedCount++;
+    } catch (e) {
+      song.localMissing = true;
+    }
+  }
+  if (!hydratedCount) return;
+  if (typeof safeRenderQueuePanel === 'function') safeRenderQueuePanel('local-restore', { scrollCurrent: miniQueueOpen });
+  if (typeof enqueueLocalMetadataEnrich === 'function') {
+    targets.forEach(function (song) { if (!song.localMissing) enqueueLocalMetadataEnrich(song); });
+  }
+  var shownSong = currentCoverSong && typeof currentCoverSong === 'function' ? currentCoverSong() : (currentIdx >= 0 && playQueue[currentIdx] ? playQueue[currentIdx] : null);
+  if (shownSong && !shownSong.localMissing) {
+    var artistEl = document.getElementById('thumb-artist');
+    if (artistEl) artistEl.textContent = shownSong.artist || '本地文件';
+    if (typeof updateControlTrackInfo === 'function') updateControlTrackInfo(shownSong);
+  }
+  if (typeof updateEmptyHomeVisibility === 'function') updateEmptyHomeVisibility({ forceLoad: false });
 }
 function isStartupAutoplayPlaying() {
   return !!(audio && audio.src && !audio.paused && !audio.ended);

@@ -1,6 +1,15 @@
-const { contextBridge, ipcRenderer, clipboard } = require('electron');
+const { contextBridge, ipcRenderer, clipboard, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('desktopWindow', {
+  getPathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || '';
+    } catch (_) { return ''; }
+  },
+  readLocalLyricFiles: (audioPath) => ipcRenderer.invoke('MOMusic-local-lyric-read', String(audioPath || '')),
+  readLocalMetadata: (audioPath) => ipcRenderer.invoke('MOMusic-local-metadata-read', String(audioPath || '')),
+  registerLocalMediaPath: (audioPath) => ipcRenderer.invoke('MOMusic-local-media-register', String(audioPath || '')),
+  localPathExists: (audioPath) => ipcRenderer.invoke('MOMusic-local-path-exists', String(audioPath || '')),
   isDesktop: true,
   minimize: () => ipcRenderer.invoke('desktop-window-minimize'),
   restore: () => ipcRenderer.invoke('desktop-window-restore'),

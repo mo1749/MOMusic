@@ -227,10 +227,19 @@ function prepareLocalBeatAnalysis(song, audioUrl) {
       applyLocalBeatMap(song, mode, map, true);
       return;
     }
-    openLocalBeatModal(song, audioUrl);
+    startLocalBeatAnalysisSilently(song, audioUrl, preferred);
   })().catch(function () {
-    if (diskToken === trackSwitchToken && currentLocalSong && currentLocalSong.localKey === song.localKey) openLocalBeatModal(song, audioUrl);
+    if (diskToken === trackSwitchToken && currentLocalSong && currentLocalSong.localKey === song.localKey) startLocalBeatAnalysisSilently(song, audioUrl, preferred);
   });
+}
+function startLocalBeatAnalysisSilently(song, audioUrl, mode) {
+  if (!song || !song.localKey || !audioUrl) return;
+  mode = mode === 'dj' ? 'dj' : 'mr';
+  localBeatAnalysis.song = song;
+  localBeatAnalysis.audioUrl = audioUrl;
+  localBeatAnalysis.mode = mode;
+  localBeatAnalysis.active = false;
+  startLocalBeatAnalysis(mode, { silent: true });
 }
 function openLocalBeatModal(song, audioUrl) {
   if (immersiveMode) setImmersiveMode(false);
@@ -301,7 +310,9 @@ function cancelLocalBeatAnalysis() {
   setLocalBeatStatus('已取消分析', 'fail');
   updateLocalBeatModal();
 }
-async function startLocalBeatAnalysis(mode) {
+async function startLocalBeatAnalysis(mode, opts) {
+  opts = opts || {};
+  var silent = !!opts.silent;
   var song = localBeatAnalysis.song || currentLocalSong;
   var audioUrl = localBeatAnalysis.audioUrl || (song && song.localUrl) || (audio && audio.src) || '';
   mode = mode || localBeatAnalysis.mode;
@@ -310,15 +321,15 @@ async function startLocalBeatAnalysis(mode) {
   var cached = getLocalBeatEntry(song.localKey, mode);
   if (cached) {
     applyLocalBeatMap(song, mode, cached, true);
-    closeGsapModal(document.getElementById('local-beat-modal'));
+    if (!silent) closeGsapModal(document.getElementById('local-beat-modal'));
     return;
   }
   localBeatAnalysis.active = true;
   localBeatAnalysis.mode = mode;
   localBeatAnalysis.token++;
   var localToken = localBeatAnalysis.token;
-  updateLocalBeatModal();
-  setLocalBeatStatus((mode === 'dj' ? 'DJ' : 'MR') + ' 分析准备中...', 'warn');
+  if (!silent) updateLocalBeatModal();
+  if (!silent) setLocalBeatStatus((mode === 'dj' ? 'DJ' : 'MR') + ' 分析准备中...', 'warn');
   try {
     var map = null;
     if (mode === 'dj') {
@@ -338,26 +349,30 @@ async function startLocalBeatAnalysis(mode) {
       beatMapNextIdx = 0;
       resetBeatCameraSync(audio ? audio.currentTime : 0);
       var mrToken = beatMapToken;
-      map = await analyzeAudioBeats(audioUrl, audio && isFinite(audio.duration) ? audio.duration : 0, mrToken, { background: false, song: song });
+      map = await analyzeAudioBeats(audioUrl, audio && isFinite(audio.duration) ? audio.duration : 0, mrToken, { background: silent, song: song });
       if (localToken !== localBeatAnalysis.token || mrToken !== beatMapToken) return;
       if (!map) throw new Error('MR analysis returned empty map');
     }
     storeLocalBeatEntry(song.localKey, mode, map, song);
     applyLocalBeatMap(song, mode, map, false);
     localBeatAnalysis.active = false;
-    setLocalBeatStatus((mode === 'dj' ? 'DJ' : 'MR') + ' 分析完成: ' + localBeatVisualCount(map) + ' 个主拍');
-    updateLocalBeatModal();
-    showToast((mode === 'dj' ? 'DJ' : 'MR') + ' 本地节奏分析完成');
-    setTimeout(function () {
-      if (!localBeatAnalysis.active) closeGsapModal(document.getElementById('local-beat-modal'));
-    }, 900);
+    if (!silent) {
+      setLocalBeatStatus((mode === 'dj' ? 'DJ' : 'MR') + ' 分析完成: ' + localBeatVisualCount(map) + ' 个主拍');
+      updateLocalBeatModal();
+      showToast((mode === 'dj' ? 'DJ' : 'MR') + ' 本地节奏分析完成');
+      setTimeout(function () {
+        if (!localBeatAnalysis.active) closeGsapModal(document.getElementById('local-beat-modal'));
+      }, 900);
+    }
   } catch (err) {
     console.warn('local beat analysis failed:', err);
     localBeatAnalysis.active = false;
     hideBeatChip();
     if (mode === 'dj') setDjModeActive(false, song);
-    setLocalBeatStatus('分析失败，请换另一种模式重试', 'fail');
-    updateLocalBeatModal();
+    if (!silent) {
+      setLocalBeatStatus('分析失败，请换另一种模式重试', 'fail');
+      updateLocalBeatModal();
+    }
     showToast('本地节奏分析失败');
   }
 }
