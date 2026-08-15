@@ -859,6 +859,9 @@ async function playLocalQueueSong(song, idx, token, firstVisualPlay, opts, resum
     if (playQueue[idx]) playQueue[idx].duration = duration;
     if (lyricSourceMode === 'custom') applyCustomLyricState(currentLocalSong, true);
     safeRenderQueuePanel('local-metadata', { scrollCurrent: miniQueueOpen });
+    if (currentLocalSong.localAudioPath && (!currentLocalSong.name || currentLocalSong.artist === '本地文件') && typeof enqueueLocalMetadataEnrich === 'function') {
+      enqueueLocalMetadataEnrich(currentLocalSong);
+    }
   };
   scheduleAudioResumePosition(audio, opts.resumeAt != null ? opts.resumeAt : resumeAt, token);
   if (resumeAt > 0) pendingPlaybackResumeAt = 0;
@@ -890,6 +893,7 @@ async function playLocalQueueSong(song, idx, token, firstVisualPlay, opts, resum
   if (typeof cancelPendingTrackFallbackLyrics === 'function') cancelPendingTrackFallbackLyrics();
   setOriginalLyricsState(withLyricFallback([]), false, 'fallback');
   applyPreferredLyricsForCurrent(true);
+  if (typeof fetchLyric === 'function') fetchLyric(song, token);
   safeRenderQueuePanel('play-local-queue', { scrollCurrent: miniQueueOpen });
   scheduleShelfRebuild('play-local-queue', true);
   scheduleAlbumGaplessPreloadForCurrent(token, 'local-started');

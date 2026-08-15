@@ -117,6 +117,7 @@
   "dependencies": {
     "gsap": "^3.15.0",
     "mpg123-decoder": "^1.0.3",
+    "music-metadata": "11.14.0",
     "NeteaseCloudMusicApi": "^4.32.0",
     "ws": "^8.16.0"
   },
@@ -129,5 +130,9 @@
     "electron": "^42.4.1",
     "electron-builder": "^26.15.3",
     "rcedit": "^5.0.2"
+  },
+  "allowScripts": {
+    "electron@42.4.1": true,
+    "electron-winstaller@5.4.0": true
   }
 }

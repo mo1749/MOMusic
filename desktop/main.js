@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
+const { Readable } = require('stream');
 const systemMemory = require('./system-memory');
 const {
   WallpaperEngineLibrary,
@@ -43,6 +44,17 @@ const {
 } = require('../listen-together');
 
 registerWallpaperEngineScheme(protocol);
+
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'momusic-local',
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+    corsEnabled: true,
+    stream: true,
+  },
+}]);
 
 let mainWindow = null;
 let localServer = null;
@@ -5153,6 +5165,229 @@ ipcMain.handle('MOMusic-cache-write-lyric', async (_event, key, payload) => {
   }
 });
 
+// 读取本地音乐同目录歌词(.lrc/.trc/.krc)，返回原始字节(base64)由渲染层统一解码(UTF-8/GBK)
+const LOCAL_LYRIC_READ_MAX_BYTES = 4 * 1024 * 1024;
+ipcMain.handle('MOMusic-local-lyric-read', async (_event, audioPath) => {
+  try {
+    const audio = String(audioPath || '');
+    if (!audio || !path.isAbsolute(audio)) return { ok: false, error: 'INVALID_LOCAL_AUDIO_PATH' };
+    const stat = await fs.promises.stat(audio).catch(() => null);
+    if (!stat || !stat.isFile()) return { ok: false, hit: false, error: 'LOCAL_AUDIO_FILE_NOT_FOUND' };
+    const base = (() => { const ext = path.extname(audio); return ext ? audio.slice(0, audio.length - ext.length) : audio; })();
+    const readBytes = async (candidate) => {
+      try {
+        const s = await fs.promises.stat(candidate);
+        if (!s.isFile() || s.size <= 0 || s.size > LOCAL_LYRIC_READ_MAX_BYTES) return '';
+        return (await fs.promises.readFile(candidate)).toString('base64');
+      } catch (_) { return ''; }
+    };
+    const lyric = await readBytes(base + '.lrc');
+    const tlyric = await readBytes(base + '.trc');
+    const krc = await readBytes(base + '.krc');
+    if (!lyric && !tlyric && !krc) return { ok: false, hit: false, error: 'LOCAL_LYRIC_NOT_FOUND' };
+    return { ok: true, hit: true, lyric, tlyric, krc };
+  } catch (error) {
+    return { ok: false, error: error.message || 'LOCAL_LYRIC_READ_FAILED' };
+  }
+});
+
+// 本地音乐媒体协议: 恢复的本地歌曲通过 momusic-local://media/<token> 流式读取文件(Range 支持)
+const LOCAL_MEDIA_SCHEME = 'momusic-local';
+const LOCAL_MEDIA_TOKENS = new Map();
+const LOCAL_MEDIA_MIME = new Map([
+  ['.mp3', 'audio/mpeg'],
+  ['.flac', 'audio/flac'],
+  ['.wav', 'audio/wav'],
+  ['.ogg', 'audio/ogg'],
+  ['.oga', 'audio/ogg'],
+  ['.opus', 'audio/ogg'],
+  ['.m4a', 'audio/mp4'],
+  ['.aac', 'audio/aac'],
+  ['.ape', 'audio/x-ape'],
+  ['.wma', 'audio/x-ms-wma'],
+  ['.mp4', 'audio/mp4'],
+]);
+function localMediaMimeForPath(target) {
+  const mime = LOCAL_MEDIA_MIME.get(String(path.extname(target) || '').toLowerCase());
+  return mime || 'application/octet-stream';
+}
+function parseByteRangeHeader(value, size) {
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(String(value || '').trim());
+  if (!match) return null;
+  const startStr = match[1];
+  const endStr = match[2];
+  let start;
+  let end;
+  if (startStr === '') {
+    if (endStr === '') return { invalid: true };
+    const suffix = Number(endStr);
+    if (!isFinite(suffix) || suffix <= 0) return { invalid: true };
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = Number(startStr);
+    if (!isFinite(start) || start < 0) return { invalid: true };
+    end = endStr === '' ? size - 1 : Number(endStr);
+    if (!isFinite(end)) return { invalid: true };
+  }
+  if (size <= 0 || start >= size || end < start) return { invalid: true };
+  end = Math.min(end, size - 1);
+  return { start, end };
+}
+async function localMediaResponse(request) {
+  const method = String(request && request.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: { 'Allow': 'GET, HEAD', 'X-Content-Type-Options': 'nosniff' },
+    });
+  }
+  let url;
+  let token;
+  try {
+    url = new URL(request.url);
+    token = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+  } catch (_) {
+    return new Response('Not found', { status: 404, headers: { 'X-Content-Type-Options': 'nosniff' } });
+  }
+  if (url.hostname !== 'media') return new Response('Not found', { status: 404, headers: { 'X-Content-Type-Options': 'nosniff' } });
+  const target = LOCAL_MEDIA_TOKENS.get(token);
+  if (!target) return new Response('Not found', { status: 404, headers: { 'X-Content-Type-Options': 'nosniff' } });
+  let stat;
+  try { stat = await fs.promises.stat(target); } catch (_) {
+    LOCAL_MEDIA_TOKENS.delete(token);
+    return new Response('Not found', { status: 404, headers: { 'X-Content-Type-Options': 'nosniff' } });
+  }
+  if (!stat.isFile()) return new Response('Not found', { status: 404, headers: { 'X-Content-Type-Options': 'nosniff' } });
+  const size = Number(stat.size) || 0;
+  const rangeHeader = request.headers && request.headers.get ? request.headers.get('range') : '';
+  const range = rangeHeader ? parseByteRangeHeader(rangeHeader, size) : null;
+  if (range && range.invalid) {
+    return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}`, 'X-Content-Type-Options': 'nosniff' } });
+  }
+  const start = range ? range.start : 0;
+  const end = range ? range.end : Math.max(0, size - 1);
+  const headers = {
+    'Content-Type': localMediaMimeForPath(target),
+    'Content-Length': String(size ? end - start + 1 : 0),
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'private, max-age=300',
+    'Cross-Origin-Resource-Policy': 'cross-origin',
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+  if (method === 'HEAD' || !size) {
+    return new Response(null, { status: range ? 206 : 200, headers });
+  }
+  const stream = fs.createReadStream(target, { start, end });
+  return new Response(Readable.toWeb(stream), { status: range ? 206 : 200, headers });
+}
+
+ipcMain.handle('MOMusic-local-media-register', async (_event, audioPath) => {
+  try {
+    const audio = String(audioPath || '');
+    if (!audio || !path.isAbsolute(audio)) return { ok: false, error: 'INVALID_LOCAL_AUDIO_PATH' };
+    const stat = await fs.promises.stat(audio).catch(() => null);
+    if (!stat || !stat.isFile()) return { ok: false, error: 'LOCAL_AUDIO_FILE_NOT_FOUND' };
+    let token = '';
+    do { token = crypto.randomBytes(16).toString('hex'); } while (LOCAL_MEDIA_TOKENS.has(token));
+    LOCAL_MEDIA_TOKENS.set(token, audio);
+    return { ok: true, token, url: `${LOCAL_MEDIA_SCHEME}://media/${token}` };
+  } catch (error) {
+    return { ok: false, error: error.message || 'LOCAL_MEDIA_REGISTER_FAILED' };
+  }
+});
+ipcMain.handle('MOMusic-local-path-exists', async (_event, audioPath) => {
+  try {
+    const audio = String(audioPath || '');
+    if (!audio || !path.isAbsolute(audio)) return { ok: false, exists: false };
+    const stat = await fs.promises.stat(audio).catch(() => null);
+    return { ok: true, exists: !!(stat && stat.isFile()) };
+  } catch (error) {
+    return { ok: false, exists: false };
+  }
+});
+
+// 读取本地音乐内嵌元信息(标题/歌手/专辑/年份/时长/封面)，GBK 标签做启发式修复
+const LOCAL_METADATA_READ_MAX_BYTES = 256 * 1024 * 1024;
+const LOCAL_METADATA_PICTURE_MAX_BYTES = 4 * 1024 * 1024;
+let localMetadataParserPromise = null;
+async function loadLocalMetadataParser() {
+  if (!localMetadataParserPromise) {
+    localMetadataParserPromise = (async () => {
+      try {
+        const mm = await import('music-metadata');
+        const api = (mm && (mm.parseFile || (mm.default && mm.default.parseFile))) || null;
+        return typeof api === 'function' ? api : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+  }
+  return localMetadataParserPromise;
+}
+function decodeGbkBytes(bytes) {
+  try { return new TextDecoder('gbk').decode(bytes); } catch (e) { return ''; }
+}
+function looksLikeChineseText(text) {
+  return /[\u3400-\u4DBF\u4E00-\u9FFF]/.test(String(text || ''));
+}
+// ID3v2.3 latin1 帧常见 GBK 编码: 按 latin1 还原字节后重新按 GBK 解码
+function fixPossibleGbkTag(value) {
+  if (!value || typeof value !== 'string' || !value.trim()) return value;
+  const latin1 = Buffer.from(value, 'latin1');
+  if (!latin1.length) return value;
+  const gbk = decodeGbkBytes(latin1);
+  if (!gbk || !gbk.trim()) return value;
+  if (value.includes('\uFFFD')) {
+    return gbk.includes('\uFFFD') ? value : gbk;
+  }
+  if (!looksLikeChineseText(value) && looksLikeChineseText(gbk)) return gbk;
+  return value;
+}
+async function readLocalAudioMetadata(audioPath) {
+  const parseFile = await loadLocalMetadataParser();
+  if (!parseFile) return { ok: false, error: 'METADATA_PARSER_UNAVAILABLE' };
+  const metadata = await parseFile(audioPath, { duration: true });
+  const common = (metadata && metadata.common) || {};
+  const format = (metadata && metadata.format) || {};
+  const picture = Array.isArray(common.picture) && common.picture.length ? common.picture[0] : null;
+  let pictureDataUrl = '';
+  if (picture && picture.data && picture.data.length > 0 && picture.data.length <= LOCAL_METADATA_PICTURE_MAX_BYTES) {
+    const mime = String(picture.format || 'image/jpeg').toLowerCase();
+    if (/^image\//.test(mime)) {
+      pictureDataUrl = 'data:' + mime + ';base64,' + Buffer.from(picture.data).toString('base64');
+    }
+  }
+  const clean = (v) => String(v == null ? '' : v).trim();
+  return {
+    ok: true,
+    hit: true,
+    metadata: {
+      title: fixPossibleGbkTag(clean(common.title)),
+      artist: fixPossibleGbkTag(clean(common.artist)),
+      album: fixPossibleGbkTag(clean(common.album)),
+      albumArtist: fixPossibleGbkTag(clean(common.albumartist)),
+      year: (common.year == null || common.year === '') ? '' : String(common.year),
+      duration: isFinite(format.duration) && format.duration > 0 ? format.duration : 0,
+      container: clean(format.container),
+      picture: pictureDataUrl,
+    },
+  };
+}
+ipcMain.handle('MOMusic-local-metadata-read', async (_event, audioPath) => {
+  try {
+    const audio = String(audioPath || '');
+    if (!audio || !path.isAbsolute(audio)) return { ok: false, error: 'INVALID_LOCAL_AUDIO_PATH' };
+    const stat = await fs.promises.stat(audio).catch(() => null);
+    if (!stat || !stat.isFile()) return { ok: false, hit: false, error: 'LOCAL_AUDIO_FILE_NOT_FOUND' };
+    if (stat.size <= 0 || stat.size > LOCAL_METADATA_READ_MAX_BYTES) return { ok: false, hit: false, error: 'LOCAL_METADATA_FILE_TOO_LARGE' };
+    return await readLocalAudioMetadata(audio);
+  } catch (error) {
+    return { ok: false, error: error.message || 'LOCAL_METADATA_READ_FAILED' };
+  }
+});
+
 ipcMain.handle('desktop-window-close', (event, behavior) => {
   const win = getSenderWindow(event);
   if (behavior) closeBehavior = normalizeCloseBehavior(behavior);
@@ -6135,6 +6370,11 @@ if (!gotSingleInstanceLock) {
       await wallpaperEngineLibrary.installProtocol(protocol);
     } catch (error) {
       console.warn('[Wallpaper Engine] local media protocol unavailable:', error && error.message || error);
+    }
+    try {
+      await protocol.handle('momusic-local', (request) => localMediaResponse(request));
+    } catch (error) {
+      console.warn('[LocalMusic] media protocol unavailable:', error && error.message || error);
     }
     const handleDisplayLayoutChanged = (_event, _display, changedMetrics) => {
       positionDesktopLyricsWindow();
