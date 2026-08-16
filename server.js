@@ -707,9 +707,10 @@ function cleanReleaseLine(line) {
 function extractReleaseNotes(body) {
   const notes = [];
   String(body || '').split(/\r?\n/).forEach(line => {
+    if (/^\s*\|/.test(line)) return;
     const text = cleanReleaseLine(line);
     if (!text) return;
-    if (/^(what'?s changed|changes|changelog|full changelog|更新日志)$/i.test(text)) return;
+    if (/^(what'?s changed|changes|changelog|full changelog|更新日志|更新内容)$/i.test(text)) return;
     if (/^https?:\/\//i.test(text)) return;
     if (text.length > 72) return;
     notes.push(text);
