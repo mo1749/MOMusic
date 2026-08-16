@@ -461,10 +461,17 @@ function songSourceTagHtml(song, opts) {
   var rawKey = song && (song.resolvedPlaybackProvider || song.playbackProvider || song.audioProvider || song.providerResolved || '');
   var key = /^(netease|qq|kugou|qishui|spotify|ls|local)$/.test(String(rawKey || '')) ? String(rawKey) : songProviderKey(song);
   var label = key === 'qq' ? 'QQ' : (key === 'kugou' ? 'KG' : (key === 'qishui' ? 'QS' : (key === 'spotify' ? 'SP' : (key === 'ls' ? 'LS' : (key === 'local' ? 'LC' : 'NE')))));
-  if (opts.switcher) {
-    return '<button type="button" class="tag-source ' + key + ' control-source-chip" title="切换音源" aria-haspopup="true" onclick="toggleControlSourceSwitcher(event)">' + label + '</button>';
+  var title = '';
+  if (key === 'ls' && song) {
+    var lsFrom = song.playbackFrom || '';
+    if (lsFrom === 'custom-source') { label = 'LS·自定义'; title = '落雪·自定义音源' + (song.playbackSourceId ? ' (' + song.playbackSourceId + ')' : ''); }
+    else if (lsFrom === 'qq-direct') { label = 'LS·QQ'; title = '落雪·QQ直连兜底'; }
+    else if (lsFrom === 'huibq') { label = 'LS·云端'; title = '落雪·云端API (huibq)'; }
   }
-  return '<span class="tag-source ' + key + '">' + label + '</span>';
+  if (opts.switcher) {
+    return '<button type="button" class="tag-source ' + key + ' control-source-chip" title="' + (title || '切换音源') + '" aria-haspopup="true" onclick="toggleControlSourceSwitcher(event)">' + label + '</button>';
+  }
+  return '<span class="tag-source ' + key + '"' + (title ? ' title="' + title + '"' : '') + '>' + label + '</span>';
 }
 var controlSourceSwitcherState = { open: false, loading: false, requestId: 0, anchor: null };
 function controlSourceProviders() {

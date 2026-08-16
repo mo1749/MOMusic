@@ -1014,7 +1014,7 @@ function checkLyricScrollPerformanceGuard() {
   if (!/rowGlow \* \(1 \+ rowGlowBeat \* 0\.46\)/.test(rowText) || !/glowTargetScale = row\.mesh \? row\.mesh\.scale\.x : scaleTarget/.test(rowText) || !/var lyricBeatGlow = fx\.lyricGlowBeat \? stageLyrics\.beatGlow : 0/.test(stageText)) {
     fail('the lyric back glow layer must pulse through opacity while staying locked to the text transform');
   }
-  if (!/setLyricSparkColor\(data, lyricBeatGlowThreeColor/.test(paletteText) || !/data\.sunMat\.color\.copy\(lyricBeatGlowThreeColor/.test(paletteText) || !/stageLyricPrewarm\.mesh/.test(paletteText) || !/function setLyricMaterialColor/.test(paletteText) || !/row\.glowMat\) setLyricMaterialColor\(row\.glowMat, lyricRowGlowThreeColor/.test(paletteText) || !/if \(ru\.uColor\) ru\.uColor\.value\.copy/.test(paletteText)) {
+  if (!/var spCol = lyricBeatGlowThreeColor[\s\S]{0,80}setLyricSparkColor\(data, spCol\)/.test(paletteText) || !/var snCol = lyricBeatGlowThreeColor[\s\S]{0,80}data\.sunMat\.color\.copy\(snCol\)/.test(paletteText) || !/stageLyricPrewarm\.mesh/.test(paletteText) || !/function setLyricMaterialColor/.test(paletteText) || !/var rgCol = lyricRowGlowThreeColor[\s\S]{0,120}setLyricMaterialColor\(row\.glowMat, rgCol\)/.test(paletteText) || !/if \(ru\.uColor\) \{[\s\S]{0,260}ru\.uColor\.value\.copy\(rcCol\)/.test(paletteText)) {
     fail('lyric glow color changes must immediately repaint active, outgoing, and prewarmed lyric glow materials');
   }
   if (!/function lyricControlPalette/.test(lyricColorText) || !/picker\) picker\.value = tone/.test(lyricColorText) || !/picker\) picker\.value = linked \? tone : color/.test(lyricColorText) || !/setStageLyricPalette\(lyricPaletteFromHex\(fx\.lyricColor\), \{ immediate: true/.test(lyricColorSetterText)) {
@@ -1486,7 +1486,7 @@ function checkQishuiProviderGuard() {
   if (!/\/api\/qishui\/user\/playlists/.test(serverText) || !/\/api\/qishui\/playlist\/tracks/.test(serverText)) {
     fail('server.js must route Qishui user playlists and playlist track detail endpoints');
   }
-  if (!/qishuiPlaylists/.test(coreStoreText) || !/if \(provider === 'qishui'\) return '\/api\/qishui\/user\/playlists'/.test(playlistShellText) || !/neteasePlaylists\.concat\(qqPlaylists, kugouPlaylists, qishuiPlaylists, spotifyPlaylists\)/.test(playlistShellText)) {
+  if (!/qishuiPlaylists/.test(coreStoreText) || !/if \(provider === 'qishui'\) return '\/api\/qishui\/user\/playlists'/.test(playlistShellText) || !/neteasePlaylists\.concat\(qqPlaylists, kugouPlaylists, qishuiPlaylists, spotifyPlaylists(, localPlaylists)?\)/.test(playlistShellText)) {
     fail('playlist panel refresh must merge Qishui playlists with the other providers');
   }
   if (!/normalizePlaylistProvider/.test(playlistDetailText) || !/\/api\/qishui\/playlist\/tracks/.test(playlistDetailText) || !/qishui:' \+ id/.test(playlistDetailText) || !/汽水音乐歌单/.test(playlistDetailText)) {
@@ -1745,7 +1745,7 @@ function checkPlaybackControlBadgesGuard() {
   if (!sourceSwitcherOriginalMatchOk) {
     fail('source switching and lyric fallback must reject blacklisted cover/derivative candidates and show no-official-source states');
   }
-  if (!/quality-switch-preserve-lyrics/.test(playbackText) || !/visual-prep-skip/.test(playbackText) || !/if \(!qualitySwitch\) \{[\s\S]{0,120}safeRenderQueuePanel\('play-queue-at'\)/.test(playbackText) || !/if \(!qualitySwitch\) lyricSunEnergy = 0/.test(playbackText)) {
+  if (!/quality-switch-preserve-lyrics/.test(playbackText) || !/visual-prep-skip/.test(playbackText) || !/if \(!qualitySwitch\) \{[\s\S]{0,120}safeRenderQueuePanel\('play-queue-at'\)/.test(playbackText) || !/if \(!qualitySwitch\) \{ lyricSunEnergy = 0;/.test(playbackText)) {
     fail('quality switching must preserve lyric and visual state instead of running the full track-switch rendering path');
   }
   const accountPillGlassSurfaceOk =
@@ -2175,7 +2175,7 @@ function checkSearchGlassEntranceGuard() {
   const searchBoxSourceMergeCount = (searchBoxFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchPillSourceMergeCount = (searchPillFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchBoxFilterMatchesSavedRgbGlass =
-    /css\/index\.css\?v=20260716-we-continuity-vsync/.test(indexText) &&
+    /css\/index\.css\?v=20260816-momusic-1\.5\.0/.test(indexText) &&
     /x="-24%"\s+y="-34%"\s+width="158%"/.test(searchBoxFilterText) &&
     /height="168%"/.test(searchBoxFilterText) &&
     /id="search-box-glass-map"\s+x="-10%"\s+y="-4%"\s+width="120%"\s+height="108%"/.test(searchBoxFilterText) &&
@@ -2298,7 +2298,7 @@ function checkProviderEntitlementBoundaryGuard() {
   if (!/\.kugou-vip-evidence\.json/.test(mainText) || !/unlink/.test(mainText)) {
     fail('Startup migration must delete deprecated persisted Kugou playback evidence for existing users');
   }
-  if (!/kgVipLevel === 'svip'/.test(userModalText) || !/酷狗 SVIP 会员/.test(userModalText)) {
+  if (!/kgVipLevel === 'svip'/.test(userModalText) || !/酷狗 SVIP/.test(userModalText)) {
     fail('Kugou account modal must distinguish SVIP from normal VIP');
   }
   console.log('[OK] Provider account membership and per-track playback entitlement remain separated.');
@@ -2369,7 +2369,7 @@ function checkQQVipStatusSyncGuard() {
   if (!/refreshQQLoginStatus\(\{ forceVip: true, reason: 'startup' \}\)/.test(startupText)) {
     fail('startup must force a QQ VIP status recheck so renewed memberships sync immediately');
   }
-  if (!/QQ SVIP 会员/.test(userModalText) || !/QQ 会员待同步/.test(userModalText) || !/refreshQQVipStatusNow\('account-modal'\)/.test(userModalText)) {
+  if (!/QQ SVIP/.test(userModalText) || !/QQ 会员待同步/.test(userModalText) || !/refreshQQVipStatusNow\('account-modal'\)/.test(userModalText)) {
     fail('account modal must distinguish QQ SVIP and refresh QQ membership when opened');
   }
   console.log('[OK] QQ membership status can be force-refreshed after renewals.');
@@ -2558,9 +2558,9 @@ async function checkProviderAuthCookiePathGuard() {
     /login-provider-external-label">展示/.test(qqLoginText) &&
     /externalSwitch\.addEventListener\('click'[\s\S]{0,180}handleLoginProviderExternalSwitchEvent/.test(qqLoginText) &&
     !/function selectLoginProviderNode\(provider\)\s*\{[\s\S]{0,260}toggleAccountProviderExternal\(provider\)/.test(qqLoginText) &&
-    /\.login-provider-external-switch\s*\{[\s\S]{0,220}width:\s*56px[\s\S]{0,360}pointer-events:\s*auto/.test(cssText) &&
+    /\.login-provider-external-switch\s*\{[\s\S]{0,220}width:\s*44px[\s\S]{0,400}cursor:\s*pointer/.test(cssText) &&
     /\.login-provider-external-label\s*\{/.test(cssText) &&
-    /button\.external-on \.login-provider-external-switch i\s*\{[\s\S]{0,80}left:\s*38px/.test(cssText);
+    /#login-modal \.ml-card\.external-on \.login-provider-external-switch i\s*\{[\s\S]{0,80}translateX\(26px\)/.test(cssText);
   if (!loginProviderExternalSwitchOk) {
     fail('login provider capsules must show a real on/off switch for external top-pill visibility');
   }
@@ -2573,7 +2573,7 @@ async function checkProviderAuthCookiePathGuard() {
   if (!/function captureAccountProviderRects/.test(accountUtilsText) || !/function animateAccountProviderReorder/.test(accountUtilsText) || !/provider-reorder-moving/.test(accountUtilsText) || !/return order\.filter\(function \(provider\) \{ return selected\.indexOf\(provider\) >= 0; \}\);/.test(accountUtilsText)) {
     fail('provider capsule order must use FLIP animation and external pills must follow the explicit highlighted list');
   }
-  if (!/\.login-provider-sort-handle/.test(cssText) || !/grid-template-columns:\s*18px\s+35px\s+minmax\(0,\s*1fr\)\s+auto/.test(cssText) || !/\.top-account-pill\.provider-reorder-moving/.test(cssText)) {
+  if (!/\.login-provider-sort-handle/.test(cssText) || !/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/.test(cssText) || !/\.ml-single\.sorting-provider[\s\S]{0,100}\.ml-card:not\(\.sorting\)/.test(cssText)) {
     fail('provider capsule sorting must expose a left drag handle and animated reorder styles');
   }
   console.log('[OK] Provider auth cookies stay on userData paths and QQ partial login is explicit.');
@@ -2836,7 +2836,7 @@ function checkInternalBetaPackagingGuard() {
   const meta = beta.extraMetadata || {};
   const MOMusic = meta.MOMusic || {};
   const update = MOMusic.update || {};
-  if (meta.version !== '1.1.2' || beta.productName !== 'MOMusic_Beat' || meta.productName !== 'MOMusic_Beat') {
+  if (meta.version !== '1.1.2' || MOMusic.runtimeName !== 'MOMusic_Beat') {
     fail('internal beta package metadata must identify v1.1.2 MOMusic_Beat');
   }
   if (!/dist-internal-beta/.test(beta.directories && beta.directories.output || '') || beta.publish !== null) {
@@ -2995,15 +2995,15 @@ function checkSonicTopographyPresetGuard() {
   if (!/function deriveGroundLayoutSettings/.test(sonicText) || !/sonicGroundRange/.test(sonicText) || !/state\.root\.rotation\.x\s*=\s*state\.boundRotX/.test(sonicText) || !/state\.root\.position\.set\(0,\s*layout\.y,\s*layout\.z\)/.test(sonicText) || !/state\.root\.scale\.setScalar\(layout\.scale\)/.test(sonicText)) {
     fail('Sonic Topography must expose a wide, lyric-safe horizontal platter layout inside MOMusic camera space');
   }
-  if (!/MAX_VISUAL_PRESET_INDEX = 9/.test(coreText)
+  if (!/MAX_VISUAL_PRESET_INDEX = 12/.test(coreText)
     || !/SONIC_PRESET_INDEX = 7/.test(coreText)
-    || !/LEGACY_REMOVED_VISUAL_PRESET_INDEX = 10/.test(coreText)
+    || !/LEGACY_REMOVED_VISUAL_PRESET_INDEX = -1/.test(coreText)
     || !/preset === LEGACY_REMOVED_VISUAL_PRESET_INDEX\) return SONIC_PRESET_INDEX/.test(coreText)
     || !/normalizeSavedVisualPresetIndex/.test(runtimeText + persistenceText + archiveText)) {
     fail('Sonic preset 7 must remain selectable while legacy preset 10 archives migrate to it');
   }
   if (!/音域回响/.test(archiveText)
-    || !/presetDisplayOrder = \[0, 6, 7, 8, 9, 5/.test(archiveText)
+    || !/presetDisplayOrder = \[0, 6, 7, 8, 9, 10, 11, 12, 5/.test(archiveText)
     || /音域回响[\s\S]{0,120}disabled:\s*true/.test(archiveText)) {
     fail('Sonic Topography must be exposed as the selectable 音域回响 preset');
   }
@@ -5164,7 +5164,7 @@ function checkFxConsoleWorkspaceGuard() {
   const clarityButtonsReady = ['1', '2', '3', '4'].every(value => html.includes(`data-lyric-texture-clarity="${value}"`));
   const clarityLabelsReady = ['1×', '2×', '3×', '4×', '标清', '高清', '超清', '极致'].every(label => html.includes(label));
   const packagedDefaultsUseRuntimeDefaults = /PACKAGED_DEFAULT_FX_SNAPSHOT\s*=\s*Object\.freeze\(Object\.assign\(\{[\s\S]{0,180}visualPresetSchema:\s*VISUAL_PRESET_SCHEMA[\s\S]{0,120}\},\s*fxDefaults\)\)/.test(packagedDefaults);
-  if (!/id="lyric-texture-quality-seg"/.test(html) || !clarityButtonsReady || !clarityLabelsReady || /data-lyric-texture-clarity="1\.(?:25|5)"/.test(html) || !/lyricTextureClarity:\s*1/.test(defaults) || !packagedDefaultsUseRuntimeDefaults || !defaultArchive.snapshot || defaultArchive.snapshot.lyricTextureClarity !== 1 || !/normalizeLyricTextureClarity/.test(persistence + archive + panel) || !/invalidateLyricQualityTextures\('texture-clarity-change'/.test(panel) || /scheduleStageLyricFullTrackWarmup\('texture-clarity-change'/.test(panel) || !/function lyricQualityPoolBudgetBytes/.test(maskTexture) || !/function makeLyricQualityTexture/.test(maskTexture) || !/function queueLyricRowQuality/.test(rowLayers) || !/qualityHotUntil/.test(rowLayers) || !/backgroundStarRiver'\s*,\s*'lyricTextureClarity'\s*\]/.test(archive)) fail('1x-4x visible-row lyric quality, persistence, cache budget, or append-only MR2 archive wiring is incomplete');
+  if (!/id="lyric-texture-quality-seg"/.test(html) || !clarityButtonsReady || !clarityLabelsReady || /data-lyric-texture-clarity="1\.(?:25|5)"/.test(html) || !/lyricTextureClarity:\s*1/.test(defaults) || !packagedDefaultsUseRuntimeDefaults || !defaultArchive.snapshot || defaultArchive.snapshot.lyricTextureClarity !== 1 || !/normalizeLyricTextureClarity/.test(persistence + archive + panel) || !/invalidateLyricQualityTextures\('texture-clarity-change'/.test(panel) || /scheduleStageLyricFullTrackWarmup\('texture-clarity-change'/.test(panel) || !/function lyricQualityPoolBudgetBytes/.test(maskTexture) || !/function makeLyricQualityTexture/.test(maskTexture) || !/function queueLyricRowQuality/.test(rowLayers) || !/qualityHotUntil/.test(rowLayers) || !/backgroundStarRiver'\s*,\s*'lyricTextureClarity'/.test(archive)) fail('1x-4x visible-row lyric quality, persistence, cache budget, or append-only MR2 archive wiring is incomplete');
   if (!/function finalizeLyricQualitySelectionFrame/.test(rowLayers) || !/frameCandidates/.test(rowLayers) || !/function lyricQualityEffectiveBudgetBytes/.test(rowLayers) || !/qualityFallbackUntil/.test(rowLayers) || !/function pruneLyricQualityQueue/.test(rowLayers) || !/row\.qualityWanted !== true/.test(rowLayers) || !/lyricQualityEnsureCapacity\(job\.bytes[\s\S]{0,900}makeLyricQualityTexture/.test(rowLayers) || !/qualityRootPriority:\s*isCurrent \? 0 : 1000/.test(stageLyrics) || /qualityRetryAfter/.test(rowLayers) || !/fallbackHotUntil/.test(rowLayers) || !/release:\s*next <= 1/.test(panel)) fail('lyric quality global byte-aware selection, stale-job pruning, pre-render capacity check, or no-flash tier handoff is incomplete');
   const qualityCommitBody = rowLayers.slice(rowLayers.indexOf('function commitLyricRowQuality'), rowLayers.indexOf('function beginLyricQualitySelectionFrame'));
   if (!/frameCommits:\s*\[\]/.test(rowLayers) || !/function commitDeferredLyricQualityRows/.test(rowLayers) || !/lyricQualityState\.deferFinalize \|\| row\.qualityWanted !== true/.test(qualityCommitBody) || /discardLyricRowPendingQuality/.test(qualityCommitBody) || !/commitDeferredLyricQualityRows\(\)/.test(rowLayers) || !/function disposeLyricQualityOwner/.test(rowLayers) || !/__MOMusicLyricQualityDisposed/.test(rowLayers) || !/disposeLyricQualityOwner\(lyricData\)/.test(starRiver) || !/qualityProjectedPoolBytes/.test(rowLayers) || !/function lyricQualityHasPendingTexture/.test(rowLayers)) fail('lyric quality deferred commit, disposed-owner cancellation, or bounded atomic tier replacement guard is incomplete');
@@ -5220,12 +5220,12 @@ function checkFirstLaunchDefaultsAndSplashGuard() {
     || /elapsed\s*\*\s*3\.32/.test(splashText)
     || !/setTimeout\(markSplashReadyToEnter,\s*650\)/.test(splashText)
     || !/setTimeout\(markSplashReadyToEnter,\s*1500\)/.test(splashText)
-    || !/\.splash-word-mine\s*\{[\s\S]{0,160}animation:\s*splash-mine-in 5200ms/.test(css)
-    || !/\.splash-word-radio\s*\{[\s\S]{0,420}animation:\s*splash-radio-in 5200ms/.test(css)
-    || !/\.splash-word-i::after\s*\{[\s\S]{0,480}animation:\s*splash-i-dot-pop 4200ms/.test(css)
-    || !/\.splash-signal-line\s*\{[\s\S]{0,500}animation:\s*splash-signal-line 4200ms/.test(css)
-    || !/\.splash-signal-line::after\s*\{[\s\S]{0,420}animation:\s*splash-signal-blip 4200ms/.test(css)
-    || !/\.splash-sub\s*\{[\s\S]{0,260}animation:\s*splash-sub-in 4200ms/.test(css)) {
+    || !/\.splash-logo\s*\{[\s\S]{0,160}animation:\s*splash-logo-in 1800ms/.test(css)
+    || !/\.splash-wordmark\s*\{[\s\S]{0,260}animation:\s*splash-word-in 2000ms/.test(css)
+    || !/\.splash-sub\s*\{[\s\S]{0,160}animation:\s*splash-sub-in 2000ms/.test(css)
+    || !/\.splash-pulse-ring\s*\{[\s\S]{0,200}animation:\s*splash-pulse 3400ms/.test(css)
+    || !/#splash\.ready \.splash-enter\s*\{[\s\S]{0,160}animation:\s*splash-enter-pulse 2000ms/.test(css)
+    || /\.splash-wordmark[\s\S]{0,600}animation-duration|\.splash-logo[\s\S]{0,400}animation-duration/.test(css)) {
     fail('public-repo splash motion speed and the independent fast click-entry gate must stay decoupled');
   }
   if (!/\.user-archive-toolbar\s*\{[\s\S]{0,220}display:\s*grid;[\s\S]{0,160}grid-template-columns:\s*minmax\(0,\s*1fr\)/.test(css)

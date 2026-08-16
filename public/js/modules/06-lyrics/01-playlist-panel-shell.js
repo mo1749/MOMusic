@@ -145,6 +145,7 @@ function togglePlaylistPanel(force) {
     }, 180);
   }
 }
+window.togglePlaylistPanel = togglePlaylistPanel;
 function closePlaylistPanelSoft(reason) {
   var panel = document.getElementById('playlist-panel');
   if (!panel || playlistPanelPinned) return false;

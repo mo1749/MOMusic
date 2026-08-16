@@ -3,9 +3,17 @@
 // 基于 Huibq lxmusic 源 v1.2.0 的 HTTP API
 // 仅提供播放URL解析，搜索/歌词代理到 QQ 音乐
 // ============================================================
+//
+// ============================================================
+// 使用规范 (必须严格遵守, 违规将导致 IP 被永久封禁):
+// 1. 不支持数字专辑
+// 2. 仅供在线试听, 禁止批量下载, 批量下载会导致 IP 被封禁
+// 3. 尽量避免频繁切换歌曲, 否则将导致 IP 被封禁
+// ============================================================
 const https = require('https');
 const { makeProxyAgent } = require('./lx-proxy');
 
+// 后端 API (与 render_api.js / MusicFree 插件共用同一后端)
 const LX_API_URL = 'https://lxmusicapi.onrender.com';
 const LX_API_KEY = 'share-v3';
 const LX_VERSION = '1.6.0';

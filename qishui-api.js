@@ -2360,7 +2360,7 @@ async function fetchQishuiWebPlaylistTracks(playlistId, cookieText, opts) {
           const pageData = (json && json.data) || json || {};
           const nextCursor = normalizeText(pageData.next_cursor || pageData.nextCursor || json && json.next_cursor || '');
           cursorState.cursor = nextCursor;
-          cursorState.hasMore = !!(pageData.has_more || pageData.hasMore || json && json.has_more) && !!nextCursor;
+          cursorState.hasMore = !!(pageData.has_more || pageData.hasMore || json && json.has_more || nextCursor);
           cursorState.updatedAt = Date.now();
           if (!pageRawItems.length) cursorState.hasMore = false;
         }).finally(() => { cursorState.promise = null; });
@@ -2687,7 +2687,12 @@ async function fetchQishuiFeedSongs(limit, cookieText) {
   const status = getQishuiStatus(cookieText);
   if (!status.tokenConfigured && status.webSession) return fetchQishuiWebFeedSongs(cookieText, limit);
   if (!status.tokenConfigured) return { provider: 'qishui', configured: false, songs: [], error: 'QISHUI_TOKEN_REQUIRED', message: status.message };
-  const cacheKey = 'feed|' + limit;
+  // 个性化推荐按账号缓存: 缓存键必须含账号指纹,
+  // 否则账号 A 的 feed 会被账号 B / 登出后的空会话直接命中 (跨账号数据串台)
+  const feedAccountKey = status.webSession
+    ? qishuiCookieFingerprint(cookieText)
+    : (qishuiAccessToken() ? crypto.createHash('sha1').update(String(qishuiAccessToken())).digest('hex').slice(0, 12) : 'guest');
+  const cacheKey = 'feed|' + feedAccountKey + '|' + limit;
   return qishuiFeedCache.wrap(cacheKey, 90 * 1000, async () => {
     const json = await qishuiPost(QISHUI_FEED_SONG_TAB_PATH, {
       count: limit,
@@ -2972,6 +2977,8 @@ function qishuiCollectionIds(value) {
 }
 
 function qishuiWriteEnabled(value) {
+  // 收藏/取消收藏是破坏性操作: 缺省值必须显式报错, 不能静默当作"喜欢"
+  if (value === undefined || value === null) throw new Error('Missing qishui write flag');
   if (value === false || value === 0) return false;
   return !/^(?:false|0|off|no)$/i.test(normalizeText(value));
 }

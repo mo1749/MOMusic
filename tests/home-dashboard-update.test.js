@@ -97,12 +97,16 @@ test('dashboard selects local discovery candidates and keeps cover swaps stable'
   const candidateSelector = namedFunctionSource(dashboardScript, 'homeDashboardDiscoverySongs');
   assert.ok(candidateSelector, 'expected homeDashboardDiscoverySongs()');
   assert.match(candidateSelector, /homeDiscoverState\s*&&[\s\S]{0,180}?homeDiscoverState\.songs/);
-  assert.match(candidateSelector, /homeDashboardLocalSongs\s*\(\s*\)/);
   assert.match(
     candidateSelector,
     /(?:Math\.min\s*\(\s*3\b|\.slice\s*\(\s*0\s*,\s*3\s*\)|picked\.length\s*<\s*3\b)/,
     'candidate selection should stay bounded to three homepage songs',
   );
+  // 本地收藏歌曲经 homeDashboardNextQueueInfo 并入"下一首"候选
+  // (discovery 列表重构后不再直接引用 homeDashboardLocalSongs)
+  const nextQueueInfo = namedFunctionSource(dashboardScript, 'homeDashboardNextQueueInfo');
+  assert.ok(nextQueueInfo, 'expected homeDashboardNextQueueInfo()');
+  assert.match(nextQueueInfo, /homeDashboardLocalSongs\s*\(\s*\)/);
 
   const stableCoverUpdate = namedFunctionSource(dashboardScript, 'homeDashboardSetStableBackgroundImage');
   assert.ok(stableCoverUpdate, 'expected homeDashboardSetStableBackgroundImage()');

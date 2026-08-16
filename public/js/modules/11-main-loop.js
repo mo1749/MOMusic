@@ -600,12 +600,13 @@ function animate() {
   var goldenCorePresetActive = fx && typeof GOLDEN_CORE_PRESET_INDEX !== 'undefined' && Number(fx.preset) === GOLDEN_CORE_PRESET_INDEX;
   var pixelKaomojiPresetActive = fx && typeof PIXEL_KAOMOJI_PRESET_INDEX !== 'undefined' && Number(fx.preset) === PIXEL_KAOMOJI_PRESET_INDEX;
   var treeCanopyPresetActive = fx && typeof TREE_CANOPY_PRESET_INDEX !== 'undefined' && Number(fx.preset) === TREE_CANOPY_PRESET_INDEX;
+  var heartPulsePresetActive = fx && typeof HEART_PULSE_PRESET_INDEX !== 'undefined' && Number(fx.preset) === HEART_PULSE_PRESET_INDEX;
   var presetUsesStarRiverParticles = fx && (Number(fx.preset) === 5 || (typeof SONIC_PRESET_INDEX !== 'undefined' && Number(fx.preset) === SONIC_PRESET_INDEX));
   var presetStarRiverMuted = presetUsesStarRiverParticles && fx.backgroundStarRiver === false;
-  particles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !presetStarRiverMuted;
-  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
-  if (floatGroup) floatGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive;
-  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive;
+  particles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !presetStarRiverMuted;
+  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
+  if (floatGroup) floatGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive;
+  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive;
   var targetRotY = orbit.centerLocked ? 0 : (headParallax.active ? headParallax.x * 0.5 : 0) + gestureRotation.y;
   var targetRotX = orbit.centerLocked ? 0 : (headParallax.active ? -headParallax.y * 0.35 : 0) + gestureRotation.x;
   particles.rotation.y += (targetRotY - particles.rotation.y) * 0.055;
@@ -680,6 +681,20 @@ function animate() {
     });
   }
   if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.tree-canopy', treeCanopyPerfStart);
+  var heartPulsePerfStart = performance.now();
+  if (window.MOMusicHeartPulse) {
+    MOMusicHeartPulse.update(dt, {
+      scene: scene,
+      fx: fx,
+      time: uniforms.uTime.value,
+      screenHeight: window.innerHeight,
+      dpr: renderer.getPixelRatio ? renderer.getPixelRatio() : (window.devicePixelRatio || 1),
+      visualRotation: particles && particles.rotation ? particles.rotation : null,
+      visualRotationActive: !!(orbit && orbit.rotating),
+      audio: sonicAudioFrame || { bass: bass, mid: mid, treble: treble, beat: beatPulse, energy: audioEnergy }
+    });
+  }
+  if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.heart-pulse', heartPulsePerfStart);
   var stageLyricsPerfStart = performance.now();
   var stageLyricsStepDt = consumeFrameGate(mainFrameGates.stageLyrics, now, dt, targetMainStageLyricsFps(now), false, 'stage-lyrics');
   if (stageLyricsStepDt > 0) updateStageLyrics3D(stageLyricsStepDt);

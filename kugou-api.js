@@ -683,7 +683,8 @@ async function kugouPlayViaMobile(hash, albumId, cookie, membership) {
   const json = await requestJson(u.toString(), {
     headers: { ...KUGOU_HEADERS, Referer: 'https://m.kugou.com/', Cookie: buildKugouRequestCookie(cookie) },
   });
-  const url = json && (json.url || json.backup_url);
+  const firstUrl = json && (Array.isArray(json.url) ? json.url[0] : json.url);
+  const url = firstUrl || (json && json.backup_url);
   if (json && Number(json.status) === 1 && url) {
     return { url: String(url).trim(), level: 'standard', quality: '标准', trial: false, source: 'mobile' };
   }
@@ -816,7 +817,9 @@ async function kugouPlayViaGateway(hash, albumId, albumAudioId, cookie, requeste
     },
   });
   const data = json && (json.data || json);
-  const url = data && (data.url || data.play_url || data.play_backup_url || (Array.isArray(data.url) && data.url[0]));
+  // data.url 可能是数组 (多 CDN 候选): 直接取第一个, 避免 truthy 数组短路导致 String(url) 拼出 "url1,url2" 的坏地址
+  const firstUrl = data && (Array.isArray(data.url) ? data.url[0] : data.url);
+  const url = firstUrl || (data && (data.play_url || data.play_backup_url));
   if (url) {
     const level = kugouQualityFromParam(quality, requestedQuality);
     return { url: String(url).replace(/\\\//g, '/').trim(), level, quality: level, trial: false, source: 'gateway' };
@@ -1002,7 +1005,9 @@ async function handleKugouSongUrl(params, cookie) {
     }
     if (web && web.restricted) lastRestriction = web;
 
-    const gateway = await kugouPlayViaGateway(item.hash, albumId, albumAudioId, cookie, effectiveQuality, membership);
+    // 候选链是降级链, 每个候选 hash 对应自身档位: gateway 也须用 item.level,
+    // 否则降级到低档候选时仍按用户请求的总档位请求, hash 与音质不匹配必然失败
+    const gateway = await kugouPlayViaGateway(item.hash, albumId, albumAudioId, cookie, item.level || effectiveQuality, membership);
     if (gateway && gateway.url) {
       const accepted = rememberKugouSongUrl({
         provider: 'kugou',

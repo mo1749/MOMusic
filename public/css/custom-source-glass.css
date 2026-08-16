@@ -1,0 +1,209 @@
+/* ================================================================
+   MOMusic custom source panel + import dialog -> same treatment
+   as the login card (pure white transparent glass):
+     - window material: the app's saved glass theme (identical
+       transparency to the search window), no dark veil
+     - ALL mint/green accents removed: white borders + white glow
+     - buttons: thin white glass, white text, brighter on hover,
+       white accent when active
+     - badges: outline kept + WHITE letters
+   Loaded after index.css and login-console-style.css.
+   ================================================================ */
+
+/* ---- Panel: saved glass theme, pixel-identical transparency
+   to the search window (same variables as the login card) ---- */
+.custom-source-panel {
+  background: var(--saved-panel-glass-bg) !important;
+  border-color: transparent !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+  border-radius: 14px;
+}
+
+/* ---- Panel action buttons: thin white glass ---- */
+.custom-source-panel .fx-mini-btn,
+.custom-source-panel .fx-mini-btn.ghost {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.custom-source-panel .fx-mini-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* ---- Rows: white glass cards, brighter when enabled ---- */
+.custom-source-row {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.custom-source-row:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+}
+.custom-source-row.enabled {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04));
+}
+
+/* ---- Version badge: outline + white letters ---- */
+.cs-row-ver {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+/* ---- Row toggle: white glass pill; on = white accent ---- */
+.cs-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.65);
+}
+.cs-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.cs-toggle.on {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+}
+
+/* ---- Move / delete buttons ---- */
+.cs-move-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.65);
+}
+.cs-move-btn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.cs-del-btn {
+  border: 1px solid rgba(255, 120, 120, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 120, 120, 0.06);
+  color: rgba(255, 150, 150, 0.85);
+}
+.cs-del-btn:hover {
+  background: rgba(255, 120, 120, 0.16);
+  color: #ffe1e1;
+}
+
+/* ---- Import overlay: no dark veil (same as the login card) ---- */
+.cs-import-overlay {
+  background: transparent;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ---- Import dialog: saved glass theme, identical transparency ---- */
+.cs-import-dialog {
+  background: var(--saved-panel-glass-bg) !important;
+  border-color: transparent !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+  border-radius: 18px;
+}
+
+/* ---- Import tabs: white tray + white glass active pill ---- */
+.cs-import-tabs {
+  gap: 6px;
+  border-bottom: 0;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.cs-import-tab {
+  border: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.58);
+}
+.cs-import-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.05);
+}
+.cs-import-tab.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.5);
+  border-bottom-color: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 8px 24px rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Inputs: translucent white glass + white focus ---- */
+.cs-import-textarea,
+.cs-import-input {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+}
+.cs-import-textarea:focus,
+.cs-import-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+
+/* ---- File input: restyle the native inner "choose file" button
+   (white fill + black text by default) into white glass ---- */
+.cs-import-input[type="file"] {
+  padding: 6px 10px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.cs-import-input[type="file"]::file-selector-button,
+.cs-import-input[type="file"]::-webkit-file-upload-button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06));
+  color: #fff;
+  padding: 5px 16px;
+  margin-right: 10px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cs-import-input[type="file"]::file-selector-button:hover,
+.cs-import-input[type="file"]::-webkit-file-upload-button:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---- Dialog buttons: thin white glass / import = bright white ---- */
+.cs-import-overlay .fx-mini-btn,
+.cs-import-overlay .fx-mini-btn.ghost {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.cs-import-overlay .fx-mini-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+#cs-import-submit {
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
+  color: #fff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24), 0 0 26px rgba(255, 255, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+#cs-import-submit:hover {
+  border-color: rgba(255, 255, 255, 0.64);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.1));
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3), 0 0 32px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}

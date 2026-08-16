@@ -220,6 +220,9 @@ function defaultOrbitStateForPreset(p) {
     // 树梢乐谱内容较宽，相机拉远保证五线谱完整入画
     return { theta: 0.06, phi: 0.12, radius: 9.4 };
   }
+  if (typeof HEART_PULSE_PRESET_INDEX !== 'undefined' && p === HEART_PULSE_PRESET_INDEX) {
+    return { theta: 0.0, phi: 0.10, radius: 9.0 };
+  }
   if (typeof SONIC_PRESET_INDEX !== 'undefined' && p === SONIC_PRESET_INDEX) {
     return {
       theta: SONIC_ORBIT_BASELINE.theta,

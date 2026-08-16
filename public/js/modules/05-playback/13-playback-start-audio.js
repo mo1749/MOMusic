@@ -1151,6 +1151,11 @@ async function playQueueAt(idx, opts) {
         song.resolvedPlaybackProvider = playbackProvider;
         song.playbackLevel = data.level || song.playbackLevel || '';
         if (!data.sourceMatch) song.playbackSource = data.source || data.provider || song.playbackSource || '';
+        if (isLsPlayback) {
+          // LS 实际解析来源: custom-source(自定义脚本) / qq-direct(QQ直连兜底) / huibq(云端API)
+          song.playbackFrom = String(data.from || (data.source === 'qq-direct' ? 'qq-direct' : '') || '');
+          song.playbackSourceId = String(data.sourceId || '');
+        }
         if (playbackProvider === 'netease' && !data.sourceMatch) clearNeteaseSourceMatchMetadata(song);
         song.trial = !!(song.trial || data.trial);
         song.vipRequired = !!(
@@ -1184,7 +1189,7 @@ async function playQueueAt(idx, opts) {
       var qualityDowngraded = !!(data && data.level && playbackQualityWasDowngraded(requestedQuality, data.level, playbackProvider));
       if (qualityDowngraded) markPlaybackQualityRuntimeCap(song, playbackProvider, data.level, 'resolved-lower');
       if (!opts.startupAutoplay && !isQQPlayback && qualityDowngraded) {
-        showSourceFallbackNotice((isKugouPlayback ? '酷狗' : (isQishuiPlayback ? '汽水' : '网易云')) + '音质自动降级', '请求 ' + playbackQualityLabel(requestedQuality, playbackProvider) + '，实际播放 ' + resolvedQualityText + '。');
+        showSourceFallbackNotice((isLsPlayback ? '落雪' : (isKugouPlayback ? '酷狗' : (isQishuiPlayback ? '汽水' : '网易云'))) + '音质自动降级', '请求 ' + playbackQualityLabel(requestedQuality, playbackProvider) + '，实际播放 ' + resolvedQualityText + '。');
       } else if (!opts.startupAutoplay && opts.qualitySwitch) {
         showSourceFallbackNotice('音质已切换', '实际播放: ' + resolvedQualityText + '。');
       }

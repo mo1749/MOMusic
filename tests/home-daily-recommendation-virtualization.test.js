@@ -48,7 +48,12 @@ function namedFunctionSource(source, name) {
 test('daily recommendation modal consumes the full frontend dataset without an eight-song slice', () => {
   const render = namedFunctionSource(dashboardScript, 'renderHomePlatformRecommendations');
   assert.ok(render, 'expected renderHomePlatformRecommendations()');
-  assert.match(render, /var songs = Array\.isArray\(homeDiscoverState\.songs\) \? homeDiscoverState\.songs : \[\]/);
+  // 重构后歌曲全集经 homePlatformNeteaseSongs() 提供 (仅按 provider 过滤, 不切片)
+  assert.match(render, /homePlatformNeteaseSongs\s*\(\s*\)/);
+  const neteaseSongs = namedFunctionSource(dashboardScript, 'homePlatformNeteaseSongs');
+  assert.ok(neteaseSongs, 'expected homePlatformNeteaseSongs()');
+  assert.match(neteaseSongs, /homeDiscoverState\.songs/);
+  assert.doesNotMatch(neteaseSongs, /\.slice\s*\(/);
   assert.doesNotMatch(render, /homeDiscoverState\.songs\.slice\s*\(\s*0\s*,\s*8\s*\)/);
   assert.match(render, /id="home-platform-daily-grid"/);
   assert.match(render, /renderHomePlatformDailyWindow\s*\(\s*true\s*\)/);
@@ -85,11 +90,12 @@ test('virtualized daily cards preserve absolute indexes and full-queue playback'
   assert.match(renderWindow, /homePlatformRecommendationSpacer\(range\.topRows/);
   assert.match(renderWindow, /homePlatformRecommendationSpacer\(range\.bottomRows/);
 
-  const playDaily = namedFunctionSource(homeActionsScript, 'playHomeDaily');
+  // 重构后旧 playHomeDaily 拆分/更名为 playHomePrivateRadio (每日歌单走 playHomeDashboardDaily)
+  const playPrivate = namedFunctionSource(homeActionsScript, 'playHomePrivateRadio');
   const playSong = namedFunctionSource(homeActionsScript, 'playHomeSong');
-  assert.match(playDaily, /playQueue\s*=\s*homeDiscoverState\.songs\.map\(cloneSong\)/);
+  assert.match(playPrivate, /playQueue\s*=\s*homeDiscoverState\.songs\.map\(cloneSong\)/);
   assert.match(playSong, /playQueue\s*=\s*homeDiscoverState\.songs\.map\(cloneSong\)/);
-  assert.doesNotMatch(playDaily + playSong, /\.slice\s*\(/);
+  assert.doesNotMatch(playPrivate + playSong, /\.slice\s*\(/);
 });
 
 test('daily viewport updates are scroll-driven and animation-frame throttled', () => {

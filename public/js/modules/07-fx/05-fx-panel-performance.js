@@ -162,7 +162,7 @@ var SONIC_ORIGINAL_FX_CONTROL_IDS = [
 function fxPanelControlBlockById(id) {
   var el = document.getElementById(id);
   if (!el) return null;
-  if (el.classList && (el.classList.contains('fx-section-label') || el.classList.contains('fx-slider') || el.classList.contains('fx-toggle-grid') || el.classList.contains('sonic-audio-monitor') || el.classList.contains('lyric-color-row') || el.classList.contains('fx-seg'))) return el;
+  if (el.classList && (el.classList.contains('fx-fold') || el.classList.contains('fx-section-label') || el.classList.contains('fx-slider') || el.classList.contains('fx-toggle-grid') || el.classList.contains('sonic-audio-monitor') || el.classList.contains('lyric-color-row') || el.classList.contains('fx-seg'))) return el;
   return el.closest ? el.closest('.fx-slider,.fx-toggle-grid,.sonic-audio-monitor,.lyric-color-row,.fx-seg,.fx-section-label') : null;
 }
 function setFxPanelControlsHidden(ids, hidden) {
@@ -290,6 +290,20 @@ function updateFxInputs() {
   setRange('fx-treecanopynotesize', fx.treeCanopyNoteSize == null ? fxDefaults.treeCanopyNoteSize : fx.treeCanopyNoteSize);
   setRange('fx-treecanopybeat', fx.treeCanopyBeatResponse == null ? fxDefaults.treeCanopyBeatResponse : fx.treeCanopyBeatResponse);
   setRange('fx-treecanopyambient', fx.treeCanopyAmbient == null ? fxDefaults.treeCanopyAmbient : fx.treeCanopyAmbient);
+  setRange('fx-heartpulsespeed', fx.heartPulseSpeed == null ? fxDefaults.heartPulseSpeed : fx.heartPulseSpeed);
+  setRange('fx-heartpulsebeat', fx.heartPulseBeatResponse == null ? fxDefaults.heartPulseBeatResponse : fx.heartPulseBeatResponse);
+  setRange('fx-heartpulseglow', fx.heartPulseGlow == null ? fxDefaults.heartPulseGlow : fx.heartPulseGlow);
+  setRange('fx-heartpulsegrid', fx.heartPulseGrid == null ? fxDefaults.heartPulseGrid : fx.heartPulseGrid);
+  setRange('fx-heartpulsetrail', fx.heartPulseTrail == null ? fxDefaults.heartPulseTrail : fx.heartPulseTrail);
+  var heartPulseTitle = document.getElementById('fx-heartpulsetitle');
+  var heartPulseSubtitle = document.getElementById('fx-heartpulsesubtitle');
+  if (heartPulseTitle) heartPulseTitle.value = fx.heartPulseTitle == null ? fxDefaults.heartPulseTitle : fx.heartPulseTitle;
+  if (heartPulseSubtitle) heartPulseSubtitle.value = fx.heartPulseSubtitle == null ? fxDefaults.heartPulseSubtitle : fx.heartPulseSubtitle;
+  var heartPulseStatus = document.getElementById('fx-heartpulsestatus');
+  if (heartPulseStatus) heartPulseStatus.value = fx.heartPulseStatus == null ? fxDefaults.heartPulseStatus : fx.heartPulseStatus;
+  if (typeof updateHeartPulseContentControls === 'function') updateHeartPulseContentControls();
+  var heartPulseBpm = document.getElementById('t-heartPulseShowBpm');
+  if (heartPulseBpm) heartPulseBpm.classList.toggle('on', fx.heartPulseShowBpm !== false);
   setRange('fx-pixelkaomojisize', fx.pixelKaomojiSize == null ? fxDefaults.pixelKaomojiSize : fx.pixelKaomojiSize);
   setRange('fx-pixelkaomojispeed', fx.pixelKaomojiSpeed == null ? fxDefaults.pixelKaomojiSpeed : fx.pixelKaomojiSpeed);
   setRange('fx-shelfsize', fx.shelfSize);
@@ -442,6 +456,8 @@ function updateFxInputs() {
   if (typeof updatePixelKaomojiControlVisibility === 'function') updatePixelKaomojiControlVisibility();
   if (typeof updateTreeCanopyColorControls === 'function') updateTreeCanopyColorControls();
   if (typeof updateTreeCanopyControlVisibility === 'function') updateTreeCanopyControlVisibility();
+  if (typeof updateHeartPulseColorControls === 'function') updateHeartPulseColorControls();
+  if (typeof updateHeartPulseControlVisibility === 'function') updateHeartPulseControlVisibility();
   if (typeof updateSonicWorkshopColorControls === 'function') updateSonicWorkshopColorControls();
   updateSonicSeriesControlVisibility();
   applyControlGlassChromaticOffset();

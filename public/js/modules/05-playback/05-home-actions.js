@@ -200,7 +200,6 @@ async function playHomeDaily() {
 
       var radarUrl = '/api/ls/radar?category=' + encodeURIComponent(redDustInnRadarCategory) + '&limit=30&t=' + Date.now();
       var radarData = await apiJson(radarUrl, { timeoutMs: 120000 });
-      clearInterval(hintTimer);
       var radarSongs = (radarData && radarData.songs) || [];
       if (!radarSongs.length) { showToast('雷达暂无推送内容'); return; }
       radarSongs = radarSongs.map(cloneSong);
@@ -220,6 +219,9 @@ async function playHomeDaily() {
       showToast('雷达推送失败');
     } finally {
       redDustInnRadarLoading = false;
+      // hintTimer 必须在 finally 清理: 失败/超时路径也会走到这里,
+      // 否则 interval 每 3 秒永久运行并持有已从 DOM 移除的 radarHintEl 引用
+      if (hintTimer) { clearInterval(hintTimer); hintTimer = null; }
       if (radarCard) radarCard.classList.remove('radar-pulsing');
       if (radarHintEl && radarHintEl.parentNode) radarHintEl.parentNode.removeChild(radarHintEl);
     }

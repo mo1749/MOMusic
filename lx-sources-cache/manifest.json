@@ -1,0 +1,59 @@
+{
+  "syncedAt": 1786877555592,
+  "sources": [
+    {
+      "id": "render_api-e6b84fccef5f",
+      "name": "Huibq_lxmusic源",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/render_api.js",
+      "file": "render_api-e6b84fccef5f.js",
+      "bytes": 2727,
+      "addedAt": 1786877554861,
+      "obfuscated": false
+    },
+    {
+      "id": "mf-小秋音乐-2814b13d6afd",
+      "name": "小秋音乐(MF适配)",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaoqiu.js",
+      "file": "mf-2814b13d6afd.js",
+      "bytes": 21993,
+      "addedAt": 1786877555088,
+      "obfuscated": false
+    },
+    {
+      "id": "mf-小蜗音乐-7a3755785273",
+      "name": "小蜗音乐(MF适配)",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaowo.js",
+      "file": "mf-7a3755785273.js",
+      "bytes": 22055,
+      "addedAt": 1786877555211,
+      "obfuscated": false
+    },
+    {
+      "id": "mf-小芸音乐-f248af2e866b",
+      "name": "小芸音乐(MF适配)",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaoyun.js",
+      "file": "mf-f248af2e866b.js",
+      "bytes": 24907,
+      "addedAt": 1786877555336,
+      "obfuscated": false
+    },
+    {
+      "id": "mf-小枸音乐-6392f93ec664",
+      "name": "小枸音乐(MF适配)",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaogou.js",
+      "file": "mf-6392f93ec664.js",
+      "bytes": 21169,
+      "addedAt": 1786877555457,
+      "obfuscated": false
+    },
+    {
+      "id": "mf-小蜜音乐-7979d02817e6",
+      "name": "小蜜音乐(MF适配)",
+      "url": "https://fastly.jsdelivr.net/gh/Huibq/keep-alive/Music_Free/xiaomi.js",
+      "file": "mf-7979d02817e6.js",
+      "bytes": 31672,
+      "addedAt": 1786877555592,
+      "obfuscated": false
+    }
+  ]
+}

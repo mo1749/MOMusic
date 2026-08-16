@@ -7,7 +7,7 @@ function normalizeWallpaperFps(value) {
 }
 
 var fxDefaults = {
-  preset: 0,            // 0=emily cover, 1=tunnel, 2=orbit, 3=void, 4=vinyl, 5=wallpaper, 6=skull, 7=sonic topography
+  preset: 0,            // 0-12 visual presets; 12 is Heart-Pulse ECG monitor
   intensity: 0.85,
   cinemaShake: 0.5,
   depth: 0.2,
@@ -184,6 +184,19 @@ var fxDefaults = {
   treeCanopyAmbient: 1.2,          // 环境粒子密度
   particleLyrics: true,    // v7.2: 粒子歌词
   backCover: false,        // 旧的封面背面粒子层关闭；浮空粒子层会跟随封面翻转
+  heartPulseLineColor: '#3dffa0',
+  heartPulseGlowColor: '#7af7dc',
+  heartPulseHeartColor: '#ff4d78',
+  heartPulseSpeed: 1.0,
+  heartPulseBeatResponse: 1.15,
+  heartPulseGlow: 1.1,
+  heartPulseGrid: 0.72,
+  heartPulseTrail: 0.9,
+  heartPulseTitle: 'HEART MONITOR',
+  heartPulseSubtitle: 'LIVE RHYTHM / ECG',
+  heartPulseShowBpm: true,
+  heartPulseStatus: 'SIGNAL STABLE',
+  heartPulseWaveform: 'clinical',
   shelf: 'side',
   shelfPinnedOpen: false,
   shelfCameraMode: 'dynamic',

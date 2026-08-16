@@ -1,0 +1,271 @@
+/* ================================================================
+   MOMusic Listen Together (一起听) -> pure white transparent glass
+   Same treatment as the login card / custom source panel:
+     - panels & cards: saved glass theme, no dark veil
+     - ALL blue/green accents removed: white borders + white glow
+     - buttons: thin white glass, brighter on hover, white accent
+       when active; destructive actions keep a light red tint
+   Loaded after index.css and listen-together-float-chat.css.
+   ================================================================ */
+
+/* ---- Full-screen mask: no dark veil ---- */
+#listen-together-mask.modal-mask {
+  background: transparent;
+}
+
+/* ---- Panel container: glass blur raised, slightly more opaque body ---- */
+#listen-together-panel {
+  background: linear-gradient(180deg, rgba(28, 32, 40, 0.62), rgba(15, 18, 24, 0.68)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: blur(20px) saturate(1.6) brightness(1.12) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.12) !important;
+}
+
+/* ---- Hero icon: white ---- */
+.lt-hero-icon { color: rgba(255, 255, 255, 0.55); }
+
+/* ---- Segmented tray + tabs ---- */
+.lt-segmented {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 4px;
+}
+.lt-seg-tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.58);
+}
+.lt-seg-tab:hover { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.05); }
+.lt-seg-tab.active {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 8px 24px rgba(255, 255, 255, 0.06);
+}
+
+/* ---- Inputs ---- */
+.lt-input,
+.lt-chat-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+}
+.lt-input:focus,
+.lt-chat-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+}
+.lt-input::placeholder { color: rgba(255, 255, 255, 0.22); }
+
+/* ---- Buttons: thin white glass ---- */
+.lt-btn,
+.lt-invite-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.lt-btn:hover,
+.lt-invite-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+/* Primary: bright white glass */
+.lt-btn-primary {
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24), 0 0 22px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.lt-btn-primary:hover {
+  border-color: rgba(255, 255, 255, 0.64);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.1));
+  color: #fff;
+}
+/* Danger: light red tint kept */
+.lt-btn-danger {
+  border-color: rgba(255, 120, 120, 0.3);
+  background: rgba(255, 120, 120, 0.08);
+  color: rgba(255, 150, 150, 0.85);
+}
+.lt-btn-danger:hover {
+  border-color: rgba(255, 120, 120, 0.5);
+  background: rgba(255, 120, 120, 0.16);
+  color: #ffe1e1;
+}
+
+/* ---- Mode buttons (dual / multi) active: white accent ---- */
+#lt-mode-dual.active,
+#lt-mode-multi.active {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+#lt-mode-dual.active:hover,
+#lt-mode-multi.active:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---- Room badges & tags: white glass ---- */
+.lt-room-badge { color: rgba(255, 255, 255, 0.92); }
+.lt-host-tag {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+#lt-user-badge {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* ---- Member chips: white glass, a bit more solid ---- */
+.lt-member {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.05));
+  color: rgba(255, 255, 255, 0.88);
+}
+.lt-member:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Chat box: frosted glass, more opaque ---- */
+.lt-chat-box {
+  background: linear-gradient(170deg, rgba(34, 38, 46, 0.44), rgba(16, 19, 25, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 8px 22px rgba(0, 0, 0, 0.2);
+}
+.lt-chat-nick { color: rgba(255, 255, 255, 0.75); }
+.lt-chat-msg-self .lt-chat-nick { color: rgba(255, 255, 255, 0.92); }
+
+/* ---- Current track card: more solid white glass + light bar ---- */
+.lt-current-track {
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07) 55%, rgba(255, 255, 255, 0.04)) !important;
+}
+.lt-current-track::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.22));
+}
+
+/* ---- Leave / send ---- */
+.lt-leave-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.88);
+}
+.lt-leave-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.lt-send-btn {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.lt-send-btn:hover { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.2); }
+
+/* ---- Invite overlay / box / code ---- */
+.lt-invite-overlay { background: rgba(0, 0, 0, 0.22); }
+.lt-invite-box {
+  background: linear-gradient(165deg, rgba(30, 34, 44, 0.62), rgba(17, 20, 27, 0.66));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: var(--saved-panel-glass-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
+  box-shadow: var(--saved-panel-glass-shadow);
+}
+.lt-invite-code {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+.lt-invite-close { color: rgba(255, 255, 255, 0.5); }
+.lt-invite-close:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* ---- Avatar button / pop ---- */
+.lt-avatar-btn { border-color: rgba(255, 255, 255, 0.3) !important; }
+.lt-avatar-btn:hover { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.22), 0 3px 10px rgba(0, 0, 0, 0.35); }
+.lt-avatar-pop {
+  background: linear-gradient(165deg, rgba(30, 34, 44, 0.62), rgba(17, 20, 27, 0.66));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: var(--saved-panel-glass-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
+  box-shadow: var(--saved-panel-glass-shadow);
+}
+.lt-avatar-cell { border-color: rgba(255, 255, 255, 0.3); }
+.lt-avatar-cell:hover { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
+
+/* ================================================================
+   Float chat + toasts: white glass, no blue/green accents
+   ================================================================ */
+
+:root {
+  --ltfc-accent: 255, 255, 255;
+  --ltfc-self: 255, 255, 255;
+}
+
+#lt-float-chat {
+  background: linear-gradient(180deg, rgba(28, 32, 40, 0.62), rgba(15, 18, 24, 0.68)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: blur(20px) saturate(1.6) brightness(1.12) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.6) brightness(1.12) !important;
+}
+
+.ltfc-icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.65);
+}
+.ltfc-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.ltfc-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.ltfc-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ltfc-send {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+  color: #fff;
+}
+.ltfc-send:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.ltcb-row.ltcb-self .ltcb-bubble {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.1));
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.ltcb-row.ltcb-other .ltcb-bubble {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.07));
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.ltcb-meta .ltcb-nick { color: rgba(255, 255, 255, 0.6); }
+.ltcb-row.ltcb-self .ltcb-meta .ltcb-nick { color: rgba(255, 255, 255, 0.9); }
+.ltcb-row.ltcb-other .ltcb-meta .ltcb-nick { color: rgba(255, 255, 255, 0.7); }
+
+.lt-toast-pill {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.09));
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.lt-toast-pill:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 255, 255, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.lttp-nick { color: rgba(255, 255, 255, 0.85); }

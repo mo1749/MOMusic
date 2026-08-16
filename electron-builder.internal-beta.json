@@ -69,7 +69,7 @@
     "uninstallerSidebar": "build/installerSidebar.bmp",
     "installerHeader": "build/installerHeader.bmp",
     "include": "build/installer-internal-beta.nsh",
-    "artifactName": "MoMusic-${version}-Setup.${ext}"
+    "artifactName": "MOMusic_Beat-v${version}-灰度内测版.${ext}"
   },
   "publish": null
 }

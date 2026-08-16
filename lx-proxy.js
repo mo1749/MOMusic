@@ -14,6 +14,21 @@ function normalizeProxyUrl(value) {
   return v;
 }
 
+// Windows 系统代理 ProxyServer 可能是 "host:port" 或分协议形式
+// "http=127.0.0.1:7890;https=127.0.0.1:7890;ftp=..."。
+// 分协议形式需提取 https/http 条目, 不能整体当作单个代理 URL (会生成无法连接的坏地址)。
+function pickSystemProxyEntry(value) {
+  var v = String(value || '').trim();
+  if (!v) return '';
+  if (v.indexOf('=') < 0) return v;
+  var entries = {};
+  v.split(';').forEach(function (part) {
+    var m = String(part).match(/^\s*([a-z]+)\s*=\s*([^\s;]+)/i);
+    if (m) entries[m[1].toLowerCase()] = m[2];
+  });
+  return entries.https || entries.http || entries.socks || '';
+}
+
 function readWindowsSystemProxy() {
   if (process.platform !== 'win32') return '';
   try {
@@ -22,7 +37,7 @@ function readWindowsSystemProxy() {
     var server = execFileSync('reg', ['query', 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings', '/v', 'ProxyServer'], { encoding: 'utf8' });
     var m = String(server).match(/ProxyServer\s+REG_SZ\s+([^\r\n]+)/i);
     if (!m || !m[1]) return '';
-    return normalizeProxyUrl(m[1].trim());
+    return normalizeProxyUrl(pickSystemProxyEntry(m[1]));
   } catch (e) {
     return '';
   }

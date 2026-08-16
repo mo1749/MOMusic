@@ -43,6 +43,9 @@ function bindFxPanel() {
      ['fx-goldencoreglow', 'goldenCoreGlow'], ['fx-goldencoreorbitcount', 'goldenCoreOrbitCount'], ['fx-goldencoreorbitsize', 'goldenCoreOrbitSize'], ['fx-goldencoredensity', 'goldenCoreDensity'], ['fx-goldencorespin', 'goldenCoreSpin'], ['fx-goldencorestardust', 'goldenCoreStardust'], ['fx-goldencorebreath', 'goldenCoreBreath'],
      ['fx-pixelkaomojisize', 'pixelKaomojiSize'], ['fx-pixelkaomojispeed', 'pixelKaomojiSpeed'],
      ['fx-treecanopyglow', 'treeCanopyGlow'], ['fx-treecanopywind', 'treeCanopyWind'], ['fx-treecanopysway', 'treeCanopySway'], ['fx-treecanopystaffcount', 'treeCanopyStaffCount'], ['fx-treecanopynotedensity', 'treeCanopyNoteDensity'], ['fx-treecanopynotesize', 'treeCanopyNoteSize'], ['fx-treecanopybeat', 'treeCanopyBeatResponse'], ['fx-treecanopyambient', 'treeCanopyAmbient'],
+     ['fx-heartpulsespeed', 'heartPulseSpeed'], ['fx-heartpulsebeat', 'heartPulseBeatResponse'], ['fx-heartpulseglow', 'heartPulseGlow'], ['fx-heartpulsegrid', 'heartPulseGrid'], ['fx-heartpulsetrail', 'heartPulseTrail'],
+     ['fx-heartpulsetitle', 'heartPulseTitle'], ['fx-heartpulsesubtitle', 'heartPulseSubtitle'],
+     ['fx-heartpulsestatus', 'heartPulseStatus'],
     ['fx-shelfsize', 'shelfSize'], ['fx-shelfx', 'shelfOffsetX'], ['fx-shelfy', 'shelfOffsetY'], ['fx-shelfz', 'shelfOffsetZ'], ['fx-shelfangle', 'shelfAngleY'], ['fx-shelfopacity', 'shelfOpacity'], ['fx-shelfbgalpha', 'shelfBgOpacity'],
     ['fx-shelfdetailx', 'shelfDetailOffsetX'], ['fx-shelfdetaily', 'shelfDetailOffsetY'], ['fx-shelfdetailz', 'shelfDetailOffsetZ'], ['fx-shelfdetailscale', 'shelfDetailScale'], ['fx-shelfdetailanglex', 'shelfDetailAngleX'], ['fx-shelfdetailangley', 'shelfDetailAngleY'], ['fx-shelfdetailrowgap', 'shelfDetailRowGap'],
     ['fx-shelfdetailopen', 'shelfDetailOpenDuration'], ['fx-shelfdetailclose', 'shelfDetailCloseDuration'], ['fx-shelfdetailrowtime', 'shelfDetailRowDuration'], ['fx-shelfdetailintro', 'shelfDetailIntroStrength'], ['fx-shelfdetailparallax', 'shelfDetailParallax'],
@@ -59,9 +62,10 @@ function bindFxPanel() {
   ids.forEach(function (pair) {
     var el = document.getElementById(pair[0]);
     if (!el) return;
-    ensureFxSliderResetButton(pair[0], pair[1]);
+    // 文本输入（监护标题等）不套用滑条圆形重置按钮，避免出现无效小圆钮
+    if (el.type !== 'text') ensureFxSliderResetButton(pair[0], pair[1]);
     el.addEventListener('input', function () {
-      fx[pair[1]] = parseFloat(el.value);
+      fx[pair[1]] = el.type === 'text' ? String(el.value || '').slice(0, pair[1] === 'heartPulseTitle' ? 28 : (pair[1] === 'heartPulseStatus' ? 24 : 36)) : parseFloat(el.value);
       var out = el.parentElement.querySelector('output');
       if (/^sonicGround/.test(pair[1])) fx[pair[1]] = Math.round(clampRange(fx[pair[1]], 0, 100));
       if (pair[1] === 'lyricBackgroundAdapt') fx.lyricBackgroundAdapt = clampRange(fx.lyricBackgroundAdapt, 0, 1);
@@ -146,6 +150,11 @@ function bindFxPanel() {
        if (pair[1] === 'treeCanopyNoteSize') fx.treeCanopyNoteSize = clampRange(fx.treeCanopyNoteSize, 0.5, 2);
        if (pair[1] === 'treeCanopyBeatResponse') fx.treeCanopyBeatResponse = clampRange(fx.treeCanopyBeatResponse, 0, 2);
        if (pair[1] === 'treeCanopyAmbient') fx.treeCanopyAmbient = clampRange(fx.treeCanopyAmbient, 0, 2);
+       if (pair[1] === 'heartPulseSpeed') fx.heartPulseSpeed = clampRange(fx.heartPulseSpeed, 0.35, 2.4);
+       if (pair[1] === 'heartPulseBeatResponse') fx.heartPulseBeatResponse = clampRange(fx.heartPulseBeatResponse, 0, 2);
+       if (pair[1] === 'heartPulseGlow') fx.heartPulseGlow = clampRange(fx.heartPulseGlow, 0.25, 2);
+       if (pair[1] === 'heartPulseGrid') fx.heartPulseGrid = clampRange(fx.heartPulseGrid, 0, 1);
+       if (pair[1] === 'heartPulseTrail') fx.heartPulseTrail = clampRange(fx.heartPulseTrail, 0.15, 1.5);
       if (pair[1] === 'shelfSize') fx.shelfSize = clampRange(fx.shelfSize, 0.65, 1.45);
       if (pair[1] === 'shelfOffsetX') fx.shelfOffsetX = clampRange(fx.shelfOffsetX, -1.2, 1.2);
       if (pair[1] === 'shelfOffsetY') fx.shelfOffsetY = clampRange(fx.shelfOffsetY, -0.9, 0.9);
@@ -255,15 +264,9 @@ function bindFxPanel() {
     picker.addEventListener('input', function () { setSonicGroundColor(pair[1], picker.value, true); });
     picker.addEventListener('change', function () { setSonicGroundColor(pair[1], picker.value); });
   });
-  [
-   ['golden-core-color-picker', 'goldenCoreColor'],
-   ['golden-core-halo-picker', 'goldenCoreHaloColor']
-  ].forEach(function (pair) {
-    var picker = document.getElementById(pair[0]);
-    if (!picker) return;
-    picker.addEventListener('input', function () { setGoldenCoreColor(pair[1], picker.value, true); });
-     picker.addEventListener('change', function () { setGoldenCoreColor(pair[1], picker.value); });
-   });
+  // 心跳监护取色器已改为按钮 + 内联 onclick 打开应用内取色面板（见 heart-pulse-preset.js），
+  // 不再用 input[type=color] 与这里的 input/change 绑定
+  // 金色核心取色器已改为按钮 + 内联 onclick 打开应用内取色面板（见 02-accent-background-controls.js）
   [
     ['tree-canopy-tree-picker', 'treeCanopyTreeColor'],
     ['tree-canopy-staff-picker', 'treeCanopyStaffColor'],
@@ -274,6 +277,8 @@ function bindFxPanel() {
     picker.addEventListener('input', function () { setTreeCanopyColor(pair[1], picker.value, true); });
     picker.addEventListener('change', function () { setTreeCanopyColor(pair[1], picker.value); });
   });
+  // 心跳监护取色器改由预设自身用 document 级事件委托绑定（见 heart-pulse-preset.js），
+  // 不再依赖本函数的执行链——避免上游异常导致绑定静默丢失
   var homeAccentPicker = document.getElementById('home-accent-picker');
   if (homeAccentPicker) {
     homeAccentPicker.addEventListener('input', function () { setHomeAccentColor(homeAccentPicker.value, true); });

@@ -798,9 +798,22 @@ function updateGoldenCoreColorControls() {
     var color = normalizeHexColor(fx[item.key] || fallback, fallback);
     var picker = document.getElementById(item.picker);
     var value = document.getElementById(item.value);
-    if (picker) picker.value = color;
+    if (picker) {
+      // 取色器现为按钮：value 兼容旧 input，背景色块实时反映当前颜色
+      picker.value = color;
+      picker.style.background = color;
+    }
     if (value) value.textContent = color.toUpperCase();
   });
+}
+// 打开通用取色面板（实现在 heart-pulse-preset.js，内联事件驱动，桌面端可用）
+function openGoldenCoreColorPicker(key, anchorEl) {
+  if (typeof openMOMusicColorPicker !== 'function') return;
+  var item = goldenCoreColorControl(key);
+  if (!item) return;
+  openMOMusicColorPicker(item.key, anchorEl,
+    function () { return fx[item.key] || fxDefaults[item.key] || '#ffc46b'; },
+    function (hex, silent) { setGoldenCoreColor(item.key, hex, silent); });
 }
 function setGoldenCoreColor(key, color, silent) {
   var item = goldenCoreColorControl(key);

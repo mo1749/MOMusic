@@ -40,6 +40,7 @@
     'golden-core-preset.js',
     'pixel-kaomoji-preset.js',
     'tree-canopy-preset.js',
+    'heart-pulse-preset.js',
     'js/modules/03-beat/00-tempo-worker-cache-prefetch.js',
     'js/modules/03-beat/01-audio-beat-analysis.js',
     'js/modules/03-beat/02-podcast-dj-analysis.js',
@@ -110,6 +111,7 @@
     'js/modules/10-shell/03-splash.js',
     'js/modules/10-shell/04-desktop-overlay-fullscreen.js',
     'js/modules/10-shell/05-startup-bindings.js',
+    'js/modules/10-shell/xx-two-finger-shelf.js',
     'js/modules/11-main-loop.js',
   ];
 

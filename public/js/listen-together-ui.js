@@ -40,7 +40,6 @@ function initListenTogetherUI() {
 
   function addChatMessage(nickname, text, isSelf, loginMethod, authUser, skipSave, ts, avatar) {
     var container = document.getElementById('lt-chat-messages');
-    if (!container) return;
     // 保存到本地（从本地加载时跳过）
     if (!skipSave) {
       var roomId = window.ListenTogether && window.ListenTogether.currentRoom ? window.ListenTogether.currentRoom.id : '';
@@ -57,12 +56,13 @@ function initListenTogetherUI() {
     } catch (_) {}
 
     // 气泡渲染（悬浮聊天模块提供）；未加载时回退到旧行式渲染
-    if (window.LtChatBubbles && window.LtChatBubbles.renderInto) {
+    if (container && window.LtChatBubbles && window.LtChatBubbles.renderInto) {
       window.LtChatBubbles.renderInto(container, {
         nickname: nickname, text: text, isSelf: !!isSelf, loginMethod: loginMethod, ts: msgTs, avatar: avatar || ''
       });
       return;
     }
+    if (!container) return;
 
     var div = document.createElement('div');
     div.className = 'lt-chat-msg' + (isSelf ? ' lt-chat-msg-self' : '');
@@ -245,6 +245,8 @@ function initListenTogetherUI() {
     }
   }
 
+  // 竞态保护: 房主快速连续切歌时, 旧搜索晚返回不能覆盖较新的目标曲
+  var ltSearchToken = 0;
   async function ltSearchAndPlayTrack(track) {
     var query = (track.title || '') + ' ' + (track.artist || '');
     query = query.trim();
@@ -252,9 +254,11 @@ function initListenTogetherUI() {
       if (typeof showToast === 'function') showToast('一起听：无法获取歌曲信息');
       return;
     }
+    var token = ++ltSearchToken;
     if (typeof showToast === 'function') showToast('一起听：正在搜索「' + (track.title || query) + '」…');
     try {
       var searchData = await fetchMusicSearchResults(query, 'song');
+      if (token !== ltSearchToken) return; // 期间又切了歌, 丢弃过期结果
       var songs = searchData && Array.isArray(searchData.songs) ? searchData.songs : [];
       if (!songs.length) {
         if (typeof showToast === 'function') showToast('一起听：未找到「' + (track.title || query) + '」，请登录音乐平台后重试');
@@ -473,22 +477,10 @@ function initListenTogetherUI() {
     showView('lt-room-view');
   });
 
-  LT.on('authError', function (data) {
-    var msg = data.error || data.message || '登录失败';
-    setStatus(msg);
-    if (typeof showToast === 'function') showToast('一起听：' + msg);
-  });
-
-  LT.on('loginError', function (data) {
-    var msg = data.error || data.message || '登录失败';
-    setStatus(msg);
-    if (typeof showToast === 'function') showToast('一起听：' + msg);
-  });
-
   // 通用错误事件（服务端返回的错误统一走这个）
+  // 注意: 只能注册一次! client 的 on() 是单槽覆盖式, 重复注册会静默覆盖前者
   LT.on('error', function (data) {
     var msg = data.error || data.message || '操作失败';
-    setStatus(msg);
     // token 过期提示：清理认证状态，回到首页
     if (msg.includes('登录已过期') || msg.includes('token') || msg.includes('Token')) {
       if (window.ListenTogether && window.ListenTogether.clearAuth) {
@@ -501,10 +493,11 @@ function initListenTogetherUI() {
       return;
     }
     // 其他错误也要重置按钮
+    setStatus('错误: ' + (data.error || '未知'));
     var btn = document.querySelector('#lt-connect-view button');
     if (btn && btn.disabled) { btn.disabled = false; btn.textContent = '开始一起听'; }
     restoreLtRoomActionButtons();
-    if (typeof showToast === 'function') showToast('一起听：' + msg);
+    if (typeof showToast === 'function') showToast('一起听：' + (data.error || '错误'));
   });
 
   // === 房间回调 ===
@@ -527,14 +520,11 @@ function initListenTogetherUI() {
     saveRecentRoom(room.id, room.name, true, room.memberCount);
     // 加载本地历史聊天记录
     var container = document.getElementById('lt-chat-messages');
-    if (container) {
-      container.innerHTML = '';
-      var savedChat = loadChatMessages(room.id);
-      savedChat.forEach(function (msg) {
-        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
-      });
-    }
-    setTimeout(ltBroadcastTrackChange, 500);
+    if (container) container.innerHTML = '';
+    var savedChat = loadChatMessages(room.id);
+    savedChat.forEach(function (msg) {
+      addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
+    });
   });
 
   LT.on('roomJoined', function (data) {
@@ -556,13 +546,11 @@ function initListenTogetherUI() {
 
     // 先加载本地历史聊天记录
     var container = document.getElementById('lt-chat-messages');
-    if (container) {
-      container.innerHTML = '';
-      var savedChat = loadChatMessages(room.id);
-      savedChat.forEach(function (msg) {
-        addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
-      });
-    }
+    if (container) container.innerHTML = '';
+    var savedChat = loadChatMessages(room.id);
+    savedChat.forEach(function (msg) {
+      addChatMessage(msg.nickname, msg.text, msg.isSelf, msg.loginMethod, msg.authUser, true, msg.timestamp, msg.avatar);
+    });
 
     // 再加载服务器返回的最新聊天
     if (data.recentChat && data.recentChat.length) {
@@ -632,12 +620,6 @@ function initListenTogetherUI() {
         }));
       } catch (_) {}
     }
-  });
-
-  LT.on('error', function (data) {
-    setStatus('错误: ' + (data.error || '未知'));
-    restoreLtRoomActionButtons();
-    if (typeof showToast === 'function') showToast('一起听: ' + (data.error || '错误'));
   });
 
   LT.on('kicked', function () {
@@ -724,8 +706,9 @@ function handleLtSetMode(mode, silent) {
   if (!silent && typeof showToast === 'function') showToast('房间模式：' + (mode === 'dual' ? '双人' : '多人'));
 }
 
-function handleLtConnect() {
-  var btn = event && event.target ? event.target.closest('button') : null;
+function handleLtConnect(evt) {
+  // 显式接收事件对象 (inline onclick 传参), 不再依赖已废弃的 window.event
+  var btn = evt && evt.target ? evt.target.closest('button') : null;
   if (btn) { btn.textContent = '连接中…'; btn.disabled = true; }
   window.ListenTogether.connect();
 }

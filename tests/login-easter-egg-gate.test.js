@@ -202,9 +202,10 @@ async function run() {
     assert(logoutRenderer.includes('resetLoginEasterEggUiForReplay()'));
 
     const splashRenderer = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'modules', '10-shell', '03-splash.js'), 'utf8');
-    assert(splashRenderer.includes('function retroChord(frequencies, startAt, dur, peak)'));
-    assert(splashRenderer.includes('Am7 -> Fmaj7 -> Cmaj7 -> G6'));
-    assert(splashRenderer.includes('[220.00, 261.63, 329.63, 392.00]'));
+    // splash 已重构为 Canvas 2D 实现 (原 retroChord 和弦动画随重构移除)
+    assert(splashRenderer.includes('splash-active'));
+    assert(splashRenderer.includes("document.getElementById('splash-canvas')"));
+    assert(splashRenderer.includes('requestAnimationFrame'));
 
     const desktopMain = fs.readFileSync(path.join(__dirname, '..', 'desktop', 'main.js'), 'utf8');
     assert(desktopMain.includes("fullDesktopModeRuntime.getStatus('renderer-keyboard-focus-fallback')"));

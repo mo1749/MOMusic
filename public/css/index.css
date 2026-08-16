@@ -3041,16 +3041,27 @@ body.empty-home-active .home-visual {
     width: calc(100vw - 40px)
   }
 
-  .empty-home-shell {
+  body #empty-home .empty-home-shell {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
-    overflow: auto;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
     padding-bottom: 4px
   }
 
-  .home-hero {
+  /* 窄屏下取消 rail 内部滚动：嵌套滚动容器会吞掉外壳滚动手势（滑到 rail 区域后外层滚不动） */
+  body #empty-home .home-insight-rail {
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+
+  body #empty-home .home-hero {
     grid-row: auto;
-    min-height: 344px
+    grid-column: auto;
+    min-height: 344px;
+    height: auto
   }
 
   .home-mosaic {
@@ -3066,6 +3077,62 @@ body.empty-home-active .home-visual {
     grid-template-columns: repeat(3, minmax(0, 1fr))
   }
 }
+
+/* 横屏矮屏（手机横屏，宽>760px 但高度受限）：同样用单列 + 可滚动布局，避免内容显示不全且无法滚动 */
+@media (max-height: 620px) and (min-width: 761px) {
+  #empty-home {
+    top: 92px;
+    bottom: 40px;
+    width: calc(100vw - 28px)
+  }
+
+  body #empty-home .empty-home-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 6px
+  }
+
+  body #empty-home .home-insight-rail {
+    overflow: visible;
+    overscroll-behavior: auto;
+    padding-top: 10px
+  }
+
+  body #empty-home .home-hero {
+    grid-row: auto;
+    grid-column: auto;
+    min-height: 0;
+    height: auto;
+    padding: 18px 20px
+  }
+
+  .home-hero-inner {
+    grid-template-columns: minmax(0, 1.2fr) minmax(120px, .5fr);
+    column-gap: 14px
+  }
+
+  .home-mosaic {
+    height: 150px;
+    min-height: 130px
+  }
+
+  .home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .home-tile-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+
+  .home-insight-dock {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+}
+
 
 body.empty-home-active.controls-visible #empty-home {
   bottom: 128px
@@ -7015,23 +7082,60 @@ body.diy-mode #controls {
 }
 
 @media (max-width:1040px) {
-
-  body.diy-mode #time-display,
-  body.diy-mode #controls-hide-btn {
-    display: none !important
-  }
-
   body.diy-mode .control-track {
     max-width: 260px
   }
 }
 
-@media (max-width:940px) {
+@media (min-width:621px) and (max-width:1040px) {
 
-  body.diy-mode .lyrics-toggle-btn,
-  body.diy-mode #volume-control {
+  body.desktop-shell.diy-mode #time-display,
+  body.desktop-shell.diy-mode #controls-hide-btn {
     display: none !important
   }
+}
+
+@media (min-width:621px) and (max-width:940px) {
+
+  body.desktop-shell.diy-mode .lyrics-toggle-btn,
+  body.desktop-shell.diy-mode #volume-control {
+    display: none !important
+  }
+}
+
+@media (max-width:920px) {
+
+  body.diy-mode:not(.desktop-shell) #time-display {
+    display: flex
+  }
+}
+
+@media (min-width:621px) and (max-width:1040px) {
+
+  body.diy-mode:not(.desktop-shell) .ctrl-btn:not(#play-btn):not(.quality-pill) {
+    width: 28px;
+    height: 28px;
+  }
+
+  body.diy-mode:not(.desktop-shell) .ctrl-btn:not(#play-btn):not(.quality-pill) svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  body.diy-mode:not(.desktop-shell) .control-cluster.transport,
+  body.diy-mode:not(.desktop-shell) .control-cluster.modes {
+    gap: 5px;
+  }
+
+  body.diy-mode:not(.desktop-shell) #time-display {
+    min-width: 54px;
+    font-size: 10px;
+    padding: 0 1px;
+  }
+}
+
+body.diy-mode:not(.desktop-shell) #cuefield-automix-btn {
+  display: none;
 }
 
 @media (max-width:620px) {
@@ -8187,323 +8291,6 @@ body.login-guide-active #login-guide-canvas {
   border-color: rgba(255, 255, 255, .10);
   background: linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .018) 58%, rgba(var(--fc-accent-rgb), .030));
   box-shadow: 0 16px 34px rgba(0, 0, 0, .18), 0 0 22px rgba(var(--fc-accent-rgb), .035), inset 0 1px 0 rgba(255, 255, 255, .065)
-}
-
-.login-node-copy {
-  min-width: 0;
-  align-self: center
-}
-
-.login-node-orb,
-.provider-logo {
-  width: 31px;
-  height: 31px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 950;
-  letter-spacing: .04em;
-  color: #fff;
-  background: rgba(var(--fc-accent-rgb), .14);
-  box-shadow: 0 0 14px rgba(var(--fc-accent-rgb), .13), inset 0 0 0 1px rgba(255, 255, 255, .08)
-}
-
-.login-node-hub b,
-.login-mode-node b,
-.login-node-providers button b {
-  min-width: 0;
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  color: rgba(255, 255, 255, .92)
-}
-
-.login-node-hub small,
-.login-mode-node small,
-.login-node-providers button small {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 2px;
-  font-size: 9.5px;
-  color: rgba(255, 255, 255, .42)
-}
-
-.login-node-providers.login-platform-tabs {
-  grid-area: providers;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 9px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent
-}
-
-.login-node-providers.login-platform-tabs button {
-  height: auto;
-  min-height: 46px;
-  grid-template-columns: 18px 35px minmax(0, 1fr) auto 56px;
-  grid-template-rows: auto;
-  justify-items: start;
-  align-content: center;
-  gap: 0 8px;
-  padding: 7px 14px 7px 5px;
-  border-radius: 13px;
-  border-color: rgba(255, 255, 255, .050);
-  background: linear-gradient(90deg, rgba(255, 255, 255, .042), rgba(255, 255, 255, .014));
-  cursor: pointer;
-  letter-spacing: 0;
-  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease
-}
-
-.login-node-graph.dragging-line .login-node-providers.login-platform-tabs button,
-.login-node-graph.sorting-provider .login-node-providers.login-platform-tabs button.sorting {
-  cursor: grabbing
-}
-
-.login-provider-sort-handle {
-  position: relative;
-  z-index: 2;
-  width: 18px;
-  height: 32px;
-  align-self: center;
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  border-radius: 9px;
-  cursor: grab;
-  touch-action: none;
-  opacity: .58;
-  background: rgba(255, 255, 255, .026);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .045);
-  transition: opacity .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease
-}
-
-.login-provider-sort-handle i {
-  width: 8px;
-  height: 1px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .56);
-  box-shadow: 0 0 6px rgba(255, 255, 255, .10)
-}
-
-.login-provider-sort-handle:hover,
-.login-node-providers.login-platform-tabs button.sorting .login-provider-sort-handle {
-  opacity: 1;
-  background: rgba(255, 255, 255, .065);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12), 0 0 12px rgba(var(--fc-accent-rgb), .13);
-  transform: translateY(-1px)
-}
-
-.login-node-graph.sorting-provider .login-node-providers.login-platform-tabs button:not(.sorting) {
-  opacity: .72
-}
-
-.login-node-providers.login-platform-tabs button .provider-logo {
-  grid-row: auto
-}
-
-.login-node-providers.login-platform-tabs button small {
-  display: none
-}
-
-.login-node-providers.login-platform-tabs button::after,
-.login-mode-node::after {
-  content: none
-}
-
-.login-node-providers.login-platform-tabs button::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 12px;
-  bottom: 12px;
-  width: 2px;
-  border-radius: 999px;
-  background: transparent;
-  box-shadow: none;
-  transition: background .18s ease, box-shadow .18s ease
-}
-
-.login-node-providers.login-platform-tabs button:hover,
-.login-mode-node:hover {
-  transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, .12);
-  background: rgba(255, 255, 255, .050)
-}
-
-.login-node-providers.login-platform-tabs button.active,
-.login-mode-node.active {
-  border-color: rgba(255, 255, 255, .14);
-  background: linear-gradient(135deg, rgba(255, 255, 255, .065), rgba(var(--fc-accent-rgb), .035));
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .13), inset 0 1px 0 rgba(255, 255, 255, .075)
-}
-
-.login-node-providers.login-platform-tabs button.active::before,
-.login-node-providers.login-platform-tabs button.connected::before {
-  background: rgba(var(--fc-accent-rgb), .86);
-  box-shadow: 0 0 12px rgba(var(--fc-accent-rgb), .45)
-}
-
-.login-node-providers.login-platform-tabs button.connected {
-  border-color: rgba(244, 210, 138, .30);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .075), 0 0 0 1px rgba(244, 210, 138, .035)
-}
-
-.login-node-providers.login-platform-tabs button.external-on {
-  border-color: rgba(244, 210, 138, .34);
-  background: linear-gradient(135deg, rgba(244, 210, 138, .09), rgba(255, 255, 255, .030));
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .14), 0 0 0 1px rgba(244, 210, 138, .04), inset 0 1px 0 rgba(255, 255, 255, .075)
-}
-
-.login-node-providers.login-platform-tabs button.pending {
-  border-color: rgba(244, 210, 138, .26);
-  background: linear-gradient(135deg, rgba(244, 210, 138, .09), rgba(255, 255, 255, .024))
-}
-
-.login-node-providers.login-platform-tabs button.sorting {
-  transform: translateY(-1px) scale(1.01)
-}
-
-.login-node-providers.login-platform-tabs button.provider-reorder-moving,
-.top-account-pill.provider-reorder-moving {
-  pointer-events: none;
-  will-change: transform
-}
-
-.provider-logo.has-avatar {
-  overflow: hidden;
-  background: rgba(255, 255, 255, .070)
-}
-
-.provider-logo.has-avatar img {
-  width: 100%;
-  height: 100%;
-  display: block;
-  object-fit: cover;
-  border-radius: inherit
-}
-
-.login-provider-state-badge {
-  grid-column: 4;
-  justify-self: end;
-  align-self: center;
-  min-width: 34px;
-  padding: 2px 7px;
-  border-radius: 3px;
-  border: 0;
-  background: linear-gradient(135deg, #fff3c2, var(--champagne), #c9963d);
-  color: #201303;
-  font-size: 8.5px;
-  font-weight: 900;
-  letter-spacing: .04em;
-  text-align: center;
-  text-shadow: none;
-  box-shadow: 0 0 10px rgba(244, 210, 138, .18);
-  pointer-events: none
-}
-
-.login-provider-state-badge.svip {
-  background: linear-gradient(135deg, #fff8d8, #f4d28a 46%, #e0a13b 100%);
-  color: #1e1203;
-  box-shadow: 0 0 12px rgba(244, 210, 138, .26)
-}
-
-.login-provider-state-badge.normal,
-.login-provider-state-badge.none {
-  border: 1px solid rgba(255, 255, 255, .42);
-  background: rgba(255, 255, 255, .055);
-  color: rgba(255, 255, 255, .76);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 0 8px rgba(255, 255, 255, .04)
-}
-
-.login-provider-state-badge.hidden {
-  display: none
-}
-
-.login-provider-external-switch {
-  grid-column: 5;
-  justify-self: end;
-  align-self: center;
-  position: relative;
-  width: 56px;
-  height: 22px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, .13);
-  background: linear-gradient(135deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .018));
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .34), inset 0 0 0 1px rgba(255, 255, 255, .030);
-  opacity: .72;
-  cursor: pointer;
-  pointer-events: auto;
-  user-select: none;
-  transition: opacity .18s ease, border-color .20s ease, background .20s ease, box-shadow .20s ease, transform .20s ease
-}
-
-.login-provider-external-label {
-  position: absolute;
-  left: 18px;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: rgba(255, 255, 255, .66);
-  font-size: 9px;
-  font-weight: 850;
-  line-height: 1;
-  letter-spacing: 0;
-  text-align: center;
-  pointer-events: none;
-  text-shadow: 0 1px 5px rgba(0, 0, 0, .38);
-  transition: left .22s cubic-bezier(.18, .86, .24, 1), right .22s cubic-bezier(.18, .86, .24, 1), color .20s ease
-}
-
-.login-provider-external-switch i {
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, .54);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .34);
-  transform: translateY(-50%);
-  transition: left .22s cubic-bezier(.18, .86, .24, 1), background .20s ease, box-shadow .20s ease
-}
-
-.login-node-providers.login-platform-tabs button.external-on .login-provider-external-switch {
-  opacity: 1;
-  border-color: rgba(244, 210, 138, .46);
-  background: linear-gradient(135deg, rgba(244, 210, 138, .28), rgba(var(--fc-accent-rgb), .12));
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .32), 0 0 16px rgba(244, 210, 138, .18), inset 0 0 0 1px rgba(255, 255, 255, .08)
-}
-
-.login-node-providers.login-platform-tabs button.external-on .login-provider-external-switch i {
-  left: 38px;
-  background: #fff4cf;
-  box-shadow: 0 0 10px rgba(244, 210, 138, .58), 0 1px 4px rgba(0, 0, 0, .32)
-}
-
-.login-node-providers.login-platform-tabs button.external-on .login-provider-external-label {
-  left: 6px;
-  right: 18px;
-  color: rgba(255, 244, 207, .92)
-}
-
-.login-node-providers.login-platform-tabs button:hover .login-provider-external-switch,
-.login-provider-external-switch:hover,
-.login-provider-external-switch:focus-visible {
-  opacity: .92;
-  transform: translateY(-1px);
-  outline: none
 }
 
 .login-node-graph .flow-port {
@@ -11634,6 +11421,203 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   font-variant-numeric: tabular-nums
 }
 
+
+/* --- 心跳监护文本行：标签与滑块行同字体，输入框与迷你按钮同质感 --- */
+.fx-text-row {
+  display: grid;
+  grid-template-columns: minmax(78px, 92px) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 8px 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  background: rgba(255, 255, 255, .030)
+}
+
+.fx-text-row label {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, .72);
+  letter-spacing: .2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis
+}
+
+.fx-text-row input[type=text] {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .04);
+  color: rgba(255, 255, 255, .85);
+  font-family: inherit;
+  font-size: 11.5px;
+  letter-spacing: .3px;
+  padding: 0 10px;
+  outline: none;
+  cursor: text;
+  transition: background .18s ease, border-color .18s ease, color .18s ease
+}
+
+.fx-text-row input[type=text]::placeholder {
+  color: rgba(255, 255, 255, .28);
+  letter-spacing: .2px
+}
+
+.fx-text-row input[type=text]:hover {
+  background: rgba(255, 255, 255, .10);
+  border-color: rgba(255, 255, 255, .18)
+}
+
+.fx-text-row input[type=text]:focus {
+  background: rgba(255, 255, 255, .10);
+  border-color: rgba(var(--fc-accent-rgb), .52);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(var(--fc-accent-rgb), .16)
+}
+
+
+
+/* --- 心跳监护快捷色块：不依赖系统取色对话框，桌面端点按即换色 --- */
+.heart-pulse-swatches {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 2px 0 10px;
+  padding: 0 10px
+}
+
+.heart-pulse-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .28);
+  cursor: pointer;
+  padding: 0;
+  transition: transform .16s ease, box-shadow .16s ease
+}
+
+.heart-pulse-swatch:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 10px rgba(255, 255, 255, .45)
+}
+
+.heart-pulse-swatch:active {
+  transform: scale(1.05)
+}
+
+
+
+
+
+/* --- 心跳监护：取色按钮 + 应用内 HSV 取色面板 --- */
+.lyric-color-swatch-btn {
+  width: 42px;
+  height: 32px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 10px 22px rgba(0, 0, 0, .18);
+  transition: border-color .18s, box-shadow .18s, transform .18s
+}
+
+.lyric-color-swatch-btn:hover { transform: translateY(-1px) scale(1.04) }
+
+.heart-picker-panel {
+  position: fixed;
+  z-index: 9999;
+  width: 220px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(18, 22, 30, .92);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .5);
+  display: none;
+  flex-direction: column;
+  gap: 10px
+}
+
+.heart-picker-panel.open { display: flex }
+
+.heart-picker-sv {
+  position: relative;
+  height: 130px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  cursor: crosshair;
+  touch-action: none;
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)
+}
+
+.heart-picker-sv-cursor {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .6);
+  transform: translate(-50%, -50%);
+  pointer-events: none
+}
+
+.heart-picker-hue {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  touch-action: none;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)
+}
+
+.heart-picker-hue-cursor {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 18px;
+  border-radius: 3px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, .6);
+  transform: translate(-50%, -50%);
+  pointer-events: none
+}
+
+.heart-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+
+.heart-picker-preview {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .2)
+}
+
+.heart-picker-hex {
+  flex: 1;
+  height: 28px;
+  min-width: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .05);
+  color: rgba(255, 255, 255, .85);
+  font-family: inherit;
+  font-size: 11.5px;
+  letter-spacing: .3px;
+  padding: 0 8px;
+  outline: none
+}
+
+.heart-picker-panel .fx-mini-btn { flex: 0 0 auto }
+
+
 .fx-sonic-hidden {
   display: none !important;
 }
@@ -13670,6 +13654,17 @@ html:fullscreen body.desktop-shell #playlist-panel {
   background: rgba(var(--fc-accent-rgb), .20);
   border-radius: 3px
 }
+
+/* 触摸设备：无 hover 的滚动场景下 backdrop-filter 每帧重绘会闪白（低端 WebView），
+   禁用毛玻璃改纯半透明背景；桌面鼠标设备保留毛玻璃。 */
+@media (hover: none), (pointer: coarse) {
+  #playlist-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(10, 11, 16, .88)
+  }
+}
+
 
 .playlist-panel-sticky {
   position: sticky;
@@ -17741,7 +17736,7 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
 .lt-panel-close { background: none; border: none; color: rgba(255, 255, 255, .35); font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: color .15s, background .15s; }
 .lt-panel-close:hover { color: #fff; background: rgba(255, 255, 255, .08); }
 .lt-panel-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
-.lt-view { }
+.lt-view { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .lt-view-title { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: rgba(255, 255, 255, .4); margin-bottom: 12px; text-transform: uppercase; }
 .lt-hero-icon { width: 48px; height: 48px; margin: 8px auto 14px; color: rgba(80, 140, 240, .6); }
 .lt-hero-icon svg { width: 100%; height: 100%; }
@@ -17783,13 +17778,35 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
   50% { opacity: .35; }
 }
 .lt-active-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+/* 顶部栏固定：滚动内容时不消失，离开按钮始终可见 */
+.lt-active-bar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  padding: 4px 0 8px;
+  margin-bottom: 6px;
+  background: linear-gradient(180deg, rgba(16, 18, 26, .97) 0%, rgba(16, 18, 26, .88) 72%, transparent 100%);
+}
+
+/* 一起听时长：顶部栏醒目胶囊 */
+.lt-duration-display {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(150, 225, 255, .94);
+  white-space: nowrap;
+  background: rgba(80, 140, 240, .12);
+  border: 1px solid rgba(80, 140, 240, .22);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
 .lt-room-badge { font-weight: 700; font-size: 14px; color: rgba(80, 140, 240, .9); }
 .lt-room-meta { font-size: 11px; color: rgba(255, 255, 255, .4); flex: 1; }
 .lt-host-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: rgba(255, 180, 80, .15); color: rgba(255, 180, 80, .8); }
 .lt-members { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; max-height: 72px; overflow-y: auto; }
 .lt-member { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: rgba(255, 255, 255, .05); color: rgba(255, 255, 255, .55); }
 .lt-chat-box { background: rgba(0, 0, 0, .25); border-radius: 10px; border: 1px solid rgba(255, 255, 255, .05); overflow: hidden; }
-.lt-chat-messages { height: 168px; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 9px; scroll-behavior: smooth; overscroll-behavior: contain; }
+.lt-chat-messages { height: 96px; overflow-y: auto; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; scroll-behavior: smooth; overscroll-behavior: contain; }
 .lt-chat-messages::-webkit-scrollbar { width: 4px; }
 .lt-chat-messages::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 2px; }
 .lt-chat-messages::-webkit-scrollbar-track { background: transparent; }
@@ -17797,8 +17814,8 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
 .lt-chat-nick { font-weight: 700; color: rgba(80, 140, 240, .85); margin-right: 4px; }
 .lt-chat-msg-self .lt-chat-nick { color: rgba(120, 200, 140, .85); }
 .lt-chat-text { color: rgba(255, 255, 255, .65); }
-.lt-chat-input-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid rgba(255, 255, 255, .05); }
-.lt-chat-input { flex: 1; padding: 6px 10px; font-size: 12px; }
+.lt-chat-input-row { display: flex; gap: 6px; padding: 6px 8px; border-top: 1px solid rgba(255, 255, 255, .05); }
+.lt-chat-input { flex: 1; padding: 5px 8px; font-size: 12px; }
 .lt-status-bar { padding: 8px 18px; border-top: 1px solid rgba(255, 255, 255, .06); font-size: 10px; color: rgba(255, 255, 255, .3); flex-shrink: 0; }
 .lt-connect-btn {
   display: inline-block;
@@ -17862,6 +17879,25 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
 }
 .lt-leave-btn:active {
   transform: scale(.96);
+}
+
+/* 顶部栏"离开房间"按钮: 必须在 .lt-leave-btn 之后定义才能覆盖其黑底白字样式。
+   柔和危险胶囊——常态低调半透明红, hover 才加深提示 */
+.lt-leave-top {
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 11px;
+  border: 1px solid rgba(255, 92, 92, .22);
+  border-radius: 999px;
+  background: rgba(255, 92, 92, .07);
+  color: rgba(255, 160, 160, .72);
+  box-shadow: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.lt-leave-top:hover {
+  background: rgba(255, 92, 92, .16);
+  border-color: rgba(255, 92, 92, .42);
+  color: rgba(255, 185, 185, .95);
 }
 
 /* 邀请按钮 */
@@ -18678,3 +18714,821 @@ body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] .home-card-label {
 @media (max-width: 640px) {
   .lt-chat-messages { height: 140px; }
 }
+
+/* ================================================================
+   MoMusic 登录界面 v4 最终版（QQ 音乐风单卡片）
+   结构：固定蓝条头部（粒子背景 #login-brand-canvas 挂载于 .ml-head）+ 滚动内容区
+   ================================================================ */
+
+/* ---- 卡片容器 ---- */
+#login-modal .modal.dual-login-modal.momusic-login-modal {
+  --ml-primary: #38bdf8;
+  --ml-grad: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 40%, #22d3ee 80%, #06b6d4 100%);
+  --ml-glow: rgba(56, 189, 248, 0.45);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 94vw);
+  max-width: min(620px, 94vw);
+  min-width: 0;
+  min-height: 0;
+  max-height: 96vh;
+  padding: 0;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(180deg, rgba(10, 20, 36, 0.92), rgba(5, 9, 20, 0.97));
+  backdrop-filter: blur(28px) saturate(1.18);
+  -webkit-backdrop-filter: blur(28px) saturate(1.18);
+  overflow: hidden;
+  box-shadow: 0 40px 120px rgba(2, 8, 23, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  animation: mlIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes mlIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+/* 彩蛋锁定态：保留原宽度，隐藏蓝条 */
+#login-modal.login-easter-egg-locked .modal.dual-login-modal.momusic-login-modal {
+  width: min(560px, 94vw);
+  max-width: min(560px, 94vw);
+}
+#login-modal.login-easter-egg-locked .ml-head { display: none; }
+
+/* ---- 顶部蓝条（粒子背景层，login-redesign.js 将 #login-brand-canvas 挂载于此）---- */
+#login-modal .ml-head {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 18px 13px;
+  background:
+    radial-gradient(420px 190px at 10% -30%, rgba(14, 165, 233, 0.38), transparent 62%),
+    radial-gradient(300px 170px at 92% 8%, rgba(34, 211, 238, 0.24), transparent 62%),
+    linear-gradient(135deg, #0a1b36 0%, #0d2850 52%, #08152b 100%);
+  border-bottom: 1px solid rgba(125, 211, 252, 0.18);
+  overflow: hidden;
+}
+#login-modal .ml-head > :not(canvas) { position: relative; z-index: 2; }
+#login-modal .ml-head #login-brand-canvas { z-index: 1; opacity: 0.9; }
+
+#login-modal .ml-head-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+#login-modal .ml-head-brand img {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35), 0 8px 26px rgba(14, 165, 233, 0.35);
+  flex: none;
+}
+#login-modal .ml-head-copy { min-width: 0; }
+#login-modal .ml-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#login-modal .ml-provider-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  flex: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f9ff;
+  transition: background 0.25s, color 0.25s;
+}
+#login-modal .ml-provider-badge.netease { background: rgba(240, 84, 84, 0.26); color: #f87171; }
+#login-modal .ml-provider-badge.qq { background: rgba(49, 194, 124, 0.26); color: #4ade80; }
+#login-modal .ml-provider-badge.kugou { background: rgba(46, 196, 240, 0.26); color: #38bdf8; }
+#login-modal .ml-provider-badge.qishui { background: rgba(0, 201, 167, 0.26); color: #2dd4bf; }
+#login-modal .ml-provider-badge.spotify { background: rgba(29, 185, 84, 0.26); color: #4ade80; }
+#login-modal .ml-title {
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  margin: 0;
+  padding: 0;
+  color: #f0f9ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+#login-modal .ml-title.ml-text-fade { animation: mlTextIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes mlTextIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#login-modal .ml-desc.ml-text-fade { animation: mlTextIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+#login-modal .ml-desc {
+  font-size: 11.5px;
+  color: rgba(240, 249, 255, 0.62);
+  margin: 3px 0 0;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+#login-modal .ml-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+#login-modal .ml-head-actions .login-reset-all-btn {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 249, 255, 0.6);
+  font-size: 10.5px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+#login-modal .ml-head-actions .login-reset-all-btn:hover { border-color: rgba(248, 113, 113, 0.5); color: #fca5a5; }
+#login-modal .ml-head-actions .login-panel-close {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 15px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(240, 249, 255, 0.6);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+#login-modal .ml-head-actions .login-panel-close:hover { border-color: rgba(255, 255, 255, 0.3); color: #f0f9ff; background: rgba(255, 255, 255, 0.08); }
+
+/* ---- 内容滚动区 ---- */
+#login-modal .ml-single {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 22px 16px;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+#login-modal .ml-single > * { flex-shrink: 0; }
+
+/* ---- 模式切换（segmented control）---- */
+#login-modal .ml-tabs {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+#login-modal .ml-tab {
+  position: relative;
+  flex: 1;
+  min-height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(240, 249, 255, 0.62);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1.15;
+  transition: color 0.22s;
+}
+#login-modal .ml-tab small {
+  font-size: 9px;
+  font-weight: 500;
+  color: rgba(240, 249, 255, 0.4);
+  transition: color 0.22s;
+}
+#login-modal .ml-tab.active {
+  background: var(--ml-grad);
+  color: #04121f;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+}
+#login-modal .ml-tab.active small { color: rgba(4, 18, 31, 0.7); }
+#login-modal .ml-tab:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---- 平台 chips ---- */
+#login-modal .ml-platforms {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: stretch !important;
+}
+#login-modal .ml-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 54px !important;
+  height: 54px !important;
+  max-height: 54px !important;
+  padding: 7px 10px !important;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: #f0f9ff;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+#login-modal .ml-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+}
+#login-modal .ml-card:active { transform: scale(0.97); }
+#login-modal .ml-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  flex: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f9ff;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+#login-modal .ml-card.netease .ml-badge { background: rgba(240, 84, 84, 0.2); color: #f87171; }
+#login-modal .ml-card.qq .ml-badge { background: rgba(49, 194, 124, 0.2); color: #4ade80; }
+#login-modal .ml-card.kugou .ml-badge { background: rgba(46, 196, 240, 0.2); color: #38bdf8; }
+#login-modal .ml-card.qishui .ml-badge { background: rgba(0, 201, 167, 0.2); color: #2dd4bf; }
+#login-modal .ml-card.spotify .ml-badge { background: rgba(29, 185, 84, 0.2); color: #4ade80; }
+#login-modal .ml-card.rdi .ml-badge { background: rgba(240, 192, 64, 0.2); color: #fcd34d; }
+#login-modal .ml-card .ml-card-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+#login-modal .ml-card b {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f0f9ff;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#login-modal .ml-card small {
+  font-size: 9px;
+  color: rgba(240, 249, 255, 0.42);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#login-modal .ml-card.active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.09);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35), 0 8px 22px rgba(2, 8, 23, 0.5), 0 0 18px rgba(56, 189, 248, 0.14);
+}
+#login-modal .ml-card.active .ml-badge {
+  background: var(--ml-grad);
+  color: #04121f;
+  box-shadow: 0 3px 10px rgba(14, 165, 233, 0.4);
+}
+/* active 态以 badge 渐变 + 边框光晕表达，不再叠加对勾 */
+#login-modal .rdi-toggle {
+  margin-left: auto;
+  font-size: 9px;
+  color: rgba(240, 192, 64, 0.85);
+  flex: none;
+}
+/* 平台卡片内注入元素（排序手柄 / 状态徽标 / 胶囊开关）重定位 */
+#login-modal .ml-card .login-provider-sort-handle {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: 12px;
+  height: 26px;
+  gap: 3px;
+  border-radius: 5px;
+  align-self: auto;
+  opacity: 0.5;
+  cursor: grab;
+  touch-action: none;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  flex: none;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#login-modal .ml-card .login-provider-sort-handle i { width: 7px; height: 1px; }
+#login-modal .ml-card .login-provider-sort-handle:hover { opacity: 1; }
+#login-modal .ml-card .login-provider-state-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 3;
+  min-width: 26px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 0;
+  background: linear-gradient(135deg, #fff3c2, #f4d28a, #c9963d);
+  color: #201303;
+  font-size: 8px;
+  font-weight: 900;
+  text-align: center;
+  pointer-events: none;
+}
+#login-modal .ml-card .login-provider-state-badge.svip { background: linear-gradient(135deg, #fff8d8, #f4d28a 46%, #e0a13b 100%); }
+#login-modal .ml-card .login-provider-state-badge.normal,
+#login-modal .ml-card .login-provider-state-badge.none {
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+}
+#login-modal .ml-card .login-provider-state-badge.hidden { display: none; }
+#login-modal .ml-card .login-provider-external-switch {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  z-index: 2;
+  width: 44px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2px;
+  font-size: 8px;
+  color: rgba(240, 249, 255, 0.4);
+  cursor: pointer;
+  opacity: 0.9;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+#login-modal .ml-card .login-provider-external-switch:hover { border-color: rgba(125, 211, 252, 0.5); }
+#login-modal .ml-card .login-provider-external-switch .login-provider-external-label { display: none; }
+#login-modal .ml-card .login-provider-external-switch i {
+  position: static;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.18, 0.86, 0.24, 1), background 0.2s;
+}
+#login-modal .ml-card .login-provider-external-switch i::after { display: none; }
+#login-modal .ml-card.external-on .login-provider-external-switch i { background: rgba(56, 189, 248, 0.55); }
+#login-modal .ml-card.external-on .login-provider-external-switch {
+  border-color: rgba(125, 211, 252, 0.55);
+  background: rgba(56, 189, 248, 0.16);
+}
+#login-modal .ml-card.external-on .login-provider-external-switch i {
+  transform: translateX(26px);
+  background: #7dd3fc;
+}
+#login-modal .ml-card .login-provider-external-switch:focus-visible { outline: 1px solid #38bdf8; border-radius: 4px; }
+/* 拖拽排序时其他卡片降透明 */
+#login-modal .ml-single.sorting-provider .ml-card:not(.sorting) { opacity: 0.72; }
+
+/* ---- 内容区 ---- */
+#login-modal .ml-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+#login-modal .ml-kugou-hint {
+  margin: 0;
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: rgba(255, 220, 150, 0.95);
+  background: rgba(255, 180, 80, 0.08);
+  border: 1px dashed rgba(255, 180, 80, 0.28);
+  text-align: center;
+}
+
+/* ---- 二维码卡片 ---- */
+#login-modal .ml-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 13px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+#login-modal .ml-qr-stage {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 8px;
+  box-shadow: 0 16px 44px rgba(2, 8, 23, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.09), 0 0 26px rgba(56, 189, 248, 0.1);
+}
+#login-modal .ml-qr img#qr-img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 10px;
+  background: #fff;
+  object-fit: contain;
+  display: block;
+}
+#login-modal .ml-qr img#qr-img[src=""],
+#login-modal .ml-qr img#qr-img:not([src]) { display: none; }
+/* loading 骨架：二维码就绪后由 :has 隐藏（img 有 src 时） */
+#login-modal .ml-qr-skeleton {
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  background: linear-gradient(100deg, #dfe9f5 36%, #f2f8ff 50%, #dfe9f5 64%);
+  background-size: 220% 100%;
+  animation: mlQrShimmer 1.5s linear infinite;
+}
+#login-modal .ml-qr-stage:has(img#qr-img[src]:not([src=""])) .ml-qr-skeleton { display: none; }
+@keyframes mlQrShimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+/* 状态覆盖层 */
+#login-modal .ml-qr-mask {
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.93);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  text-align: center;
+}
+#login-modal .ml-qr-mask.show { opacity: 1; pointer-events: auto; }
+#login-modal .ml-qr-mask-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  box-shadow: 0 6px 18px rgba(245, 158, 11, 0.4);
+  animation: mlMaskPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+#login-modal .ml-qr-mask.scan .ml-qr-mask-icon { background: linear-gradient(135deg, #34d399, #10b981); box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4); }
+#login-modal .ml-qr-mask.fail .ml-qr-mask-icon { background: linear-gradient(135deg, #f87171, #ef4444); box-shadow: 0 6px 18px rgba(239, 68, 68, 0.4); }
+#login-modal .ml-qr-mask.expired .ml-qr-mask-icon { animation: mlSpin 1.2s linear infinite; }
+@keyframes mlMaskPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes mlSpin { to { transform: rotate(360deg); } }
+#login-modal .ml-qr-mask-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.4;
+}
+#login-modal .ml-qr-mask-sub {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.45;
+}
+#login-modal .ml-qr-mask-btn {
+  margin-top: 2px;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 16px;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+#login-modal .ml-qr-mask-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+#login-modal .ml-qr-mask-btn:active { transform: translateY(0) scale(0.98); }
+/* 状态行 */
+#login-modal .ml-status {
+  min-height: 16px;
+  font-size: 12px;
+  color: rgba(240, 249, 255, 0.65);
+  text-align: center;
+  line-height: 1.45;
+  transition: color 0.2s;
+}
+#login-modal .ml-status.scan { color: #7dd3fc; }
+#login-modal .ml-status.fail { color: #f87171; }
+#login-modal .ml-status.preview { color: #7dd3fc; }
+/* 辅助按钮 */
+#login-modal .ml-qr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+}
+#login-modal .ml-act {
+  min-height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(240, 249, 255, 0.72);
+  font-size: 11.5px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+#login-modal .ml-act:hover {
+  border-color: rgba(56, 189, 248, 0.5);
+  color: #f0f9ff;
+  background: rgba(56, 189, 248, 0.09);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.12);
+}
+#login-modal .ml-act:active { transform: scale(0.97); }
+#login-modal .ml-act b { color: #7dd3fc; font-weight: 800; }
+#login-modal .ml-act:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+/* 无二维码预览模式（汽水/说明态）：展示平台图标占位 */
+#login-modal .ml-qr.web-login-preview .ml-qr-skeleton { display: none; }
+#login-modal .ml-qr.web-login-preview .ml-qr-stage {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#login-modal .ml-qr.web-login-preview .ml-qr-stage::after {
+  content: attr(data-mark);
+  font-size: 38px;
+  font-weight: 800;
+  color: rgba(125, 211, 252, 0.85);
+  text-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
+}
+
+/* Cookie 模式：隐藏二维码卡片，仅显示导入面板 */
+#login-modal .ml-content:has(.ml-cookie.show) .ml-qr { display: none !important; }
+
+/* ---- Cookie 面板 ---- */
+#login-modal .ml-cookie { width: 100%; display: none; }
+#login-modal .ml-cookie.show { display: block; }
+#login-modal .ml-cookie .qq-cookie-input {
+  width: 100%;
+  min-height: 84px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(2, 8, 23, 0.6);
+  color: #f0f9ff;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 10px 12px;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#login-modal .ml-cookie .qq-cookie-input:focus {
+  outline: none;
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14);
+}
+#login-modal .ml-cookie .qq-cookie-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+#login-modal .ml-cookie .qq-cookie-note { font-size: 11px; color: rgba(240, 249, 255, 0.42); }
+#login-modal .ml-btn.primary {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 18px;
+  background: var(--ml-grad);
+  color: #04121f;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(14, 165, 233, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+#login-modal .ml-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(14, 165, 233, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+#login-modal .ml-btn.primary:active { transform: translateY(0) scale(0.98); box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+#login-modal .ml-btn.primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ---- 底部 ---- */
+#login-modal .ml-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+/* 次级按钮（品牌描边） */
+#login-modal .ml-toggle {
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.06);
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+#login-modal .ml-toggle:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+  color: #bae6fd;
+  background: rgba(56, 189, 248, 0.14);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.16);
+}
+#login-modal .ml-toggle:active { transform: scale(0.97); }
+#login-modal .ml-toggle:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+/* 主按钮（品牌渐变） */
+#login-modal .ml-start {
+  position: relative;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 24px;
+  background: var(--ml-grad);
+  color: #04121f;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(14, 165, 233, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+}
+#login-modal .ml-start:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(14, 165, 233, 0.48), 0 0 20px rgba(56, 189, 248, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+#login-modal .ml-start:active { transform: translateY(0) scale(0.97); box-shadow: 0 5px 14px rgba(14, 165, 233, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.42); }
+#login-modal .ml-start:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ---- 键盘焦点 ---- */
+#login-modal button:focus-visible,
+#login-modal textarea:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- 彩蛋（正常隐藏）---- */
+#login-modal .login-easter-egg-gate { display: none; }
+#login-modal.login-easter-egg-locked .login-easter-egg-gate { display: flex; }
+
+/* ---- 响应式：窄屏 ---- */
+@media (max-width: 560px) {
+  #login-modal .modal.dual-login-modal.momusic-login-modal { width: 96vw; max-width: 96vw; }
+  #login-modal .ml-head { padding: 12px 14px 11px; }
+  #login-modal .ml-head-brand img { width: 34px; height: 34px; border-radius: 10px; }
+  #login-modal .ml-title { font-size: 18px; }
+  #login-modal .ml-desc { font-size: 10.5px; }
+  #login-modal .ml-single { padding: 14px 16px 14px; }
+  #login-modal .ml-platforms { gap: 6px; }
+  #login-modal .ml-card { min-height: 48px !important; height: 48px !important; max-height: 48px !important; padding: 6px 8px !important; }
+  #login-modal .ml-badge { width: 23px; height: 23px; font-size: 9px; }
+  #login-modal .ml-card b { font-size: 11.5px; }
+  #login-modal .ml-qr-stage { width: 160px; height: 160px; }
+}
+
+/* ---- 无障碍：减少动态 ---- */
+@media (prefers-reduced-motion: reduce) {
+  #login-modal .modal.dual-login-modal.momusic-login-modal { animation: none; }
+  #login-modal .ml-card,
+  #login-modal .ml-tab,
+  #login-modal .ml-act,
+  #login-modal .ml-qr-mask,
+  #login-modal .ml-qr-mask-icon,
+  #login-modal .ml-qr-skeleton { animation: none !important; transition: none !important; }
+}
+
+/* ---- 空间不足拆分：视图切换器 + 平台卡 ---- */
+#login-modal .ml-view-switch {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  margin: 10px 22px 0;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+#login-modal .ml-view-switch[hidden] { display: none; }
+#login-modal .ml-view-btn {
+  flex: 1;
+  min-height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(240, 249, 255, 0.6);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.2s, background 0.22s, box-shadow 0.22s;
+}
+#login-modal .ml-view-btn.active {
+  background: var(--ml-grad);
+  color: #04121f;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.32);
+}
+#login-modal .ml-platform-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 22px;
+  overflow: hidden;
+  animation: mlCardIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+#login-modal .ml-platform-card.show { display: flex; }
+@keyframes mlCardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#login-modal .ml-single { animation: mlCardIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  #login-modal .ml-platform-card,
+  #login-modal .ml-single { animation: none; }
+}
+
+/* ---- 主卡紧凑档：拆分后仍不足时的尺寸降档（内容完整） ---- */
+#login-modal .ml-single.ml-compact { gap: 7px; padding-top: 10px; padding-bottom: 10px; }
+#login-modal .ml-single.ml-compact .ml-tab { min-height: 31px; }
+#login-modal .ml-single.ml-compact .ml-qr { padding: 10px 10px 8px; gap: 7px; }
+#login-modal .ml-single.ml-compact .ml-qr-stage { width: 150px; height: 150px; }
+#login-modal .ml-single.ml-compact .ml-start { padding: 8px 20px; }
+#login-modal .ml-single.ml-compact .ml-toggle { padding: 6px 12px; }
+@media (max-width: 560px) {
+  #login-modal .ml-single.ml-compact .ml-qr-stage { width: 144px; height: 144px; }
+}
+
+/* ---- 极矮窗口 ml-tiny：非核心入口收起 + 二维码最小档（内容完整可扫） ---- */
+#login-modal .ml-single.ml-tiny .ml-qr-actions { display: none; }
+#login-modal .ml-single.ml-tiny .ml-qr-stage { width: 122px; height: 122px; }
+#login-modal .ml-single.ml-tiny .ml-qr { padding: 8px 8px 6px; gap: 6px; }
+#login-modal .ml-single.ml-tiny .ml-status { min-height: 14px; font-size: 11px; }
+#login-modal .ml-single.ml-tiny .ml-tab { min-height: 28px; font-size: 12px; }
+#login-modal .ml-single.ml-tiny .ml-footer { padding-top: 0; }
+#login-modal .ml-single.ml-tiny .ml-toggle { display: none; }
+#login-modal .ml-single.ml-tiny .ml-start { padding: 7px 18px; }
+
+/* ---- �Զ�����Դ: ������֤ (lx verify probe) ---- */
+.cs-import-verify-zone { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.08); }
+.cs-import-verify-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.cs-import-verify-row .cs-import-input { flex: 1; min-width: 0; }
+.cs-verify-result { font-size: 12px; line-height: 1.5; min-height: 18px; word-break: break-all; }
+.cs-verify-result.pending { color: #8ab4f8; }
+.cs-verify-result.ok { color: #4ade80; }
+.cs-verify-result.warn { color: #fbbf24; }
+.cs-verify-result.fail { color: #f87171; }
+
+.cs-verify-source { flex: 0 0 210px !important; }

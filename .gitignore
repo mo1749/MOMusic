@@ -29,3 +29,8 @@ desktop.ini
 *.log
 tmp/
 temp/
+# Spotify ±¾µØÆ¾Ö¤
+.spotify-credentials.json
+spotify-credentials.json
+.spotify-token.json
+spotify-token.json

@@ -37,6 +37,28 @@
 !include nsDialogs.nsh
 !include WinMessages.nsh
 
+!ifdef MOMusic_INSTALL_DIR_NAME
+  !define MoMusic_INSTALL_DIR_NAME "${MOMusic_INSTALL_DIR_NAME}"
+!endif
+!ifdef MOMusic_INSTALL_DIR_NAME_LOWER
+  !define MoMusic_INSTALL_DIR_NAME_LOWER "${MOMusic_INSTALL_DIR_NAME_LOWER}"
+!endif
+!ifdef MOMusic_INSTALL_MARKER
+  !define MoMusic_INSTALL_MARKER "${MOMusic_INSTALL_MARKER}"
+!endif
+!ifdef MOMusic_MARKER_APP_ID
+  !define MoMusic_MARKER_APP_ID "${MOMusic_MARKER_APP_ID}"
+!endif
+!ifdef MOMusic_INSTALL_BRAND
+  !define MoMusic_INSTALL_BRAND "${MOMusic_INSTALL_BRAND}"
+!endif
+!ifdef MOMusic_INSTALL_TITLE
+  !define MoMusic_INSTALL_TITLE "${MOMusic_INSTALL_TITLE}"
+!endif
+!ifdef MOMusic_INSTALL_NOTICE
+  !define MoMusic_INSTALL_NOTICE "${MOMusic_INSTALL_NOTICE}"
+!endif
+
 !ifndef MoMusic_INSTALL_DIR_NAME
   !define MoMusic_INSTALL_DIR_NAME "MoMusic"
 !endif

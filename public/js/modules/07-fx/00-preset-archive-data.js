@@ -12,6 +12,7 @@ var presetMeta = [
   { name: '几何能量核心', nameHtml: '几何能量核心 <span class="pc-name-en">Golden-Core</span>', desc: '金色多面体 · 粒子星轨', descHtml: '金色多面体 · <span class="pc-author-ajin">粒子星轨</span>' },
   { name: '像素颜文字', nameHtml: '像素颜文字 <span class="pc-name-en">Pixel-Kaomoji</span>', desc: '像素表情 · 节拍律动', descHtml: '像素表情 · <span class="pc-author-ajin">节拍律动</span>' },
   { name: '树梢乐谱', nameHtml: '树梢乐谱 <span class="pc-name-en">Canopy-Score</span>', desc: '树梢飘谱 · 音符随拍', descHtml: '树梢飘谱 · <span class="pc-author-ajin">音符随拍</span>' },
+  { name: '心跳监护', nameHtml: '心跳监护 <span class="pc-name-en">Heart-Pulse</span>', desc: '心电图 · 节拍心跳', descHtml: '心电图 · <span class="pc-author-ajin">节拍心跳</span>' },
 ];
 var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 14c3-2 5-2 8 0s5 2 8 0M3 10c3-2 5-2 8 0s5 2 8 0M3 18c3-2 5-2 8 0s5 2 8 0"/></svg>',
@@ -26,8 +27,9 @@ var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.2" ry="3.5" transform="rotate(120 12 12)"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/><path d="M8 15h8"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V6.5c4-2.2 6.8-2.2 10 0v12.5"/><path d="M5 9c-2 0-3 1.4-3 2.8S3 14.5 5 14.5"/><path d="M15 7.5c2.3-.1 4.1 1.1 4.1 2.8S17.4 13 15 13"/><path d="M9 5c1.7-2.3 3.4-2.7 5.4-1.4"/><path d="M15 4v-2"/><path d="M18 6l2-1.1"/><path d="M9 21h8"/><path d="M14 17h5"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l1.7-3.2 3.1 7.2 2.3-5.1H16l1.4 2.1H21"/><path d="M12 4.4c-2.3-2.4-6.2-1.1-6.2 2.2 0 3.4 6.2 6.3 6.2 6.3s6.2-2.9 6.2-6.3c0-3.3-3.9-4.6-6.2-2.2z" opacity=".62"/></svg>',
 ];
-var presetDisplayOrder = [0, 6, 7, 8, 9, 10, 11, 5, 4, 2, 1, 3];
+var presetDisplayOrder = [0, 6, 7, 8, 9, 10, 11, 12, 5, 4, 2, 1, 3];
 var lyricColorPresets = [
   { name: '雾蓝', color: '#a9b8c8' },
   { name: '银蓝', color: '#9db8cf' },
@@ -297,7 +299,18 @@ var USER_FX_SHARE_KEYS = [
   'treeCanopyNoteDensity',
   'treeCanopyNoteSize',
   'treeCanopyBeatResponse',
-  'treeCanopyAmbient'
+  'treeCanopyAmbient',
+  'heartPulseLineColor',
+  'heartPulseGlowColor',
+  'heartPulseSpeed',
+  'heartPulseBeatResponse',
+  'heartPulseGlow',
+  'heartPulseGrid',
+  'heartPulseTrail',
+  'heartPulseTitle',
+  'heartPulseSubtitle',
+  'heartPulseShowBpm'
+  ,'heartPulseStatus','heartPulseWaveform','heartPulseHeartColor'
 ];
 
 function defaultUserFxArchiveName(index) {
@@ -542,6 +555,19 @@ function normalizeFxArchiveSnapshot(raw) {
     treeCanopyNoteSize: archiveNumber(raw, 'treeCanopyNoteSize', fxDefaults.treeCanopyNoteSize, 0.5, 2),
     treeCanopyBeatResponse: archiveNumber(raw, 'treeCanopyBeatResponse', fxDefaults.treeCanopyBeatResponse, 0, 2),
     treeCanopyAmbient: archiveNumber(raw, 'treeCanopyAmbient', fxDefaults.treeCanopyAmbient, 0, 2),
+    heartPulseLineColor: normalizeHexColor(raw.heartPulseLineColor || fxDefaults.heartPulseLineColor, fxDefaults.heartPulseLineColor),
+    heartPulseGlowColor: normalizeHexColor(raw.heartPulseGlowColor || fxDefaults.heartPulseGlowColor, fxDefaults.heartPulseGlowColor),
+    heartPulseHeartColor: normalizeHexColor(raw.heartPulseHeartColor || fxDefaults.heartPulseHeartColor, fxDefaults.heartPulseHeartColor),
+    heartPulseSpeed: archiveNumber(raw, 'heartPulseSpeed', fxDefaults.heartPulseSpeed, 0.35, 2.4),
+    heartPulseBeatResponse: archiveNumber(raw, 'heartPulseBeatResponse', fxDefaults.heartPulseBeatResponse, 0, 2),
+    heartPulseGlow: archiveNumber(raw, 'heartPulseGlow', fxDefaults.heartPulseGlow, 0.25, 2),
+    heartPulseGrid: archiveNumber(raw, 'heartPulseGrid', fxDefaults.heartPulseGrid, 0, 1),
+    heartPulseTrail: archiveNumber(raw, 'heartPulseTrail', fxDefaults.heartPulseTrail, 0.15, 1.5),
+    heartPulseTitle: String(raw.heartPulseTitle == null ? fxDefaults.heartPulseTitle : raw.heartPulseTitle).slice(0, 28),
+    heartPulseSubtitle: String(raw.heartPulseSubtitle == null ? fxDefaults.heartPulseSubtitle : raw.heartPulseSubtitle).slice(0, 36),
+    heartPulseShowBpm: raw.heartPulseShowBpm !== false,
+    heartPulseStatus: String(raw.heartPulseStatus == null ? fxDefaults.heartPulseStatus : raw.heartPulseStatus).slice(0, 24),
+    heartPulseWaveform: /^(clinical|sine|double)$/.test(String(raw.heartPulseWaveform)) ? String(raw.heartPulseWaveform) : fxDefaults.heartPulseWaveform,
     particleLyrics: raw.particleLyrics !== false,
     backCover: !!raw.backCover,
     shelf: archiveShelfMode,

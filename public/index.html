@@ -13,8 +13,11 @@
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260804-fix-white-buttons">
+  <link rel="stylesheet" href="css/index.css?v=20260816-momusic-1.5.0">
   <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
+  <link rel="stylesheet" href="css/login-console-style.css?v=20260813-login-saved-glass">
+  <link rel="stylesheet" href="css/custom-source-glass.css?v=20260813-custom-source-glass2">
+  <link rel="stylesheet" href="css/listen-together-glass.css?v=20260813-listen-together-glass4">
 </head>
 
 <body>
@@ -836,12 +839,12 @@
           <div class="fx-slider"><label>核心发光</label><input id="fx-goldencoreglow" type="range" min="0.2"
               max="2" step="0.05"><output></output></div>
           <div class="lyric-color-row" id="golden-core-color-row">
-            <input id="golden-core-color-picker" class="lyric-color-picker" type="color" value="#ffc46b" title="核心颜色">
+            <button id="golden-core-color-picker" class="lyric-color-swatch-btn" type="button" style="background:#ffc46b" title="点击打开取色器" onclick="openGoldenCoreColorPicker('goldenCoreColor', this)"></button>
             <div class="fx-color-row-label">核心颜色<small id="golden-core-color-value">#FFC46B</small></div>
             <button class="fx-mini-btn ghost" type="button" onclick="resetGoldenCoreColor('goldenCoreColor')">默认</button>
           </div>
           <div class="lyric-color-row" id="golden-core-halo-row">
-            <input id="golden-core-halo-picker" class="lyric-color-picker" type="color" value="#ff9a3c" title="光晕颜色">
+            <button id="golden-core-halo-picker" class="lyric-color-swatch-btn" type="button" style="background:#ff9a3c" title="点击打开取色器" onclick="openGoldenCoreColorPicker('goldenCoreHaloColor', this)"></button>
             <div class="fx-color-row-label">光晕颜色<small id="golden-core-halo-value">#FF9A3C</small></div>
             <button class="fx-mini-btn ghost" type="button" onclick="resetGoldenCoreColor('goldenCoreHaloColor')">默认</button>
           </div>
@@ -910,9 +913,37 @@
           <div class="fx-slider"><label>音符大小</label><input id="fx-treecanopynotesize" type="range" min="0.5" max="2" step="0.05"><output></output></div>
           <div class="fx-slider"><label>节拍响应</label><input id="fx-treecanopybeat" type="range" min="0" max="2" step="0.05"><output></output></div>
           <div class="fx-slider"><label>环境粒子</label><input id="fx-treecanopyambient" type="range" min="0" max="2" step="0.05"><output></output></div>
+
         </div>
       </div>
 
+      <div class="fx-fold" id="fx-heart-pulse-fold">
+        <div class="fx-fold-head" onclick="document.getElementById('fx-heart-pulse-fold').classList.toggle('open')">
+          <span class="fx-fold-title"><strong>心跳监护</strong><small>ECG / BPM / 自定义内容</small></span><span class="arrow">▶</span>
+        </div>
+        <div class="fx-fold-body">
+          <div class="fx-section-label" id="fx-heart-pulse-section">心跳监护</div>
+          <div class="fx-section-label" id="heart-pulse-color-section">心电配色</div>
+          <div class="lyric-color-row" id="heart-pulse-heart-row"><button id="heart-pulse-heart-picker" class="lyric-color-swatch-btn" type="button" style="background:#ff4d78" title="点击打开取色器" onclick="openHeartPickerPanel('heartPulseHeartColor', this)"></button><div class="fx-color-row-label">爱心颜色<small id="heart-pulse-heart-value">#FF4D78</small></div><button class="fx-mini-btn ghost" type="button" onclick="resetHeartPulseColor('heartPulseHeartColor')">默认</button></div>
+          <div class="heart-pulse-swatches" id="heart-pulse-heart-swatches"><button class="heart-pulse-swatch" type="button" style="background:#ff4d78" title="心动粉" onclick="setHeartPulseColor('heartPulseHeartColor','#ff4d78')"></button><button class="heart-pulse-swatch" type="button" style="background:#ff2e4d" title="深红" onclick="setHeartPulseColor('heartPulseHeartColor','#ff2e4d')"></button><button class="heart-pulse-swatch" type="button" style="background:#ff6b9d" title="樱花粉" onclick="setHeartPulseColor('heartPulseHeartColor','#ff6b9d')"></button><button class="heart-pulse-swatch" type="button" style="background:#b84dff" title="紫" onclick="setHeartPulseColor('heartPulseHeartColor','#b84dff')"></button><button class="heart-pulse-swatch" type="button" style="background:#4d9fff" title="蓝" onclick="setHeartPulseColor('heartPulseHeartColor','#4d9fff')"></button><button class="heart-pulse-swatch" type="button" style="background:#3dffa0" title="绿" onclick="setHeartPulseColor('heartPulseHeartColor','#3dffa0')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffd93d" title="金" onclick="setHeartPulseColor('heartPulseHeartColor','#ffd93d')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffffff" title="白" onclick="setHeartPulseColor('heartPulseHeartColor','#ffffff')"></button></div>
+          <div class="lyric-color-row" id="heart-pulse-line-row"><button id="heart-pulse-line-picker" class="lyric-color-swatch-btn" type="button" style="background:#3dffa0" title="点击打开取色器" onclick="openHeartPickerPanel('heartPulseLineColor', this)"></button><div class="fx-color-row-label">心电颜色<small id="heart-pulse-line-value">#3DFFA0</small></div><button class="fx-mini-btn ghost" type="button" onclick="resetHeartPulseColor('heartPulseLineColor')">默认</button></div>
+          <div class="heart-pulse-swatches" id="heart-pulse-line-swatches"><button class="heart-pulse-swatch" type="button" style="background:#3dffa0" title="监护绿" onclick="setHeartPulseColor('heartPulseLineColor','#3dffa0')"></button><button class="heart-pulse-swatch" type="button" style="background:#00ffcc" title="青" onclick="setHeartPulseColor('heartPulseLineColor','#00ffcc')"></button><button class="heart-pulse-swatch" type="button" style="background:#7fb8ff" title="蓝" onclick="setHeartPulseColor('heartPulseLineColor','#7fb8ff')"></button><button class="heart-pulse-swatch" type="button" style="background:#3dff6e" title="翠绿" onclick="setHeartPulseColor('heartPulseLineColor','#3dff6e')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffb84d" title="橙" onclick="setHeartPulseColor('heartPulseLineColor','#ffb84d')"></button><button class="heart-pulse-swatch" type="button" style="background:#ff4d78" title="粉" onclick="setHeartPulseColor('heartPulseLineColor','#ff4d78')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffffff" title="白" onclick="setHeartPulseColor('heartPulseLineColor','#ffffff')"></button></div>
+          <div class="lyric-color-row" id="heart-pulse-glow-row"><button id="heart-pulse-glow-picker" class="lyric-color-swatch-btn" type="button" style="background:#7af7dc" title="点击打开取色器" onclick="openHeartPickerPanel('heartPulseGlowColor', this)"></button><div class="fx-color-row-label">脉冲辉光<small id="heart-pulse-glow-value">#7AF7DC</small></div><button class="fx-mini-btn ghost" type="button" onclick="resetHeartPulseColor('heartPulseGlowColor')">默认</button></div>
+          <div class="heart-pulse-swatches" id="heart-pulse-glow-swatches"><button class="heart-pulse-swatch" type="button" style="background:#7af7dc" title="浅青" onclick="setHeartPulseColor('heartPulseGlowColor','#7af7dc')"></button><button class="heart-pulse-swatch" type="button" style="background:#3dffa0" title="绿" onclick="setHeartPulseColor('heartPulseGlowColor','#3dffa0')"></button><button class="heart-pulse-swatch" type="button" style="background:#7fb8ff" title="蓝" onclick="setHeartPulseColor('heartPulseGlowColor','#7fb8ff')"></button><button class="heart-pulse-swatch" type="button" style="background:#b84dff" title="紫" onclick="setHeartPulseColor('heartPulseGlowColor','#b84dff')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffd93d" title="金" onclick="setHeartPulseColor('heartPulseGlowColor','#ffd93d')"></button><button class="heart-pulse-swatch" type="button" style="background:#ffffff" title="白" onclick="setHeartPulseColor('heartPulseGlowColor','#ffffff')"></button></div>
+          <div class="fx-slider"><label>波形速度</label><input id="fx-heartpulsespeed" type="range" min="0.35" max="2.4" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>心跳响应</label><input id="fx-heartpulsebeat" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>整体发光</label><input id="fx-heartpulseglow" type="range" min="0.25" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>监护网格</label><input id="fx-heartpulsegrid" type="range" min="0" max="1" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>信号余辉</label><input id="fx-heartpulsetrail" type="range" min="0.15" max="1.5" step="0.05"><output></output></div>
+          <div class="fx-section-label">自定义监护内容</div>
+          <div class="fx-text-row"><label for="fx-heartpulsetitle">主标题</label><input id="fx-heartpulsetitle" type="text" maxlength="28" placeholder="HEART MONITOR"></div>
+          <div class="fx-text-row"><label for="fx-heartpulsesubtitle">副标题</label><input id="fx-heartpulsesubtitle" type="text" maxlength="36" placeholder="LIVE RHYTHM / ECG"></div>
+          <div class="fx-text-row"><label for="fx-heartpulsestatus">状态文本</label><input id="fx-heartpulsestatus" type="text" maxlength="24" placeholder="SIGNAL STABLE"></div>
+          <div class="fx-seg" id="heart-pulse-waveform-seg"><button data-heart-pulse-wave="clinical" class="active" onclick="setHeartPulseWaveform('clinical')">临床</button><button data-heart-pulse-wave="sine" onclick="setHeartPulseWaveform('sine')">正弦</button><button data-heart-pulse-wave="double" onclick="setHeartPulseWaveform('double')">双峰</button></div>
+          <button id="heart-pulse-content-reset" class="fx-mini-btn ghost" type="button" onclick="resetHeartPulseContent()">恢复默认内容</button>
+          <div class="fx-toggle-grid"><div class="fx-toggle on" id="t-heartPulseShowBpm" onclick="toggleFx('heartPulseShowBpm')"><span>显示实时 BPM</span><span class="dot"></span></div></div>
+        </div>
+      </div>
       <div class="fx-fold" id="fx-stage-fold">
         <div class="fx-fold-head" onclick="document.getElementById('fx-stage-fold').classList.toggle('open')">
           <span class="fx-fold-title"><strong>3D / 手势</strong><small>歌单架 / 摄像头交互</small></span><span
@@ -1540,13 +1571,7 @@
 
     <!-- 登录模态 -->
     <div id="login-modal" class="modal-mask">
-      <div class="modal dual-login-modal">
-        <div class="login-panel-head">
-          <div><b>登录接入</b><small>拖接口端口到 MR</small></div>
-          <button id="login-reset-all-btn" class="login-reset-all-btn" type="button"
-            onclick="logoutAllAccountsAndResetEasterEgg()" title="清除所有平台登录并重新锁定彩蛋">退出登录</button>
-          <button class="login-panel-close" type="button" onclick="closeLoginModal()">×</button>
-        </div>
+      <div class="modal dual-login-modal momusic-login-modal">
         <section id="login-easter-egg-gate" class="login-easter-egg-gate" aria-hidden="true">
           <button id="login-easter-eye-trigger" class="login-easter-eye-trigger" type="button"
             onclick="handleLoginEasterEggTap()" aria-label="轻触大小眼">
@@ -1575,24 +1600,51 @@
               onclick="skipLoginEasterEgg()">跳过解锁</button>
           </div>
         </section>
-        <div id="login-node-graph" class="login-node-graph" data-provider="netease">
-          <svg id="login-workflow-svg" class="workflow-link-layer login-link-layer" aria-hidden="true"></svg>
-          <div class="login-platform-tabs login-node-providers" id="login-platform-tabs">
-            <button id="login-provider-netease" class="netease active workflow-node" type="button" data-login-provider="netease"
-              onclick="selectLoginProviderNode('netease')"><span class="provider-logo">NE</span><b>网易云</b><small>官方扫码 / Cookie</small><span class="flow-port out" data-login-provider-output="netease" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-qq" class="qq workflow-node" type="button" data-login-provider="qq" onclick="selectLoginProviderNode('qq')"><span
-                class="provider-logo">QQ</span><b>QQ 音乐</b><small>官方扫码 / Cookie</small><span class="flow-port out" data-login-provider-output="qq" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-kugou" class="kugou workflow-node" type="button" data-login-provider="kugou" onclick="selectLoginProviderNode('kugou')"><span
-                class="provider-logo">KG</span><b>酷狗音乐</b><small>官方窗口 / Cookie</small><span class="flow-port out" data-login-provider-output="kugou" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-qishui" class="qishui workflow-node" type="button" data-login-provider="qishui" onclick="selectLoginProviderNode('qishui')"><span
-                class="provider-logo">QS</span><b>汽水音乐</b><small>本地会话 / PC 客户端</small><span class="flow-port out" data-login-provider-output="qishui" title="拖到 MR 接入口"></span></button>
-            <button id="login-provider-spotify" class="spotify workflow-node" type="button" data-login-provider="spotify" onclick="selectLoginProviderNode('spotify')"><span
-                class="provider-logo">SP</span><b>Spotify</b><small>官方 OAuth</small><span class="flow-port out" data-login-provider-output="spotify" title="拖到 MR 接入口"></span></button>
-            <button id="login-red-dust-inn-btn" class="red-dust-inn workflow-node" type="button" onclick="toggleRedDustInnFromLogin()">
-              <span class="provider-logo rdi-logo">客</span>
-              <b>红尘客栈</b>
-              <small>本地模式 · 雷达推送</small>
-              <span class="rdi-toggle" id="rdi-toggle-indicator">关</span>
+          <div class="ml-head">
+            <div class="ml-head-brand">
+              <img src="build/icon-144.png" alt="MoMusic">
+              <div class="ml-head-copy">
+                <div class="ml-head-title-row">
+                  <span id="login-provider-badge" class="ml-provider-badge netease" aria-hidden="true">NE</span>
+                  <h2 id="login-modal-title" class="ml-title">网易云音乐</h2>
+                </div>
+                <div id="login-modal-desc" class="ml-desc">使用网易云音乐 App 扫码，自动同步歌单、红心与播客</div>
+              </div>
+            </div>
+            <div class="ml-head-actions">
+              <button id="login-reset-all-btn" class="login-reset-all-btn" type="button"
+                onclick="logoutAllAccountsAndResetEasterEgg()" title="清除所有平台登录">退出登录</button>
+              <button class="login-panel-close" type="button" onclick="closeLoginModal()" aria-label="关闭">×</button>
+            </div>
+          </div>
+        <!-- 空间不足时的视图切换器（溢出拆分后显示） -->
+        <div id="login-view-switch" class="ml-view-switch" role="tablist" aria-label="登录视图" hidden>
+          <button id="login-view-scan" class="ml-view-btn active" type="button" role="tab" aria-selected="true"
+            data-login-view="scan" onclick="showLoginView('scan')">扫码登录</button>
+          <button id="login-view-platforms" class="ml-view-btn" type="button" role="tab" aria-selected="false"
+            data-login-view="platforms" onclick="showLoginView('platforms')">平台管理</button>
+        </div>
+        <div id="login-node-graph" class="ml-single" data-provider="netease">
+
+          <div class="ml-tabs" role="tablist" aria-label="登录方式">
+            <button id="login-mode-official" class="ml-tab active" type="button" role="tab" aria-selected="true"
+              data-login-mode="official" onclick="selectLoginMode('official')"><b>扫码登录</b><small>官方二维码</small></button>
+            <button id="login-mode-cookie" class="ml-tab" type="button" role="tab" aria-selected="false"
+              data-login-mode="cookie" onclick="selectLoginMode('cookie')"><b>Cookie 导入</b><small>粘贴会话</small></button>
+          </div>
+          <div class="ml-platforms login-node-providers" id="login-platform-tabs">
+            <button class="ml-card netease active" id="login-provider-netease" type="button" data-login-provider="netease"
+              onclick="selectLoginProviderNode('netease')"><span class="ml-badge">NE</span><span class="ml-card-copy"><b>网易云</b><small>官方扫码</small></span></button>
+            <button class="ml-card qq" id="login-provider-qq" type="button" data-login-provider="qq"
+              onclick="selectLoginProviderNode('qq')"><span class="ml-badge">QQ</span><span class="ml-card-copy"><b>QQ 音乐</b><small>官方扫码</small></span></button>
+            <button class="ml-card kugou" id="login-provider-kugou" type="button" data-login-provider="kugou"
+              onclick="selectLoginProviderNode('kugou')"><span class="ml-badge">KG</span><span class="ml-card-copy"><b>酷狗音乐</b><small>官方扫码</small></span></button>
+            <button class="ml-card qishui" id="login-provider-qishui" type="button" data-login-provider="qishui"
+              onclick="selectLoginProviderNode('qishui')"><span class="ml-badge">QS</span><span class="ml-card-copy"><b>汽水音乐</b><small>本机会话</small></span></button>
+            <button class="ml-card spotify" id="login-provider-spotify" type="button" data-login-provider="spotify"
+              onclick="selectLoginProviderNode('spotify')"><span class="ml-badge">SP</span><span class="ml-card-copy"><b>Spotify</b><small>OAuth</small></span></button>
+            <button class="ml-card rdi" id="login-red-dust-inn-btn" type="button" onclick="toggleRedDustInnFromLogin()">
+              <span class="ml-badge">客</span><span class="ml-card-copy"><b>红尘客栈</b><small>本地模式</small></span><span class="rdi-toggle" id="rdi-toggle-indicator">关</span>
             </button>
           </div>
           <div id="red-dust-inn-settings" class="red-dust-inn-settings" hidden>
@@ -1605,49 +1657,45 @@
           <div id="rdi-category-popover" class="rdi-category-popover" hidden>
             <div class="rdi-cat-grid" id="rdi-cat-grid"></div>
           </div>
-          <div class="login-node-hub workflow-node" data-login-node="mr">
-            <span class="flow-port in" data-login-mr-target="mr" title="MR 接入口"></span>
-            <span class="login-node-orb">MR</span>
-            <div class="login-node-copy"><b>MR</b><small>等待接入</small></div>
-            <div class="login-mode-nodes">
-              <button id="login-mode-official" class="login-mode-node active workflow-node" type="button" data-login-mode="official"
-                onclick="selectLoginMode('official')"><span class="provider-logo">QR</span><b>扫码</b><small>官方窗口</small></button>
-              <button id="login-mode-cookie" class="login-mode-node workflow-node" type="button" data-login-mode="cookie"
-                onclick="selectLoginMode('cookie')"><span class="provider-logo">CK</span><b>Cookie</b><small>保存会话</small></button>
+          <div id="login-auth-drawer" class="ml-content">
+            <div id="kugou-login-hint" class="ml-kugou-hint" hidden>💡 要是扫码登录失败，请点击【网页】→ 点击任意歌曲 → 【手机登录】进行登录</div>
+            <div id="qr-shell" class="ml-qr">
+              <div class="ml-qr-stage">
+                <div class="ml-qr-skeleton" aria-hidden="true"></div>
+                <img id="qr-img" src="" alt="登录二维码">
+                <div class="ml-qr-mask" id="qr-mask" aria-hidden="true">
+                  <span class="ml-qr-mask-icon" id="qr-mask-icon">↻</span>
+                  <span class="ml-qr-mask-text" id="qr-mask-text"></span>
+                  <span class="ml-qr-mask-sub" id="qr-mask-sub"></span>
+                  <button class="ml-qr-mask-btn" id="qr-mask-btn" type="button" hidden>重新生成</button>
+                </div>
+              </div>
+              <div id="qr-status" class="ml-status" role="status" aria-live="polite">正在生成二维码…</div>
+              <div class="ml-qr-actions">
+                <button id="qq-web-login-card" class="ml-act" type="button"
+                  onclick="openProviderWebLogin()"><b>QQ</b><span>官方窗口</span></button>
+                <button id="platform-web-login-btn" class="ml-act" type="button"
+                  onclick="openPlatformWebLoginByCurrent()"><b>网页</b><span>账号登录</span></button>
+                <button id="qq-oauth-btn" class="ml-act" type="button"
+                  onclick="startQQOauthLogin()"><b>授权</b><span>QQ / 微信</span></button>
+              </div>
             </div>
-          </div>
-        </div>
-        <div id="login-auth-drawer" class="login-auth-drawer">
-          <div class="login-auth-copy">
-            <h2 id="login-modal-title">扫码登录网易云音乐</h2>
-            <div id="login-modal-desc" class="desc">使用 <b>网易云音乐 App</b> 扫码，可同步歌单、红心与播客。</div>
-            <div id="qr-status">拖动接口到 MR 接入口后开始登录。</div>
-          </div>
-          <div class="login-auth-body">
-            <div id="qr-shell" class="qr-shell">
-              <img id="qr-img" src="" alt="">
-              <button id="qq-web-login-card" class="qq-login-mark" type="button"
-                onclick="openProviderWebLogin()"><b>QQ</b><span>打开官方扫码窗口</span></button>
-            </div>
-            <div id="qq-cookie-panel" class="qq-cookie-panel">
+            <div id="qq-cookie-panel" class="ml-cookie">
               <textarea id="qq-cookie-input" class="qq-cookie-input" spellcheck="false" autocomplete="off"
                 placeholder="uin=...; qqmusic_key=...; qm_keyst=..."></textarea>
               <div class="qq-cookie-actions">
                 <div class="qq-cookie-note">从 y.qq.com 的登录会话导入。</div>
-                <button id="qq-cookie-save-btn" class="modal-btn primary" type="button"
+                <button id="qq-cookie-save-btn" class="ml-btn primary" type="button"
                   onclick="submitQQCookieLogin()">保存</button>
               </div>
             </div>
           </div>
-          <div class="btn-row login-auth-actions">
-            <button class="modal-btn" onclick="skipLoginAndFocusSearch()">先搜索一首歌</button>
-            <button id="qq-cookie-toggle-btn" class="modal-btn" type="button"
+          <div class="ml-footer">
+            <button id="qq-cookie-toggle-btn" class="ml-toggle" type="button"
               onclick="toggleQQCookiePanel()">手动导入</button>
-            <button id="refresh-qr-btn" class="modal-btn primary" onclick="startSelectedLoginConnection()">开始登录</button>
+            <button id="refresh-qr-btn" class="ml-start" onclick="startSelectedLoginConnection()">开始登录</button>
           </div>
         </div>
-      </div>
-    </div>
 
     <div id="login-easter-unlock-cinematic" class="login-easter-unlock-cinematic" role="button" tabindex="-1"
       aria-hidden="true" aria-label="点击继续" onclick="dismissLoginEasterEggCinematic()">
@@ -1971,6 +2019,7 @@
     </div>
 
   </div>
+  </div>
 
   <div id="desktop-mode-control-dock" aria-label="桌面模式控制器">
     <button id="desktop-mode-control-handle" type="button" title="打开桌面模式控制"
@@ -2031,7 +2080,7 @@
       </div>
       <div class="lt-hero-text">一起听歌</div>
       <div class="lt-hero-sub">与朋友实时同步听歌、聊天</div>
-      <button class="lt-btn lt-btn-primary" type="button" onclick="handleLtConnect()" style="font-size:14px;padding:10px 36px;margin:0 auto">开始一起听</button>
+      <button class="lt-btn lt-btn-primary" type="button" onclick="handleLtConnect(event)" style="font-size:14px;padding:10px 36px;margin:0 auto">开始一起听</button>
     </div>
 
     <!-- ===== 登录视图 ===== -->
@@ -2134,6 +2183,8 @@
         <strong id="lt-active-room-name" class="lt-room-badge">房间</strong>
         <span class="lt-room-meta">👥 <span id="lt-member-count">0</span></span>
         <span id="lt-host-badge" class="lt-host-tag" style="display:none">👑 房主</span>
+        <div id="lt-duration-display" class="lt-duration-display"></div>
+        <button class="lt-leave-btn lt-leave-top" type="button" onclick="handleLtLeaveRoom()">离开房间</button>
       </div>
 
       <!-- 成员列表 -->
@@ -2152,23 +2203,11 @@
         </div>
       </div>
 
-      <!-- 聊天区域 -->
-      <div class="lt-chat-box" style="margin-bottom:44px">
-        <div id="lt-chat-messages" class="lt-chat-messages"></div>
-        <!-- 输入行：暗色输入框 + 白色圆角发送按钮 -->
-        <div class="lt-chat-input-row">
-          <input id="lt-chat-input" class="lt-input lt-chat-input" type="text" placeholder="发条消息..." maxlength="200" onkeydown="if(event.key==='Enter')handleLtSendChat()">
-          <button class="lt-send-btn" type="button" onclick="handleLtSendChat()">发送</button>
-        </div>
-      </div>
+      <!-- 聊天区域（已移除，见历史版本） -->
 
       <!-- 底部操作栏 -->
       <div class="lt-active-footer">
-        <button class="lt-leave-btn" type="button" onclick="handleLtLeaveRoom()">离开房间</button>
-        <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-          <div id="lt-duration-display" style="font-size:10px;color:rgba(255,255,255,.3);white-space:nowrap"></div>
-          <button class="lt-invite-btn" type="button" onclick="handleLtGetInviteLink()">🔗 邀请</button>
-        </div>
+        <button class="lt-invite-btn" type="button" onclick="handleLtGetInviteLink()" style="margin-left:auto">🔗 邀请</button>
       </div>
 
       <!-- 邀请链接浮层 -->
@@ -2194,6 +2233,7 @@
 <script src="js/listen-together-client.js"></script>
   <script src="js/listen-together-ui.js"></script>
   <script src="js/listen-together-float-chat.js"></script>
+  <script src="js/login-redesign.js"></script>
   <script src="js/index-loader.js"></script>
   <script>
     // 初始化一起听 UI（必须在 index-loader 加载完所有模块后，依赖 playQueue/audio 等全局变量）
@@ -2222,6 +2262,21 @@
         <div id="cs-import-file-wrap" class="cs-import-field" hidden>
           <input id="cs-import-file" class="cs-import-input" type="file" accept=".js,.txt,text/javascript">
           <div class="cs-import-hint">选择本地 .js 脚本文件</div>
+        </div>
+      </div>
+      <div class="cs-import-verify-zone">
+        <div class="cs-import-verify-row">
+          <button type="button" id="cs-import-verify" class="fx-mini-btn ghost">试听验证</button>
+          <span id="cs-verify-result" class="cs-verify-result"></span>
+        </div>
+        <div class="cs-import-hint">真实解析测试：取一首歌请求播放地址。若显示「QQ 直连兜底」说明脚本对该歌曲无效。</div>
+        <div class="cs-import-verify-row">
+          <input id="cs-verify-songid" class="cs-import-input" type="text" placeholder="歌曲 ID (可选; 非 QQ 音源脚本需手填)">
+          <input id="cs-verify-source" class="cs-import-input cs-verify-source" type="text" placeholder="平台 (默认 qq)" list="cs-verify-source-list">
+          <datalist id="cs-verify-source-list">
+            <option value="qq"></option><option value="kuwo"></option><option value="kugou"></option><option value="netease"></option><option value="migu"></option>
+          </datalist>
+          <button type="button" id="cs-verify-run" class="fx-mini-btn ghost">用指定 ID 验证</button>
         </div>
       </div>
       <div class="cs-import-footer">

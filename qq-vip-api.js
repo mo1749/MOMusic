@@ -132,7 +132,7 @@ function normalizedExpiryMs(value) {
   return 0;
 }
 
-function qqVipObjectExpiry(obj) {
+function qqVipObjectExpiry(obj, now) {
   const values = [];
   Object.keys(obj || {}).forEach(key => {
     if (!EXPIRY_KEY_RE.test(canonicalQQVipKey(key))) return;
@@ -141,15 +141,16 @@ function qqVipObjectExpiry(obj) {
   });
   if (!values.length) return { present: false, expired: false, expiresAt: 0 };
   const expiresAt = Math.max(...values);
+  const nowMs = Number(now) || Date.now();
   return {
     present: true,
-    expired: expiresAt <= Date.now(),
+    expired: expiresAt <= nowMs,
     expiresAt,
   };
 }
 
 function qqVipObjectLooksExpired(obj, now) {
-  const expiry = qqVipObjectExpiry(obj);
+  const expiry = qqVipObjectExpiry(obj, now);
   return !!(expiry.present && expiry.expiresAt <= (Number(now) || Date.now()));
 }
 

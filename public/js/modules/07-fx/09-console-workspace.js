@@ -23,7 +23,7 @@ var FX_CONSOLE_LAYOUT = [
     key: 'home',
     groups: [
       { key: 'presets', title: '视觉预设', hint: '先选整体风格，再进入细节调整', open: true, items: [
-        fxConsoleItem('preset-grid', '视觉预设', '风格 场景 Emily 安魂 音域 星河 唱片 星球 滚筒 虚空 银河 几何 像素 颜文字 Pixel Kaomoji')
+        fxConsoleItem('preset-grid', '视觉预设', '风格 场景 Emily 安魂 音域 星河 唱片 星球 滚筒 虚空 银河 几何 像素 颜文字 心跳 心电图 ECG Heart Pulse Pixel Kaomoji')
       ] },
       { key: 'archives', title: '用户存档', hint: '保存、应用和分享整套视觉参数', items: [
         fxConsoleItem('user-archive-grid', '用户存档', '方案 快照 预设码 应用 回退')
@@ -237,6 +237,25 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-treecanopybeat', '节拍响应', '鼓点跳动强度'),
         fxConsoleItem('fx-treecanopyambient', '环境粒子', '光尘 落叶 背景音符 数量')
       ] },
+      { key: 'heart-pulse', title: '心跳监护', hint: '心电波形、心跳节拍和监护面板内容', items: [
+        fxConsoleItem('heart-pulse-heart-picker', '爱心颜色', '3D 粒子爱心 自定义颜色 换色'),
+        fxConsoleItem('heart-pulse-heart-swatches', '爱心快捷色', '点按即换 粉 蓝 绿 紫 白'),
+        fxConsoleItem('heart-pulse-line-picker', '心电颜色', '心电图 波形颜色 自定义颜色'),
+        fxConsoleItem('heart-pulse-line-swatches', '心电快捷色', '点按即换 监护绿 青 蓝 橙'),
+        fxConsoleItem('heart-pulse-glow-picker', '脉冲辉光', '辉光颜色 光晕 自定义颜色'),
+        fxConsoleItem('heart-pulse-glow-swatches', '辉光快捷色', '点按即换 浅青 蓝 紫 金'),
+        fxConsoleItem('heart-pulse-waveform-seg', '心电波形', '临床 正弦 双峰 波形模式'),
+        fxConsoleItem('fx-heartpulsespeed', '波形速度', '心电扫描 走纸速度'),
+        fxConsoleItem('fx-heartpulsebeat', '心跳响应', '节拍 心跳脉冲强度'),
+        fxConsoleItem('fx-heartpulseglow', '整体发光', '监护亮度 辉光强度'),
+        fxConsoleItem('fx-heartpulsegrid', '监护网格', '心电图纸 背景网格'),
+        fxConsoleItem('fx-heartpulsetrail', '信号余辉', '波形光点 余辉长度'),
+        fxConsoleItem('fx-heartpulsetitle', '监护主标题', '面板标题 自定义文本'),
+        fxConsoleItem('fx-heartpulsesubtitle', '监护副标题', '面板副标题 自定义文本'),
+        fxConsoleItem('fx-heartpulsestatus', '状态文本', '信号状态 自定义文本'),
+        fxConsoleItem('heart-pulse-content-reset', '恢复默认内容', '标题 副标题 状态 重置'),
+        fxConsoleItem('t-heartPulseShowBpm', '实时 BPM', '心跳频率 每分钟节拍数 显示')
+      ] },
     ]
   },
   {
@@ -343,7 +362,7 @@ function fxConsoleResolveBlock(ref) {
   else if (ref && ref.element) el = ref.element;
   else if (ref && ref.selector) el = document.querySelector('#fx-panel ' + ref.selector) || document.querySelector(ref.selector);
   if (!el) return null;
-  var selector = '.fx-slider,.lyric-color-row,.lyric-color-grid,.fx-seg,.preset-grid,.user-archive-grid,.fx-font-grid,.fx-toggle,.lyric-glitch-controls,.lyric-glow-effect-row,.sonic-audio-monitor,.audio-output-section,.cache-storage-panel,.custom-source-panel,.memory-status-chip,.memory-status-sub,.memory-action-row,.fx-actions';
+  var selector = '.fx-slider,.lyric-color-row,.lyric-color-grid,.fx-seg,.fx-text-row,.heart-pulse-swatches,.preset-grid,.user-archive-grid,.fx-font-grid,.fx-toggle,.lyric-glitch-controls,.lyric-glow-effect-row,.sonic-audio-monitor,.audio-output-section,.cache-storage-panel,.custom-source-panel,.memory-status-chip,.memory-status-sub,.memory-action-row,.fx-actions';
   if (el.matches && el.matches(selector)) return el;
   return el.closest ? (el.closest(selector) || el) : el;
 }
@@ -466,7 +485,7 @@ function fxConsoleAppendItem(body, tabMeta, groupMeta, item, state) {
 }
 
 function fxConsoleFindUnclassifiedControls(roots) {
-  var blockSelector = '.fx-slider,.lyric-color-row,.lyric-color-grid,.fx-seg,.preset-grid,.user-archive-grid,.fx-font-grid,.fx-toggle,.lyric-glitch-controls,.lyric-glow-effect-row,.sonic-audio-monitor,.audio-output-section,.cache-storage-panel,.custom-source-panel,.memory-status-chip,.memory-status-sub,.memory-action-row,.fx-actions';
+  var blockSelector = '.fx-slider,.lyric-color-row,.lyric-color-grid,.fx-seg,.fx-text-row,.heart-pulse-swatches,.preset-grid,.user-archive-grid,.fx-font-grid,.fx-toggle,.lyric-glitch-controls,.lyric-glow-effect-row,.sonic-audio-monitor,.audio-output-section,.cache-storage-panel,.custom-source-panel,.memory-status-chip,.memory-status-sub,.memory-action-row,.fx-actions';
   var blocks = [];
   roots.forEach(function (root) {
     if (!root || !root.isConnected) return;

@@ -69,6 +69,8 @@ process.on('uncaughtException', function (err) {
   try { console.error('[Fatal-兜底] uncaughtException:', (err && err.stack) || err); } catch (e) { }
 });
 process.on('unhandledRejection', function (err) {
+  // 沙箱内脚本的 DNS/网络错误属于预期失败(如 ikun 的 api.ikunshare.com), 不视为致命错误
+  if (err && (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'EAI_AGAIN')) return;
   try { console.error('[Fatal-兜底] unhandledRejection:', (err && err.stack) || err); } catch (e) { }
 });
 const {
@@ -120,6 +122,9 @@ const {
   getSpotifyConfig,
   clearSpotifyToken,
   saveSpotifyConfig,
+  exchangeSpotifyOAuthCode,
+  saveSpotifyOAuthToken,
+  buildSpotifyOAuthAuthorizeUrl,
   handleSpotifyStatus,
   handleSpotifySearch,
   handleSpotifyRecommendations,
@@ -460,13 +465,28 @@ function isBlockedProxyTarget(rawUrl) {
     const host = u.hostname.toLowerCase().replace(/^\[|\]$/g, '');
     if (host === 'localhost' || host === '::1' || host === '0.0.0.0') return true;
     if (host === '169.254.169.254') return true;
-    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    // IPv4 映射地址 (::ffff:127.0.0.1) WHATWG URL 会规范化为十六进制形式
+    // (::ffff:7f00:1), 两种形式都归一化为点分 IPv4 后再走同一套私网判定
+    let normalized = host;
+    const dottedMapped = host.match(/^::ffff:(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (dottedMapped) {
+      normalized = dottedMapped[1] + '.' + dottedMapped[2] + '.' + dottedMapped[3] + '.' + dottedMapped[4];
+    } else {
+      const hexMapped = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+      if (hexMapped) {
+        const hi = parseInt(hexMapped[1], 16), lo = parseInt(hexMapped[2], 16);
+        normalized = (hi >> 8) + '.' + (hi & 255) + '.' + (lo >> 8) + '.' + (lo & 255);
+      }
+    }
+    const ipv4 = normalized.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (ipv4) {
       const a = Number(ipv4[1]), b = Number(ipv4[2]);
       if (a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) ||
           (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
           (a === 192 && b === 168) || a >= 224) return true;
     }
+    // IPv6 私网/链路本地段: fc00::/7 (ULA), fe80::/10 (链路本地)
+    if (/^fc[0-9a-f]{2}:|^fd[0-9a-f]{2}:|^fe[89ab][0-9a-f]:/.test(host)) return true;
   } catch (e) {}
   return false;
 }
@@ -510,6 +530,19 @@ function sendJSON(res, data, status) {
   if (cors) headers['Access-Control-Allow-Origin'] = cors;
   res.writeHead(status || 200, headers);
   res.end(JSON.stringify(data));
+}
+// 本机来源校验: 自定义音源接口会在服务端执行脚本 (vm 沙箱, 宿主 API 无法零逃逸),
+// 服务绑定 0.0.0.0 时若不限制来源, 局域网攻击者可 POST 恶意脚本实现任意代码执行。
+// 前端页面经 localhost 访问服务, remoteAddress 恒为本机, 功能不受影响。
+function isLocalRequest(req) {
+  const addr = req && req.socket && String(req.socket.remoteAddress || '').replace(/^\[|\]$/g, '');
+  if (!addr) return false;
+  return addr === '127.0.0.1' || addr === '::1' || addr === '::ffff:127.0.0.1';
+}
+function rejectNonLocal(req, res) {
+  if (isLocalRequest(req)) return false;
+  sendJSON(res, { ok: false, error: 'FORBIDDEN_NON_LOCAL', message: '该接口仅允许本机访问' }, 403);
+  return true;
 }
 function readPackageInfo() {
   try {
@@ -4202,6 +4235,25 @@ async function qqSmartboxSearch(keywords, limit) {
   return (Array.isArray(items) ? items : []).slice(0, Math.max(1, Math.min(limit || 6, 10))).map(mapQQSmartSong);
 }
 
+// QQ 音乐 H5 搜索 (client_search_cp): musics.fcg 移动端接口对全零设备指纹
+// 常返回空列表, H5 接口是稳定的兜底, 一次可拿满 limit 首。
+async function qqH5Search(keywords, limit, offset) {
+  limit = Math.max(1, Math.min(30, Number(limit) || 12));
+  offset = Math.max(0, Number(offset) || 0);
+  const page = Math.floor(offset / limit) + 1;
+  const u = new URL('https://c.y.qq.com/soso/fcgi-bin/client_search_cp');
+  u.searchParams.set('w', keywords);
+  u.searchParams.set('p', String(page));
+  u.searchParams.set('n', String(limit));
+  u.searchParams.set('format', 'json');
+  u.searchParams.set('cr', '1');
+  u.searchParams.set('new_json', '1');
+  const text = await requestText(u.toString(), { headers: QQ_HEADERS });
+  const json = parseJSONText(text);
+  const list = json && json.data && json.data.song && json.data.song.list;
+  return (Array.isArray(list) ? list : []).map(item => mapQQTrack(item, {}));
+}
+
 function qqSearchSign(text) {
   const hash = crypto.createHash('sha1').update(text).digest('hex');
   const part1 = [23, 14, 6, 36, 16, 40, 7, 19].map(index => hash[index]).join('');
@@ -4377,13 +4429,13 @@ function getRedDustInnSeeds(category) {
   var lib = {
     '华语流行': ['周杰伦 晴天', '林俊杰 江南', '陈奕迅 浮夸', '孙燕姿 遇见', '五月天 倔强', '莫文蔚 阴天', '李荣浩 模特', '薛之谦 演员', '毛不易 消愁', '邓紫棋 光年之外', '华晨宇 齐天', '张惠妹 听海'],
     '欧美流行': ['Adele Hello', 'Ed Sheeran Shape of You', 'Taylor Swift Love Story', 'Bruno Mars Just the Way', 'Maroon 5 Sugar', 'Coldplay Yellow', 'Imagine Dragons Believer', 'Billie Eilish Bad Guy', 'Dua Lipa Levitating', 'The Weeknd Blinding Lights'],
-    '日语动漫': 'LiSA 紅蓮華 YOASOBI 夜に駆ける 米津玄師 Lemon Aimer 残響散歌 ZUTOMAYO 勘冴えて Kenshi Yonezu Kick Back King Gnu 白日 Hikaru Utada First Love'.split(' '),
-    '韩语流行': 'BTS Dynamite BLACKPINK How You Like That IU Blueming EXO Love Shot TWICE Feel Special Red Velvet Psycho Stray Kids God Menu aespa Next Level Big Bang Bang Bang Bang'.split(' '),
-    '民谣古风': '陈粒 小半 赵雷 成都 花粥 出山 银临 牵丝戏 河图 倾尽天下 周深 大鱼 刘珂矣 半壶纱 徐梦圆 桃花笑'.split(' '),
-    '电子舞曲': 'Alan Walker Faded Martin Garrix Animals Marshmello Alone Calvin Harris Summer David Guetta Titanium Skrillex Bangarang The Chainsmokers Closer Kygo Firestone'.split(' '),
-    '摇滚节奏': 'Beyond 海阔天空 崔健 一无所有 黑豹 无地自容 Mayflower 想念您 Queen Bohemian Rhapsody Nirvana Smells Like Teen Spirit Linkin Park Numb Imagine Dragons Radioactive Guns N Roses Sweet Child'.split(' '),
-    '轻音乐纯音乐': '久石让 Summer 坂本龙一 Merry Christmas Mr Lawrence Yiruma River Flows in You Kevin Kern Sundial Dreams 喜多郎 丝绸之路 班得瑞 童年 理查德克莱德曼 梦中的婚礼'.split(' '),
-    '怀旧经典': '邓丽君 月亮代表我的心 张国荣 风继续吹 王菲 红豆 刘德华 忘情水 黎明 全日爱 邓丽君 甜蜜蜜 费玉清 一剪梅 蔡琴 你的眼神 罗大佑 光阴的故事'.split(' '),
+    '日语动漫': ['LiSA 紅蓮華', 'YOASOBI 夜に駆ける', '米津玄師 Lemon', 'Aimer 残響散歌', 'ZUTOMAYO 勘冴えて', 'Kenshi Yonezu Kick Back', 'King Gnu 白日', 'Hikaru Utada First Love'],
+    '韩语流行': ['BTS Dynamite', 'BLACKPINK How You Like That', 'IU Blueming', 'EXO Love Shot', 'TWICE Feel Special', 'Red Velvet Psycho', 'Stray Kids God Menu', 'aespa Next Level', 'Big Bang Bang Bang Bang'],
+    '民谣古风': ['陈粒 小半', '赵雷 成都', '花粥 出山', '银临 牵丝戏', '河图 倾尽天下', '周深 大鱼', '刘珂矣 半壶纱', '徐梦圆 桃花笑'],
+    '电子舞曲': ['Alan Walker Faded', 'Martin Garrix Animals', 'Marshmello Alone', 'Calvin Harris Summer', 'David Guetta Titanium', 'Skrillex Bangarang', 'The Chainsmokers Closer', 'Kygo Firestone'],
+    '摇滚节奏': ['Beyond 海阔天空', '崔健 一无所有', '黑豹 无地自容', 'Mayflower 想念您', 'Queen Bohemian Rhapsody', 'Nirvana Smells Like Teen Spirit', 'Linkin Park Numb', 'Imagine Dragons Radioactive', 'Guns N Roses Sweet Child'],
+    '轻音乐纯音乐': ['久石让 Summer', '坂本龙一 Merry Christmas Mr Lawrence', 'Yiruma River Flows in You', 'Kevin Kern Sundial Dreams', '喜多郎 丝绸之路', '班得瑞 童年', '理查德克莱德曼 梦中的婚礼'],
+    '怀旧经典': ['邓丽君 月亮代表我的心', '张国荣 风继续吹', '王菲 红豆', '刘德华 忘情水', '黎明 全日爱', '邓丽君 甜蜜蜜', '费玉清 一剪梅', '蔡琴 你的眼神', '罗大佑 光阴的故事'],
     '随机漫游': ['陈奕迅 好久不见', '周杰伦 七里香', '孙燕姿 天黑黑', '林宥嘉 说谎', '方大同 特别的人', '陶喆 爱很简单', '告五人 爱人错过', '落日飞车 My Jinji', 'Deca Joins 海浪', '草东没有派对 大风吹', '陈绮贞 旅行的意义', '张悬 宝贝']
   };
   var list = lib[category];
@@ -4414,7 +4466,22 @@ async function handleQQSearch(keywords, limit, offset) {
   } catch (err) {
     console.warn('[QQSearch] full search failed:', err.message);
   }
-  if (!base.length && offset === 0) base = await qqSmartboxSearch(kw, limit);
+  if (!base.length && offset === 0) {
+    try {
+      base = await qqH5Search(kw, limit, 0);
+    } catch (err) {
+      console.warn('[QQSearch] h5 fallback failed:', err.message);
+    }
+  }
+  if (!base.length && offset === 0) {
+    try {
+      base = await qqSmartboxSearch(kw, limit);
+    } catch (err) {
+      // 兜底搜索也失败时返回空结果, 避免整个搜索接口 500
+      console.warn('[QQSearch] smartbox fallback failed:', err.message);
+      base = [];
+    }
+  }
   const detailed = await Promise.all(base.map(async item => {
     try { return await qqSongDetail(item.mid, item); }
     catch (e) {
@@ -4626,6 +4693,49 @@ async function handleQQSongUrl(mid, mediaMid, qualityPreference, playbackHints) 
     probeFailures: probeFailures.slice(0, 12),
     requestedQuality,
   };
+}
+
+// 轻量 vkey 探测: 仅查询 CgiGetVkey 的 purl, 不做逐 URL 音频探测。
+// 供雷达预验证批量使用 (单次 vkey 请求 ~300ms, 120 首并发 5 约 8-10s)。
+// 返回拼接好的播放地址, 无 purl (需登录/版权受限) 返回 null。
+async function qqVkeyQuickProbe(mid) {
+  const songmid = String(mid || '').trim();
+  if (!songmid) return null;
+  try {
+    const guid = String(10000000 + Math.floor(Math.random() * 90000000));
+    const cookieObj = qqCookieObject();
+    const uin = qqCookieUin(cookieObj) || '0';
+    const musicKey = qqCookieMusicKey(cookieObj);
+    const filenames = ['M500' + songmid + '.mp3'];
+    const param = {
+      guid,
+      songmid: [songmid],
+      songtype: [0],
+      uin,
+      loginflag: 1,
+      platform: '20',
+      filename: filenames,
+    };
+    const comm = { uin, format: 'json', ct: musicKey ? 19 : 24, cv: 0 };
+    if (musicKey) comm.authst = musicKey;
+    const json = await qqMusicRequest({
+      comm,
+      req_0: {
+        module: 'vkey.GetVkeyServer',
+        method: 'CgiGetVkey',
+        param,
+      },
+    }, { cookie: true, timeoutMs: QQ_VKEY_REQUEST_TIMEOUT_MS });
+    const data = json && json.req_0 && json.req_0.data;
+    const infos = (data && Array.isArray(data.midurlinfo)) ? data.midurlinfo : [];
+    const purlInfo = infos.find(function (item) { return item && item.purl; });
+    if (!purlInfo || !purlInfo.purl) return null;
+    const sips = (data && Array.isArray(data.sip) && data.sip.length ? data.sip : ['https://ws.stream.qqmusic.qq.com/']).filter(Boolean);
+    return String(sips[0] || '') + String(purlInfo.purl || '');
+  } catch (err) {
+    console.warn('[QQVkeyQuickProbe] failed:', songmid, (err && err.message) || err);
+    return null;
+  }
 }
 
 function mapQQComment(raw) {
@@ -5541,6 +5651,109 @@ function loginEasterEggGateUnlocked() {
   }
 }
 
+// QQ 扫码登录（ptlogin）会话状态（模块级，跨请求保持）
+let qqQrSig = '';
+let qqQrToken = 0;
+function qqHash33(str) {
+  let e = 0;
+  for (let i = 0; i < String(str || '').length; i++) {
+    e += (e << 5) + String(str).charCodeAt(i);
+    e &= 0x7fffffff;
+  }
+  return e;
+}
+
+// ---------- 酷狗扫码登录（kguser v2 协议） ----------
+const KG_SALT = 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt';
+let kugouQrSession = { qrcode: '', mid: '', dfid: '' };
+function kgSign(params) {
+  const keys = Object.keys(params).sort();
+  const parts = keys.map((k) => k + '=' + params[k]);
+  return crypto.createHash('md5').update(KG_SALT + parts.join('') + KG_SALT, 'utf8').digest('hex');
+}
+async function kgRequest(url, headers) {
+  return await fetchWithTimeout(url, {
+    headers: Object.assign({
+      'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
+      'Referer': 'https://www.kugou.com/'
+    }, headers || {})
+  }, 12000);
+}
+async function kgGetSigned(baseUrl, params) {
+  const finalParams = Object.assign({}, params);
+  finalParams.signature = kgSign(finalParams);
+  const qs = Object.keys(finalParams).map((k) => k + '=' + (k === 'qrcode_txt' ? encodeURIComponent(finalParams[k]) : finalParams[k])).join('&');
+  const r = await kgRequest(baseUrl + '?' + qs);
+  return JSON.parse(await r.text());
+}
+
+// ---------- 酷狗 token 换 cookie（kguser RSA/AES 协议） ----------
+const KG_RSA_N = BigInt('0xB1B1EC76A1BBDBF0D18E8CD9A87E53FA3881E2F004C67C9DDA2CA677DBEFA3D61DF8463FE12D84FF4B4699E02C9D41CAB917F5A8FB9E35580C4BDF97763A0420A476295D763EE10174E6F9EBF7DF8A77BA5B20CDA4EE705DEF5BBA3C88567B9656E52C9CD5CD95CA735FF2D25F762B133273EEEB7B4F3EA8B6DA29040F3B67CD');
+const KG_RSA_E = 65537n;
+function kgRsaEncrypt(plaintext) {
+  // 与 kguser 一致：NoPadding、逆序字节、小端 16-bit 分组、m^e mod n、hex 大写
+  const chunkSize = 128;
+  const bytes = Buffer.from(plaintext, 'utf8');
+  const u = new Array(chunkSize).fill(0);
+  const l = Math.min(bytes.length, chunkSize);
+  for (let i = 0; i < l; i++) u[chunkSize - 1 - i] = bytes[i];
+  let m = 0n;
+  for (let i = 0; i < chunkSize; i += 2) {
+    const word = u[i] + (u[i + 1] << 8);
+    m += BigInt(word) << BigInt(16 * (i / 2));
+  }
+  let c = 1n, base = m, exp = KG_RSA_E;
+  while (exp > 0n) {
+    if (exp & 1n) c = (c * base) % KG_RSA_N;
+    base = (base * base) % KG_RSA_N;
+    exp >>= 1n;
+  }
+  // SDK S()：小写 hex，每 16-bit digit 固定 4 位（含前导 0，无额外填充）
+  const hx = c.toString(16);
+  return hx.padStart(Math.ceil(hx.length / 4) * 4, '0');
+}
+function kgAesEncrypt(plaintext) {
+  // 与 kguser 一致：key=16 随机大写 → MD5 → 前 32 hex 为 AES key、后 16 为 IV，CBC 输出 hex
+  const CryptoJS = require('crypto-js');
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let key = '';
+  for (let i = 0; i < 16; i++) key += chars[Math.floor(Math.random() * chars.length)];
+  const md5 = CryptoJS.MD5(key).toString(CryptoJS.enc.Hex);
+  const aesKey = md5.substring(0, 32);
+  const iv = md5.substring(md5.length - 16);
+  const cipher = CryptoJS.AES.encrypt(plaintext, CryptoJS.enc.Hex.parse(aesKey), {
+    iv: CryptoJS.enc.Hex.parse(iv),
+    padding: CryptoJS.pad.Pkcs7
+  });
+  return { key: key, encryptedStr: cipher.ciphertext.toString(CryptoJS.enc.Hex) };
+}
+async function kgLoginByToken(token, userid) {
+  const nowMs = Date.now();
+  const nowSec = Math.floor(nowMs / 1000);
+  const aes = kgAesEncrypt(JSON.stringify({ token: token }));
+  const pk = kgRsaEncrypt(JSON.stringify({ clienttime_ms: nowMs, key: aes.key }));
+  const params = {
+    appid: '1005', srcappid: '2919', clientver: '1000', clienttime: String(nowSec),
+    mid: kugouQrSession.mid, uuid: kugouQrSession.mid, dfid: kugouQrSession.dfid,
+    dev: 'web', userid: String(userid), plat: '4', clienttime_ms: String(nowMs),
+    pk: pk, params: aes.encryptedStr
+  };
+  params.signature = kgSign(params);
+  const qs = Object.keys(params).map((k) => k + '=' + params[k]).join('&');
+  const url = 'https://loginservice.kugou.com/v1/login_by_token_get?' + qs;
+  const r = await kgRequest(url, { 'Content-Type': 'application/x-www-form-urlencoded' });
+  const text = await r.text();
+  const setCookies = (typeof r.headers.getSetCookie === 'function') ? r.headers.getSetCookie() : [];
+  console.log('[KgLogin] resp=' + text.slice(0, 200) + ' cookies=' + setCookies.length);
+  return { text: text, cookies: setCookies };
+}
+
+// LS 链式音源当前活跃音源ID
+// 必须声明在模块作用域: 音源轮换状态需要跨请求保持,
+// 若声明在请求处理器内部, 每次请求都重置为 null 导致永远从第一个音源开始,
+// 失效音源无法被记住和轮换, 每次播放都会白费一次失败尝试。
+let currentLxSourceId = null;
+
 const server = http.createServer(async (req, res) => {
   refreshConfiguredCookieStores(false);
   const url = new URL(req.url, 'http://localhost:' + PORT);
@@ -5908,6 +6121,15 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pn === '/api/spotify/oauth/url') {
+    try {
+      const spAuthUrl = buildSpotifyOAuthAuthorizeUrl();
+      sendJSON(res, { ok: true, url: spAuthUrl });
+    } catch (spUrlErr) {
+      sendJSON(res, { ok: false, error: String((spUrlErr && spUrlErr.message) || spUrlErr) });
+    }
+    return;
+  }
   if (pn === '/api/spotify/status') {
     try {
       sendJSON(res, await handleSpotifyStatus());
@@ -6721,21 +6943,129 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ============ 落雪音源（LS）= 渲染API(huibq) 播放URL + QQ搜索/歌词代理 ============
+  // ============================================================
+  // 单源模式 (避免IP封禁):
+  //   每次请求只尝试 1 个音源, 失败后切换到下一个并重试 1 次 (共最多 2 次API调用)。
+  //   不再依次尝试全部音源, 避免一次请求触发多次API调用导致 "禁止批量下载" 风控。
+  //   huibq 回退也纳入轮换 (因为后端是同一个API, 单独回退只会多一次封禁请求)。
+  // 使用规范:
+  //   1. 不支持数字专辑
+  //   2. 仅供在线试听, 禁止批量下载
+  //   3. 尽量避免频繁切换歌曲
+  // ============================================================
+  // 当前活跃音源ID 为模块级变量（currentLxSourceId），跨请求保持轮换状态
+  // 获取当前活跃音源, 不存在则选第一个
+  function pickCurrentLxSource(scripts) {
+    if (!scripts || !scripts.length) return null;
+    if (!currentLxSourceId) {
+      currentLxSourceId = scripts[0].id;
+      console.log('[LsChain] active source set:', currentLxSourceId);
+    }
+    var current = scripts.find(function (s) { return s.id === currentLxSourceId; });
+    if (!current) {
+      // 当前音源已不存在 (可能被重新同步删除), 重置为第一个
+      currentLxSourceId = scripts[0].id;
+      current = scripts[0];
+      console.log('[LsChain] active source reset:', currentLxSourceId);
+    }
+    return current;
+  }
 
-  // 链式尝试: 服务器自动同步的缓存音源(juhe/ikun/flower/grass/sixyin...) -> onrender huibq 回退
+  // 切换到下一个音源, 返回新的音源脚本
+  function switchToNextLxSource(scripts, failedId) {
+    if (!scripts || !scripts.length) return null;
+    var idx = scripts.findIndex(function (s) { return s.id === failedId; });
+    if (idx < 0) idx = 0;
+    var nextIdx = (idx + 1) % scripts.length;
+    currentLxSourceId = scripts[nextIdx].id;
+    console.log('[LsChain] source switched:', failedId, '->', currentLxSourceId);
+    return scripts[nextIdx];
+  }
+
+  // tx(QQ) 直连解析: 本地模式(红尘客栈雷达)歌曲实为 QQ 曲目,
+  // 走 server.js 自有的 vkey 探测链 (handleQQSongUrl), 不依赖 onrender 公共 API。
+  // 用于自定义脚本全部失败后的兜底, 避免上游 503/风控导致本地模式整体不可用。
+  async function tryLsTxDirectResolve(songId, quality) {
+    try {
+      const qq = await handleQQSongUrl(songId, '', quality, {});
+      if (qq && qq.url && qq.playable) {
+        return {
+          code: 0,
+          url: qq.url,
+          quality: qq.quality || String(quality || '128k'),
+          source: 'tx',
+          provider: 'ls',
+          from: 'qq-direct',
+          trial: !!qq.trial,
+          playable: true,
+          level: qq.level || '',
+        };
+      }
+    } catch (err) {
+      console.warn('[LsChain] QQ direct fallback failed:', (err && err.message) || err);
+    }
+    return null;
+  }
+
+  // 单源模式: 只尝试当前活跃音源, 失败后切换重试1次 (最多2次API调用)
   async function tryLsChain(songId, source, quality) {
-    const scripts = lxSourceSync ? lxSourceSync.getCachedSourceScripts() : [];
-    if (scripts.length) {
-      const custom = await tryCustomSourcesForUrl(scripts, songId, source, quality);
+    const scripts = lxSourceSync ? lxSourceSync.getCachedSourceScripts(true) : [];
+    if (!scripts.length) {
+      console.log('[LsChain] no cached scripts, fallback to huibq');
+      return await handleLsSongUrl(songId, source, quality);
+    }
+
+    // 第1次尝试: 当前活跃音源
+    var current = pickCurrentLxSource(scripts);
+    if (current) {
+      var custom = await tryCustomSourcesForUrl([current], songId, source, quality);
       if (custom && custom.url) {
+        console.log('[LsChain] hit (try 1):', custom.sourceId, 'for', songId);
         return {
           code: 0, url: custom.url,
           quality: String(quality || '128k').trim(), source: source,
           provider: 'ls', from: 'custom-source', sourceId: custom.sourceId,
         };
       }
+      console.log('[LsChain] miss (try 1):', current.id);
+
+      // 第2次尝试: 切换到下一个音源重试1次
+      var next = switchToNextLxSource(scripts, current.id);
+      if (next && next.id !== current.id) {
+        // 短暂延迟, 避免连续请求触发风控
+        await new Promise(function (r) { setTimeout(r, 1500); });
+        custom = await tryCustomSourcesForUrl([next], songId, source, quality);
+        if (custom && custom.url) {
+          console.log('[LsChain] hit (try 2 after switch):', custom.sourceId, 'for', songId);
+          return {
+            code: 0, url: custom.url,
+            quality: String(quality || '128k').trim(), source: source,
+            provider: 'ls', from: 'custom-source', sourceId: custom.sourceId,
+          };
+        }
+        console.log('[LsChain] miss (try 2):', next.id);
+      }
+
+      // 2次都失败, 不再回退到huibq (同一后端API, 再请求只会加剧封IP)。
+      // tx 歌曲(本地模式/雷达)改走 QQ 官方 vkey 直连解析: 不依赖 onrender,
+      // 也不会触发其 IP 风控, 保证本地模式音源可用。
+      console.log('[LsChain] both attempts failed, skip huibq (same API backend)');
+      if (source === 'tx') {
+        console.log('[LsChain] fallback to QQ direct for tx:', songId);
+        const direct = await tryLsTxDirectResolve(songId, quality);
+        if (direct) return direct;
+      }
+      return { code: 1, msg: '音源暂不可用, 已自动切换, 请稍后重试或减少切换频率' };
     }
-    return handleLsSongUrl(songId, source, quality);
+
+    // 无可用自定义音源, 回退到 huibq
+    const result = await handleLsSongUrl(songId, source, quality);
+    if (!result || result.code !== 0) {
+      console.log('[LsChain] huibq failed:', (result && result.msg) || 'unknown', 'for', songId, '@', source);
+    } else if (result) {
+      result.from = 'huibq';
+    }
+    return result;
   }
 
   if (pn === '/api/ls/sources/status') {
@@ -6814,8 +7144,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ============ 自定义音源 (落雪协议脚本沙箱) ============
+  // 以下接口会在服务端执行脚本, 必须限制本机来源 (沙箱非零逃逸, 见 isLocalRequest 注释)
   // 测试脚本: POST { script } -> { ok, info, sources, error }
   if (pn === '/api/ls/custom-source/test' && req.method === 'POST') {
+    if (rejectNonLocal(req, res)) return;
     try {
       const body = await readRequestBody(req);
       const script = String((body && body.script) || '').trim();
@@ -6831,6 +7163,7 @@ const server = http.createServer(async (req, res) => {
 
   // 在线导入: POST { url } -> { ok, script, info }
   if (pn === '/api/ls/custom-source/fetch' && req.method === 'POST') {
+    if (rejectNonLocal(req, res)) return;
     try {
       const body = await readRequestBody(req);
       const scriptUrl = String((body && body.url) || '').trim();
@@ -6885,26 +7218,71 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 链式回退获取播放URL: POST { songId, source, quality, scripts: [{id, script}] }
-  // 先按顺序尝试自定义音源,全部失败则回退到默认 huibq
+  // 单源模式获取播放URL: POST { songId, source, quality, scripts: [{id, script}] }
+  // 只尝试当前活跃音源, 失败后切换重试1次 (最多2次API调用, 避免触发IP风控)
   if (pn === '/api/ls/custom-source/url' && req.method === 'POST') {
+    if (rejectNonLocal(req, res)) return;
     try {
       const body = await readRequestBody(req);
       const songId = String(body.songId || body.id || body.songmid || '').trim();
       const quality = String(body.quality || body.type || '128k').trim();
       const source = String(body.source || 'tx').trim();
       const scripts = Array.isArray(body.scripts) ? body.scripts : [];
+      // 验证模式 (试听验证按钮): 跳过 QQ 直连与 huibq 兜底, 直接暴露脚本自身结果
+      const isProbe = body.probe === 1 || body.probe === '1' || body.probe === true;
       if (!songId) { sendJSON(res, { provider: 'ls', error: 'songId required' }, 400); return; }
-      // 先尝试自定义音源链式回退
+      console.log('[LsCustomUrl] songId=' + songId + ' source=' + source + ' scripts=' + scripts.length + (isProbe ? ' probe' : ''));
       if (scripts.length) {
-        const custom = await tryCustomSourcesForUrl(scripts, songId, source, quality);
-        if (custom && custom.url) {
-          sendJSON(res, { code: 0, url: custom.url, provider: 'ls', from: 'custom-source', sourceId: custom.sourceId });
+        // 单源模式: 只尝试当前活跃音源
+        var current = pickCurrentLxSource(scripts);
+        if (current) {
+          var custom = await tryCustomSourcesForUrl([current], songId, source, quality);
+          if (custom && custom.url) {
+            console.log('[LsCustomUrl] hit (try 1):', custom.sourceId);
+            sendJSON(res, { code: 0, url: custom.url, provider: 'ls', from: 'custom-source', sourceId: custom.sourceId });
+            return;
+          }
+          console.log('[LsCustomUrl] miss (try 1):', current.id);
+          // 切换到下一个音源重试1次
+          var next = switchToNextLxSource(scripts, current.id);
+          if (next && next.id !== current.id) {
+            await new Promise(function (r) { setTimeout(r, 1500); });
+            custom = await tryCustomSourcesForUrl([next], songId, source, quality);
+            if (custom && custom.url) {
+              console.log('[LsCustomUrl] hit (try 2):', custom.sourceId);
+              sendJSON(res, { code: 0, url: custom.url, provider: 'ls', from: 'custom-source', sourceId: custom.sourceId });
+              return;
+            }
+          }
+          // 2次都失败, 不再回退huibq (同一后端API)。tx 歌曲改走 QQ 官方 vkey 直连
+          console.log('[LsCustomUrl] both attempts failed, skip huibq (same API backend)');
+          if (!isProbe && source === 'tx') {
+            const direct = await tryLsTxDirectResolve(songId, quality);
+            if (direct) { sendJSON(res, direct); return; }
+          }
+          if (isProbe) {
+            sendJSON(res, { code: 1, from: 'probe', provider: 'ls', msg: '脚本未解析出播放地址' });
+            return;
+          }
+          sendJSON(res, { code: 1, msg: '音源暂不可用, 已自动切换, 请稍后重试' });
           return;
         }
       }
-      // 回退到默认 huibq render_api
+      // 无自定义音源时: tx 歌曲优先直连 QQ 官方 vkey, 其它平台回退到 huibq
+      if (!isProbe && source === 'tx') {
+        const direct = await tryLsTxDirectResolve(songId, quality);
+        if (direct) { sendJSON(res, direct); return; }
+      }
+      if (isProbe) {
+        sendJSON(res, { code: 1, from: 'probe', provider: 'ls', msg: '脚本未解析出播放地址' });
+        return;
+      }
       const result = await handleLsSongUrl(songId, source, quality);
+      if (!result || result.code !== 0) {
+        console.log('[LsCustomUrl] huibq failed:', (result && result.msg) || 'unknown');
+      } else if (result) {
+        result.from = 'huibq';
+      }
       sendJSON(res, result);
     } catch (err) {
       sendJSON(res, { provider: 'ls', error: err.message }, 500);
@@ -6914,6 +7292,7 @@ const server = http.createServer(async (req, res) => {
 
   // 链式回退获取歌词: POST { songId, source, scripts: [{id, script}] }
   if (pn === '/api/ls/custom-source/lyric' && req.method === 'POST') {
+    if (rejectNonLocal(req, res)) return;
     try {
       const body = await readRequestBody(req);
       const songId = String(body.songId || body.id || body.songmid || '').trim();
@@ -6943,19 +7322,21 @@ const server = http.createServer(async (req, res) => {
       const targetLimit = Math.max(6, Math.min(40, parseInt(url.searchParams.get('limit') || '30', 10) || 30));
       const seedList = getRedDustInnSeeds(category);
       const seenMid = new Set();
-      const playable = [];
+      const candidates = [];
       const usedSeeds = [];
-      const maxRounds = 3;
+      const maxRounds = 8;
+      const minCandidates = Math.max(120, targetLimit * 6);
 
-      // 不做逐首可播放性验证：验证会逐首请求 onrender（触发 IP 风控并大幅拖慢推送），
-      // 改为直接推送搜索结果，播放时再按需解析播放地址（低频单曲请求不会触发风控）
-      for (let round = 0; round < maxRounds && playable.length < targetLimit; round++) {
+      // 先凑曲（QQ 搜索，不依赖落雪），凑完再预验证可播性（见下方）。
+      // perSeed 提高以提供足够的候选供过滤：未登录时 QQ vkey 对部分版权歌返回 104003，
+      // 命中率有限，需要更多候选才能凑够目标数量。
+      for (let round = 0; round < maxRounds && candidates.length < minCandidates; round++) {
         const remaining = seedList.filter(function (s) { return usedSeeds.indexOf(s) < 0; });
         const pool = remaining.length ? remaining : seedList;
         const pickCount = Math.min(3, pool.length);
         const picked = pickRandomSeeds(pool, pickCount);
         picked.forEach(function (s) { if (usedSeeds.indexOf(s) < 0) usedSeeds.push(s); });
-        const perSeed = Math.max(8, Math.ceil(targetLimit / pickCount) + 4);
+        const perSeed = Math.max(20, Math.min(30, Math.ceil(targetLimit / pickCount) * 4));
         const results = await Promise.all(picked.map(function (seed) {
           return handleQQSearch(seed, perSeed, 0).catch(function () { return []; });
         }));
@@ -6976,17 +7357,62 @@ const server = http.createServer(async (req, res) => {
           var j = Math.floor(Math.random() * (i + 1));
           var tmp = batch[i]; batch[i] = batch[j]; batch[j] = tmp;
         }
-        playable.push.apply(playable, batch);
+        candidates.push.apply(candidates, batch);
+        // 种子耗尽且本轮无新歌时提前结束, 避免空转
+        if (!batch.length && !remaining.length) break;
+      }
+
+      // 预验证可播性：只推送能解析出播放地址的歌曲（走 QQ 官方 vkey，不依赖 onrender）。
+      // 用轻量 purl 探测 (qqVkeyQuickProbe) 而非完整音频探测链, 批量验证可接受。
+      // 每首歌验证通过后把播放地址写入 playUrl，前端播放时直接使用，无需再请求解析接口。
+      // 原「逐首验证触发 onrender IP 风控」的顾虑已不适用（vkey 与搜索同域）；
+      // 低并发 + 单首超时 + 总量上限保护 QQ 官方接口。
+      const VERIFY_CONCURRENCY = 5;
+      const VERIFY_MAX = 200;
+      const VERIFY_TIMEOUT_MS = 6000;
+      const verifyPool = candidates.slice(0, VERIFY_MAX);
+      const verified = [];
+      for (let vi = 0; vi < verifyPool.length && verified.length < targetLimit; vi += VERIFY_CONCURRENCY) {
+        const batch = verifyPool.slice(vi, vi + VERIFY_CONCURRENCY);
+        const results = await Promise.all(batch.map(async function (song) {
+          const mid = song && (song.mid || song.songmid || song.id);
+          if (!mid) return null;
+          try {
+            const playUrl = await promiseWithTimeout(
+              qqVkeyQuickProbe(mid),
+              VERIFY_TIMEOUT_MS,
+              'RADAR_VERIFY_TIMEOUT'
+            );
+            if (!playUrl || !/^https?:\/\//i.test(playUrl)) return null;
+            // 二次校验: 8KB Range 探测确认真实可播。
+            // vkey 返回的 purl 偶有防盗链 404 的假可播, 必须过滤掉。
+            const probe = await promiseWithTimeout(
+              probePlaybackAudioUrl(playUrl, 2200),
+              3200,
+              'RADAR_PROBE_TIMEOUT'
+            );
+            if (!probe || !probe.ok) return null;
+            song.playUrl = playUrl;
+            song.playbackSource = 'qq-direct';
+            song.playbackLevel = 'standard';
+            return song;
+          } catch (err) {
+            console.warn('[LsRadar] verify skip:', mid, (err && err.message) || err);
+          }
+          return null;
+        }));
+        results.forEach(function (s) { if (s) verified.push(s); });
       }
 
       sendJSON(res, {
         provider: 'ls',
-        songs: playable.slice(0, targetLimit),
+        songs: verified.slice(0, targetLimit),
         category: category,
         seeds: usedSeeds,
-        verified: playable.length,
+        verified: verified.length,
+        candidates: candidates.length,
         rounds: maxRounds,
-        hasMore: true
+        hasMore: verified.length > targetLimit
       });
     } catch (err) {
       sendJSON(res, { provider: 'ls', error: err.message, songs: [] }, 500);
@@ -7399,7 +7825,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const audioUrl = url.searchParams.get('url');
       const durationSec = Math.max(0, Number(url.searchParams.get('duration') || 0) || 0);
-      if (!audioUrl || !/^https?:\/\//i.test(audioUrl)) {
+      if (!audioUrl || !/^https?:\/\//i.test(audioUrl) || isBlockedProxyTarget(audioUrl)) {
         sendJSON(res, { error: 'Invalid audio url' }, 400);
         return;
       }
@@ -7447,6 +7873,7 @@ const server = http.createServer(async (req, res) => {
       let code = Number(body.code || r.code);
       let msg  = body.message || r.message || '';
       let cookie = readCookieFromResponse(r);
+      console.log('[QrCheck] code=' + code + ' cookie=' + (cookie ? cookie.length : 0) + ' key=' + String(pn).length);
       if (code === 803 && !cookie) {
         try {
           const retry = await login_qr_check({ key, timestamp: Date.now() });
@@ -7917,7 +8344,14 @@ const server = http.createServer(async (req, res) => {
       const reader = resp.body.getReader();
       while (true) { const c = await reader.read(); if (c.done) break; res.write(c.value); }
       res.end();
-    } catch (err) { console.error('[Cover]', err); res.writeHead(500); res.end(); }
+    } catch (err) {
+      console.error('[Cover]', err);
+      if (res.headersSent) {
+        try { res.destroy(); } catch (_) {}
+      } else {
+        res.writeHead(500); res.end();
+      }
+    }
     return;
   }
 
@@ -7981,6 +8415,208 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---------- 静态资源 ----------
+  // ---------- 手机端授权登录：QQ ptlogin 引导/回调 ----------
+  if (pn === '/api/qq/oauth/start') {
+    const qqCallbackUrl = 'http://127.0.0.1:' + PORT + '/api/qq/oauth/callback';
+    const qqLoginUrl = 'https://xui.ptlogin2.qq.com/cgi-bin/xlogin?appid=716027609&s_url=' +
+      encodeURIComponent(qqCallbackUrl) + '&pt_no_auth=1';
+    sendJSON(res, { ok: true, url: qqLoginUrl, callback: qqCallbackUrl });
+    return;
+  }
+  // ---------- 酷狗扫码登录 ----------
+  if (pn === '/api/kugou/qr/create') {
+    try {
+      const ct = Date.now();
+      const mid = crypto.randomBytes(16).toString('hex');
+      const dfid = crypto.randomBytes(16).toString('hex');
+      const qrcodeTxt = 'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=1005';
+      const params = {
+        appid: '1005', srcappid: '2919', clientver: '20000',
+        clienttime: String(ct), mid: mid, uuid: mid, dfid: dfid,
+        type: '1', plat: '4', qrcode_txt: qrcodeTxt
+      };
+      const out = await kgGetSigned('https://login-user.kugou.com/v2/qrcode', params);
+      if (!out || out.status !== 1 || !out.data || !out.data.qrcode) {
+        sendJSON(res, { ok: false, error: String((out && out.error_code) || 'kugou qr create failed') });
+        return;
+      }
+      kugouQrSession = { qrcode: out.data.qrcode, mid: mid, dfid: dfid };
+      // 解码官方二维码内容（诊断：确认官方图 URL 格式）
+      try {
+        if (out.data.qrcode_img && out.data.qrcode_img.indexOf('data:image/png;base64,') === 0) {
+          const b64 = out.data.qrcode_img.slice('data:image/png;base64,'.length);
+          const PNG = require('pngjs').PNG;
+          const jsQR = require('jsqr');
+          const png = PNG.sync.read(Buffer.from(b64, 'base64'));
+          const decoded = jsQR(new Uint8ClampedArray(png.data.buffer), png.width, png.height);
+          console.log('[KgQr] official-img decoded:', decoded ? decoded.data : '(decode failed)');
+        }
+      } catch (decErr) { console.warn('[KgQr] decode skip:', (decErr && decErr.message) || decErr); }
+      // 用 qrcode 包本地生成二维码（内容 = h5 确认页 URL + qrcode 参数，确保 App 扫码可识别）
+      const qrContent = qrcodeTxt + '&qrcode=' + out.data.qrcode;
+      const qrDataUrl = await new Promise((resolveQr, rejectQr) => {
+        try {
+          require('qrcode').toDataURL(qrContent, { width: 280, margin: 1 }, (err, url) => err ? rejectQr(err) : resolveQr(url));
+        } catch (e) { rejectQr(e); }
+      });
+      console.log('[KgQr] qrcode=' + out.data.qrcode + ' content=' + qrContent);
+      sendJSON(res, { ok: true, img: qrDataUrl, key: out.data.qrcode });
+    } catch (kgErr) {
+      sendJSON(res, { ok: false, error: String((kgErr && kgErr.message) || kgErr) });
+    }
+    return;
+  }
+  if (pn === '/api/kugou/qr/check') {
+    try {
+      if (!kugouQrSession.qrcode) { sendJSON(res, { ok: false, code: 4, message: '二维码未生成' }); return; }
+      const params = {
+        appid: '1005', srcappid: '2919', clientver: '20000', clienttime: String(Math.floor(Date.now() / 1000)),
+        mid: kugouQrSession.mid, uuid: kugouQrSession.mid, dfid: kugouQrSession.dfid,
+        plat: '4', qrcode: kugouQrSession.qrcode
+      };
+      const out = await kgGetSigned('https://login-user.kugou.com/v2/get_userinfo_qrcode', params);
+      const st = out && out.data ? Number(out.data.status) : 0;
+      console.log('[KgQrCheck] data.status=' + st + ' raw=' + JSON.stringify(out).slice(0, 260));
+      if (st === 1) sendJSON(res, { ok: true, code: 1, message: '请使用酷狗音乐 App 扫码' });
+      else if (st === 2) sendJSON(res, { ok: true, code: 2, message: '已扫码，请在手机确认', nickname: out.data.nickname || '', userid: out.data.userid || 0 });
+      else if (st === 4) {
+        // 扫码完成：data 携带 token（登录凭证）→ 换 cookie
+        const kgToken = out.data && out.data.token;
+        const kgUserId = out.data && out.data.userid;
+        if (kgToken && kgUserId) {
+          try {
+            const lg = await kgLoginByToken(kgToken, kgUserId);
+            const cookies = lg.cookies;
+            if (cookies && cookies.length) {
+              const cookieStr = cookies.map((c) => String(c).split(';')[0]).join('; ');
+              if (cookieStr) {
+                saveKugouCookie(cookieStr);
+                sendJSON(res, { ok: true, code: 3, message: '登录成功', loggedIn: true });
+                return;
+              }
+            }
+            sendJSON(res, { ok: true, code: 3, message: '扫码成功但会话换取失败，请使用 Cookie 导入', pending: true, raw: lg.text.slice(0, 120) });
+            return;
+          } catch (lgErr) {
+            sendJSON(res, { ok: true, code: 3, message: '扫码成功但会话换取异常，请使用 Cookie 导入', pending: true, error: String((lgErr && lgErr.message) || lgErr) });
+            return;
+          }
+        }
+        sendJSON(res, { ok: true, code: 3, message: '扫码成功但未取得会话，请使用 Cookie 导入', pending: true });
+      } else if (st === 0) sendJSON(res, { ok: true, code: 0, message: '二维码无效，请刷新' });
+      else sendJSON(res, { ok: true, code: st || 0, message: '未知状态' });
+    } catch (kgErr2) {
+      sendJSON(res, { ok: false, error: String((kgErr2 && kgErr2.message) || kgErr2) });
+    }
+    return;
+  }
+  // ---------- QQ 音乐扫码登录（ptlogin 二维码，卡片与网易云一致） ----------
+  if (pn === '/api/qq/qr/create') {
+    try {
+      const qrUrl = 'https://ssl.ptlogin2.qq.com/ptqrshow?appid=716027609&e=2&l=M&s=3&d=72&v=4&t=' + Date.now() +
+        '&daid=5&pt_3rd_aid=0';
+      const r1 = await fetchWithTimeout(qrUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Referer': 'https://xui.ptlogin2.qq.com/',
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8'
+        }
+      }, 12000);
+      let qrsig = '';
+      const rawCookies = (typeof r1.headers.getSetCookie === 'function') ? r1.headers.getSetCookie() : [];
+      rawCookies.forEach(function (c) { const m = String(c).match(/qrsig=([^;]+)/); if (m && !qrsig) qrsig = m[1]; });
+      if (!qrsig) {
+        const sc = String(r1.headers.get && r1.headers.get('set-cookie') || '');
+        const m = sc.match(/qrsig=([^;]+)/);
+        if (m) qrsig = m[1];
+      }
+      const buf = Buffer.from(await r1.arrayBuffer());
+      qqQrSig = qrsig;
+      qqQrToken = qqHash33(qrsig);
+      console.log('[QQQr] sig=' + qrsig.length + ' img=' + buf.length + ' token=' + qqQrToken);
+      sendJSON(res, { ok: true, img: 'data:image/png;base64,' + buf.toString('base64'), key: qrsig, token: qqQrToken });
+    } catch (qrErr) {
+      sendJSON(res, { ok: false, error: String((qrErr && qrErr.message) || qrErr) });
+    }
+    return;
+  }
+  if (pn === '/api/qq/qr/check') {
+    try {
+      if (!qqQrSig) { sendJSON(res, { ok: false, code: 67, message: '二维码未生成，请刷新' }); return; }
+      const u1 = 'http://127.0.0.1:' + PORT + '/api/qq/oauth/callback';
+      const checkUrl = 'https://ssl.ptlogin2.qq.com/ptqrlogin?u1=' + encodeURIComponent(u1) +
+        '&ptqrtoken=' + qqQrToken +
+        '&ptqrpin=1&webqq_type=10&remember_uin=1&login2qq=1&aid=10001&u1=' + encodeURIComponent(u1) +
+        '&ptredirect=0&ptlang=2052&daid=5&j_later=0&low_login_hour=0&regmaster=0&pt_login_type=1&pt_aid=0&pt_aaid=0&pt_light=0&pt_3rd_aid=0' +
+        '&cookie_type=1&pt_traceid=0&pt_no_auth=1&qrsig=' + encodeURIComponent(qqQrSig);
+      const r2 = await fetchWithTimeout(checkUrl, {
+        headers: { Cookie: 'qrsig=' + qqQrSig, Referer: 'https://xui.ptlogin2.qq.com/', Origin: 'https://xui.ptlogin2.qq.com' }
+      }, 12000);
+      const text = await r2.text();
+      console.log('[QQQrCheck] raw:', String(text).slice(0, 200));
+      const m = text.match(/ptuiCB\('([^']*)','([^']*)','([^']*)','([^']*)','([^']*)'([\s\S]*?)\)/);
+      const status = m ? m[1] : 'error';
+      const uin = m ? (m[6] || '').replace(/[^\d]/g, '') : '';
+      if (status === '0' && m) {
+        const cbCookie = String(r2.headers.get && r2.headers.get('set-cookie') || '');
+        let cookieStr = '';
+        if (typeof r2.headers.getSetCookie === 'function') {
+          cookieStr = r2.headers.getSetCookie().map(function (c) { return String(c).split(';')[0]; }).join('; ');
+        }
+        if (!cookieStr && cbCookie) cookieStr = cbCookie.split(';').map(function (s) { return s.trim(); }).join('; ');
+        if (uin && cookieStr) {
+          cookieStr += '; uin=' + uin;
+          saveQQCookie(cookieStr);
+          refreshQQConfiguredCookieStore(true);
+          sendJSON(res, { ok: true, code: 0, loggedIn: true, uin: uin });
+        } else {
+          sendJSON(res, { ok: true, code: 0, loggedIn: false, uin: uin, needCookie: true });
+        }
+      } else if (status === '65') {
+        sendJSON(res, { ok: true, code: 65, message: '请使用手机 QQ 扫码' });
+      } else if (status === '66') {
+        sendJSON(res, { ok: true, code: 66, message: '已扫码，请在手机确认' });
+      } else if (status === '67') {
+        sendJSON(res, { ok: true, code: 67, message: '二维码已失效，请刷新' });
+      } else {
+        sendJSON(res, { ok: true, code: status || 68, message: m ? m[5] : '未知状态' });
+      }
+    } catch (qrCheckErr) {
+      sendJSON(res, { ok: false, error: String((qrCheckErr && qrCheckErr.message) || qrCheckErr) });
+    }
+    return;
+  }
+  if (pn === '/api/qq/oauth/callback') {
+    const qqQuery = new URL(req.url, 'http://x').searchParams;
+    const clientuin = qqQuery.get('clientuin') || qqQuery.get('login_uin') || qqQuery.get('uin') || '';
+    const clientkey = qqQuery.get('clientkey') || qqQuery.get('key') || '';
+    const qqRawCookie = String(req.headers.cookie || '');
+    let qqOk = false;
+    let qqMsg = 'authorize callback carried no usable session; use manual Cookie in app';
+    try {
+      let cookieStr = '';
+      if (qqRawCookie && qqRawCookie.indexOf('uin=') !== -1 && qqRawCookie.indexOf('skey=') !== -1) {
+        cookieStr = qqRawCookie;
+      } else if (clientuin && clientkey) {
+        cookieStr = 'uin=' + clientuin + '; skey=' + clientkey + '; p_uin=' + clientuin;
+      }
+      if (cookieStr) {
+        saveQQCookie(cookieStr);
+        refreshQQConfiguredCookieStore(true);
+        qqOk = true;
+        qqMsg = 'QQ session saved, return to app';
+      }
+    } catch (qqErr) {
+      qqMsg = String((qqErr && qqErr.message) || qqErr);
+    }
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<html><head><meta charset="utf-8"></head><body style="background:#0b0d12;color:#e8f5ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">' +
+      '<div style="text-align:center;font-size:16px;line-height:1.8">' +
+      (qqOk ? 'QQ session saved, return to MOMusic' : 'QQ auth incomplete, use manual Cookie') +
+      '<br><a href="http://127.0.0.1:' + PORT + '/" style="color:#00f5d4">Back to MOMusic</a></div></body></html>');
+    return;
+  }
+
   if (pn === '/favicon.ico') {
     serveStatic(res, path.join(__dirname, 'build', 'icon.ico'));
     return;
@@ -8003,6 +8639,40 @@ server.listen(PORT, HOST, () => {
     });
   }
 });
+
+// ---------- Mobile Spotify OAuth local callback server (reuses desktop 43879 port) ----------
+try {
+  const spotifyCfg = getSpotifyConfig();
+  const spotifyRedirectUri = (spotifyCfg && spotifyCfg.redirectUri) || DEFAULT_SPOTIFY_REDIRECT_URI;
+  const spotifyCbUrl = new URL(spotifyRedirectUri);
+  const spotifyCbPort = Number(spotifyCbUrl.port) || 43879;
+  const spotifyCallbackServer = http.createServer(async function (req2, res2) {
+    try {
+      const q2 = new URL(req2.url, 'http://x').searchParams;
+      const spCode = q2.get('code');
+      const spError = q2.get('error');
+      if (spError || !spCode) {
+        res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=error' });
+        res2.end();
+        return;
+      }
+      const spInfo = await exchangeSpotifyOAuthCode({ code: spCode, redirectUri: spotifyRedirectUri });
+      saveSpotifyOAuthToken(spInfo);
+      res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=ok' });
+      res2.end();
+      console.log('[SpotifyOAuth] token saved via mobile callback');
+    } catch (spErr) {
+      res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=fail' });
+      res2.end();
+      console.warn('[SpotifyOAuth] callback failed: ' + ((spErr && spErr.message) || spErr));
+    }
+  });
+  spotifyCallbackServer.on('error', function () { /* port busy / not configured: silent */ });
+  spotifyCallbackServer.listen(spotifyCbPort, '127.0.0.1');
+  console.log('[SpotifyOAuth] mobile callback server on port ' + spotifyCbPort);
+} catch (spInitErr) {
+  console.warn('[SpotifyOAuth] callback server init skipped: ' + ((spInitErr && spInitErr.message) || spInitErr));
+}
 
 server.clearAllLoginCredentials = clearAllRuntimeLoginCredentials;
 
