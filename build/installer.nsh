@@ -89,10 +89,18 @@
   Var MoMusicSmallFont
   Var MoMusicDirectoryPage
   Var MoMusicDirectoryInput
+  Var MoMusicSilentUpdate
 !endif
 
 !macro customInit
   !ifndef BUILD_UNINSTALLER
+    StrCpy $MoMusicSilentUpdate "0"
+    ${GetParameters} $R0
+    ClearErrors
+    ${GetOptions} $R0 "/UPDATE" $R1
+    ${IfNot} ${Errors}
+      StrCpy $MoMusicSilentUpdate "1"
+    ${EndIf}
     Call MoMusicUsePreferredInstallDir
     Call MoMusicDisableUnsafeOldUninstallers
     ${If} ${Silent}
@@ -107,6 +115,16 @@
     FileWrite $0 "MoMusic install root$\r$\n"
     FileWrite $0 "appId=${MoMusic_MARKER_APP_ID}$\r$\n"
     FileClose $0
+  ${EndIf}
+  ; 软件内静默更新（/S /UPDATE）：静默模式会跳过完成页的"运行"勾选，
+  ; 这里在文件就位后直接启动新版本，保证"更新完成后自动启动新版"
+  ${If} $MoMusicSilentUpdate == "1"
+    Sleep 600
+    StrCpy $0 "$INSTDIR\${PRODUCT_FILENAME}.exe"
+    ${If} ${FileExists} "$0"
+      ${StdUtils.ExecShellAsUser} $1 "$0" "open" "--updated"
+    ${EndIf}
+    StrCpy $MoMusicSilentUpdate "0"
   ${EndIf}
 !macroend
 

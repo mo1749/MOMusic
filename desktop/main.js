@@ -5604,7 +5604,18 @@ ipcMain.handle('MOMusic-silent-install-update', async (_event, filePath) => {
     if (/portable/i.test(path.basename(target))) {
       return { ok: false, error: 'PORTABLE_INSTALLER_NOT_SUPPORTED' };
     }
-    const installer = spawn(target, ['/S'], {
+    // 必须显式传入当前安装目录（NSIS /D= 规定必须为最后一个参数）：
+    // 自定义安装器在静默模式下若靠注册表解析目录失败，会回退到"D 盘优先"的
+    // 全新安装选盘逻辑，把新版装进另一个目录，用户原快捷方式仍指向旧目录，
+    // 表现为"软件内更新后回退到上一个版本"。
+    const currentInstallDir = path.dirname(process.execPath);
+    const installArgs = ['/S'];
+    const installDirName = path.basename(currentInstallDir).toLowerCase();
+    if (app.isPackaged && installDirName === 'momusic') {
+      installArgs.push('/UPDATE');
+      installArgs.push('/D=' + currentInstallDir);
+    }
+    const installer = spawn(target, installArgs, {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
