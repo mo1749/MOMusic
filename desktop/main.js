@@ -128,6 +128,7 @@ const NETEASE_LOGIN_PARTITION = 'persist:MOMusic-netease-login';
 const NETEASE_LOGIN_URL = 'https://music.163.com/#/login';
 const QQ_LOGIN_PARTITION = 'persist:MOMusic-qqmusic-login';
 const QQ_LOGIN_URL = 'https://y.qq.com/n/ryqq/profile';
+const QQ_LOGIN_FALLBACK_URL = 'https://y.qq.com/';
 const KUGOU_LOGIN_PARTITION = 'persist:MOMusic-kugou-login';
 const KUGOU_LOGIN_URL = 'https://www.kugou.com/';
 const KUGOU_LOGIN_WARMUP_URL = 'https://www.kugou.com/newuc/user/uc/type=edit';
@@ -2308,7 +2309,8 @@ function parseCookieHeader(cookieText) {
 
 function qqCookieHasLogin(cookieText) {
   const obj = parseCookieHeader(cookieText);
-  const rawUin = Number(obj.login_type) === 2
+  const isWechat = !!obj.wxopenid || Number(obj.login_type) === 2;
+  const rawUin = isWechat
     ? (obj.wxuin || obj.uin || obj.p_uin || '')
     : (obj.uin || obj.qqmusic_uin || obj.wxuin || obj.p_uin || '');
   const uin = String(rawUin).replace(/\D/g, '');
@@ -2319,12 +2321,46 @@ function qqCookieHasLogin(cookieText) {
 
 function qqCookieHasPlaybackLogin(cookieText) {
   const obj = parseCookieHeader(cookieText);
-  const rawUin = Number(obj.login_type) === 2
+  const isWechat = !!obj.wxopenid || Number(obj.login_type) === 2;
+  const rawUin = isWechat
     ? (obj.wxuin || obj.uin || obj.p_uin || '')
     : (obj.uin || obj.qqmusic_uin || obj.wxuin || obj.p_uin || '');
   const uin = String(rawUin).replace(/\D/g, '');
   const playbackKey = obj.qm_keyst || obj.qqmusic_key || obj.music_key || obj.wxskey || '';
   return !!(uin && playbackKey);
+}
+
+function isTrustedQQLoginUrl(targetUrl) {
+  try {
+    const parsed = new URL(String(targetUrl || ''));
+    if (parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return [
+      'qq.com',
+      'tencent.com',
+      'qqmusic.com',
+      'gtimg.com',
+      'qpic.cn',
+      'weixin.qq.com',
+    ].some(domain => hostname === domain || hostname.endsWith('.' + domain));
+  } catch (_) {
+    return false;
+  }
+}
+
+function qqLoginCompletionFromCookie(cookieText) {
+  if (qqCookieHasPlaybackLogin(cookieText)) {
+    return { ok: true, cookie: cookieText };
+  }
+  if (qqCookieHasLogin(cookieText)) {
+    return {
+      ok: false,
+      partial: true,
+      error: 'QQ_PLAYBACK_AUTH_INCOMPLETE',
+      message: 'QQ 账号验证已完成，但您的 QQ 音乐播放授权尚未生成，请在官方登录窗口完成授权后再关闭',
+    };
+  }
+  return { ok: false, cancelled: true, message: 'QQ 登录窗口已关闭' };
 }
 
 function neteaseCookieHasLogin(cookieText) {
@@ -2804,6 +2840,8 @@ async function openNeteaseMusicLoginWindow(owner) {
   return new Promise((resolve) => {
     let settled = false;
     let pollTimer = null;
+    let showWatchdog = null;
+    let cookieEventScheduled = false;
 
     const loginWindow = new BrowserWindow({
       width: 940,
@@ -2825,10 +2863,16 @@ async function openNeteaseMusicLoginWindow(owner) {
       },
     });
 
+    const detachCookieListener = () => {
+      try { cookieSession.removeListener('cookies-changed', onCookieChanged); } catch (_) {}
+    };
+
     const finish = async (result) => {
       if (settled) return;
       settled = true;
       if (pollTimer) clearInterval(pollTimer);
+      if (showWatchdog) clearTimeout(showWatchdog);
+      detachCookieListener();
       if (loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.close();
       }
@@ -2844,6 +2888,23 @@ async function openNeteaseMusicLoginWindow(owner) {
       } catch (e) {
         console.warn('Netease login cookie check failed:', e.message);
       }
+    };
+
+    // 扫码完成的瞬间 cookie 才写入；事件驱动即时检测，1200ms 轮询仅作兜底
+    const onCookieChanged = () => {
+      if (settled || cookieEventScheduled) return;
+      cookieEventScheduled = true;
+      setTimeout(() => {
+        cookieEventScheduled = false;
+        if (!settled) checkCookies();
+      }, 160);
+    };
+    cookieSession.on('cookies-changed', onCookieChanged);
+
+    const showLoginWindow = () => {
+      if (settled || !loginWindow || loginWindow.isDestroyed() || loginWindow.isVisible()) return;
+      loginWindow.show();
+      loginWindow.focus();
     };
 
     loginWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -2878,10 +2939,12 @@ async function openNeteaseMusicLoginWindow(owner) {
       `, true).catch(() => {});
     });
 
-    loginWindow.on('ready-to-show', () => loginWindow.show());
+    loginWindow.on('ready-to-show', showLoginWindow);
     loginWindow.on('closed', async () => {
       if (settled) return;
       if (pollTimer) clearInterval(pollTimer);
+      if (showWatchdog) clearTimeout(showWatchdog);
+      detachCookieListener();
       try {
         const cookie = await readNeteaseLoginCookieHeader(cookieSession);
         resolve(neteaseCookieHasLogin(cookie)
@@ -2893,6 +2956,8 @@ async function openNeteaseMusicLoginWindow(owner) {
     });
 
     pollTimer = setInterval(checkCookies, 1200);
+    // 页面加载慢时 ready-to-show 迟迟不来，2.5s 强制显示避免"点击无反应"
+    showWatchdog = setTimeout(showLoginWindow, 2500);
     loginWindow.loadURL(NETEASE_LOGIN_URL).catch((e) => finish({ ok: false, error: e.message }));
   });
 }
@@ -2900,20 +2965,24 @@ async function openNeteaseMusicLoginWindow(owner) {
 async function openQQMusicLoginWindow(owner, options) {
   options = options || {};
   const cookieSession = session.fromPartition(QQ_LOGIN_PARTITION);
+  const initialCookie = await readQQLoginCookieHeader(cookieSession);
+  if (qqCookieHasPlaybackLogin(initialCookie)) {
+    return { ok: true, cookie: initialCookie, reused: true, recovered: !!options.forceReauth };
+  }
   if (options.forceReauth) {
     await cookieSession.clearStorageData({
       storages: ['cookies', 'localstorage', 'indexdb', 'cachestorage'],
     });
   }
-  const initialCookie = await readQQLoginCookieHeader(cookieSession);
-  if (!options.forceReauth && qqCookieHasPlaybackLogin(initialCookie)) {
-    return { ok: true, cookie: initialCookie, reused: true };
-  }
 
   return new Promise((resolve) => {
     let settled = false;
     let pollTimer = null;
-    let warmupStarted = false;
+    let warmupTimer = null;
+    let warmupWindow = null;
+    let playbackFinalizePending = false;
+    let showWatchdog = null;
+    const popupWindows = new Set();
 
     const loginWindow = new BrowserWindow({
       width: 900,
@@ -2935,45 +3004,171 @@ async function openQQMusicLoginWindow(owner, options) {
       },
     });
 
+    const closeAuxiliaryWindows = () => {
+      if (showWatchdog) {
+        clearTimeout(showWatchdog);
+        showWatchdog = null;
+      }
+      if (warmupTimer) {
+        clearTimeout(warmupTimer);
+        warmupTimer = null;
+      }
+      const windows = Array.from(popupWindows);
+      popupWindows.clear();
+      if (warmupWindow) windows.push(warmupWindow);
+      warmupWindow = null;
+      windows.forEach((win) => {
+        try {
+          if (win && !win.isDestroyed()) win.close();
+        } catch (_) {}
+      });
+    };
+
     const finish = async (result) => {
       if (settled) return;
       settled = true;
       if (pollTimer) clearInterval(pollTimer);
+      closeAuxiliaryWindows();
+      detachQQCookieListener();
+      try { await cookieSession.flushStorageData(); } catch (_) {}
       if (loginWindow && !loginWindow.isDestroyed()) {
         loginWindow.close();
       }
       resolve(result);
     };
 
+    const showLoginWindow = () => {
+      if (settled || !loginWindow || loginWindow.isDestroyed() || loginWindow.isVisible()) return;
+      loginWindow.show();
+      loginWindow.focus();
+    };
+
+    const loadQQOfficialLoginEntry = async () => {
+      try {
+        await loginWindow.loadURL(QQ_LOGIN_URL);
+      } catch (firstError) {
+        const message = String(firstError && firstError.message || firstError || '');
+        if (/HTTP2|PROTOCOL_ERROR|ERR_FAILED/i.test(message)) {
+          try { await cookieSession.clearCache(); } catch (_) {}
+        }
+        console.warn('QQ profile login entry failed, retrying official homepage:', message);
+        await loginWindow.loadURL(QQ_LOGIN_FALLBACK_URL);
+      }
+    };
+
+    const schedulePlaybackWarmup = () => {
+      if (settled || warmupTimer || warmupWindow) return;
+      // Give the official OAuth callback enough time to exchange the generic
+      // QQ web session for qm_keyst/qqmusic_key. The fallback player page runs
+      // in a separate hidden WebContents so it can never replace that callback.
+      warmupTimer = setTimeout(() => {
+        warmupTimer = null;
+        if (settled || !loginWindow || loginWindow.isDestroyed()) return;
+        warmupWindow = new BrowserWindow({
+          width: 720,
+          height: 520,
+          parent: loginWindow,
+          modal: false,
+          show: false,
+          autoHideMenuBar: true,
+          backgroundColor: '#111111',
+          icon: APP_ICON_ICO,
+          webPreferences: {
+            partition: QQ_LOGIN_PARTITION,
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true,
+          },
+        });
+        warmupWindow.on('closed', () => {
+          warmupWindow = null;
+        });
+        warmupWindow.webContents.on('did-finish-load', checkCookies);
+        warmupWindow.loadURL('https://y.qq.com/n/ryqq/player')
+          .catch((e) => console.warn('QQ login warmup navigation failed:', e.message));
+      }, 5000);
+    };
+
     const checkCookies = async () => {
       try {
         const cookie = await readQQLoginCookieHeader(cookieSession);
         if (qqCookieHasPlaybackLogin(cookie)) {
-          finish({ ok: true, cookie });
-        } else if (qqCookieHasLogin(cookie) && !warmupStarted) {
-          warmupStarted = true;
-          setTimeout(() => {
-            if (!settled && loginWindow && !loginWindow.isDestroyed()) {
-              loginWindow.loadURL('https://y.qq.com/n/ryqq/player').catch((e) => console.warn('QQ login warmup navigation failed:', e.message));
-            }
-          }, 900);
+          if (playbackFinalizePending) return;
+          playbackFinalizePending = true;
+          // QQ writes the playback ticket and profile/refresh cookies in a
+          // short burst. Keep the official callback alive for one final read.
+          await new Promise((resolveDelay) => setTimeout(resolveDelay, 450));
+          const finalizedCookie = await readQQLoginCookieHeader(cookieSession);
+          await finish({
+            ok: true,
+            cookie: qqCookieHasPlaybackLogin(finalizedCookie) ? finalizedCookie : cookie,
+          });
+        } else if (qqCookieHasLogin(cookie)) {
+          schedulePlaybackWarmup();
         }
       } catch (e) {
+        if (!settled) playbackFinalizePending = false;
         console.warn('QQ login cookie check failed:', e.message);
       }
     };
 
-    loginWindow.webContents.setWindowOpenHandler(({ url }) => {
-      if (/^https?:\/\//i.test(url)) {
-        loginWindow.loadURL(url).catch((e) => console.warn('QQ login popup navigation failed:', e.message));
-      } else {
-        shell.openExternal(url).catch(() => {});
-      }
-      return { action: 'deny' };
-    });
+    // 扫码确认的瞬间 cookie 才写入；事件驱动即时检测，1200ms 轮询仅作兜底
+    let qqCookieEventScheduled = false;
+    const onQQCookieChanged = () => {
+      if (settled || qqCookieEventScheduled) return;
+      qqCookieEventScheduled = true;
+      setTimeout(() => {
+        qqCookieEventScheduled = false;
+        if (!settled) checkCookies();
+      }, 160);
+    };
+    cookieSession.on('cookies-changed', onQQCookieChanged);
+
+    const detachQQCookieListener = () => {
+      try { cookieSession.removeListener('cookies-changed', onQQCookieChanged); } catch (_) {}
+    };
+
+    const installQQLoginWindowHandlers = (win, isRoot) => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.setWindowOpenHandler(({ url }) => {
+        if (isTrustedQQLoginUrl(url)) {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: {
+              width: 760,
+              height: 640,
+              parent: loginWindow,
+              modal: false,
+              show: true,
+              autoHideMenuBar: true,
+              backgroundColor: '#111111',
+              icon: APP_ICON_ICO,
+              webPreferences: {
+                partition: QQ_LOGIN_PARTITION,
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: true,
+              },
+            },
+          };
+        }
+        if (/^https?:\/\//i.test(String(url || ''))) {
+          shell.openExternal(url).catch(() => {});
+        }
+        return { action: 'deny' };
+      });
+      win.webContents.on('did-create-window', (child) => {
+        popupWindows.add(child);
+        child.on('closed', () => popupWindows.delete(child));
+        installQQLoginWindowHandlers(child, false);
+      });
+      if (!isRoot) win.webContents.on('did-finish-load', checkCookies);
+    };
+    installQQLoginWindowHandlers(loginWindow, true);
 
     loginWindow.webContents.on('did-finish-load', () => {
       checkCookies();
+      showLoginWindow();
       loginWindow.webContents.executeJavaScript(`
         setTimeout(() => {
           const nodes = Array.from(document.querySelectorAll('a, button, span, div'));
@@ -2988,22 +3183,25 @@ async function openQQMusicLoginWindow(owner, options) {
       `, true).catch(() => {});
     });
 
-    loginWindow.on('ready-to-show', () => loginWindow.show());
+    loginWindow.on('ready-to-show', showLoginWindow);
     loginWindow.on('closed', async () => {
       if (settled) return;
+      settled = true;
       if (pollTimer) clearInterval(pollTimer);
+      closeAuxiliaryWindows();
+      detachQQCookieListener();
       try {
         const cookie = await readQQLoginCookieHeader(cookieSession);
-        resolve(qqCookieHasLogin(cookie)
-          ? { ok: true, cookie, partial: !qqCookieHasPlaybackLogin(cookie) }
-          : { ok: false, cancelled: true, message: 'QQ 登录窗口已关闭' });
+        try { await cookieSession.flushStorageData(); } catch (_) {}
+        resolve(qqLoginCompletionFromCookie(cookie));
       } catch (e) {
         resolve({ ok: false, error: e.message || 'QQ 登录窗口已关闭' });
       }
     });
 
     pollTimer = setInterval(checkCookies, 1200);
-    loginWindow.loadURL(QQ_LOGIN_URL).catch((e) => finish({ ok: false, error: e.message }));
+    showWatchdog = setTimeout(showLoginWindow, 2500);
+    loadQQOfficialLoginEntry().catch((e) => finish({ ok: false, error: e.message }));
   });
 }
 
@@ -3024,6 +3222,8 @@ async function openKugouMusicLoginWindow(owner) {
     let settled = false;
     let pollTimer = null;
     let warmupStarted = false;
+    let showWatchdog = null;
+    let cookieEventScheduled = false;
 
     const loginWindow = new BrowserWindow({
       width: 900,
@@ -3045,10 +3245,16 @@ async function openKugouMusicLoginWindow(owner) {
       },
     });
 
+    const detachCookieListener = () => {
+      try { cookieSession.removeListener('cookies-changed', onCookieChanged); } catch (_) {}
+    };
+
     const finish = async (result) => {
       if (settled) return;
       settled = true;
       if (pollTimer) clearInterval(pollTimer);
+      if (showWatchdog) clearTimeout(showWatchdog);
+      detachCookieListener();
       if (loginWindow && !loginWindow.isDestroyed()) loginWindow.close();
       resolve(result);
     };
@@ -3096,10 +3302,29 @@ async function openKugouMusicLoginWindow(owner) {
       `, true).catch(() => {});
     });
 
-    loginWindow.on('ready-to-show', () => loginWindow.show());
+    // 扫码完成的瞬间 cookie 才写入；事件驱动即时检测，1200ms 轮询仅作兜底
+    const onCookieChanged = () => {
+      if (settled || cookieEventScheduled) return;
+      cookieEventScheduled = true;
+      setTimeout(() => {
+        cookieEventScheduled = false;
+        if (!settled) checkCookies();
+      }, 160);
+    };
+    cookieSession.on('cookies-changed', onCookieChanged);
+
+    const showLoginWindow = () => {
+      if (settled || !loginWindow || loginWindow.isDestroyed() || loginWindow.isVisible()) return;
+      loginWindow.show();
+      loginWindow.focus();
+    };
+
+    loginWindow.on('ready-to-show', showLoginWindow);
     loginWindow.on('closed', async () => {
       if (settled) return;
       if (pollTimer) clearInterval(pollTimer);
+      if (showWatchdog) clearTimeout(showWatchdog);
+      detachCookieListener();
       try {
         const cookie = await readKugouLoginCookieHeader(cookieSession);
         resolve(kugouCookieHasPlayback(cookie)
@@ -3113,6 +3338,8 @@ async function openKugouMusicLoginWindow(owner) {
     });
 
     pollTimer = setInterval(checkCookies, 1200);
+    // 页面加载慢时 ready-to-show 迟迟不来，2.5s 强制显示避免"点击无反应"
+    showWatchdog = setTimeout(showLoginWindow, 2500);
     loginWindow.loadURL(KUGOU_LOGIN_URL).catch((e) => finish({ ok: false, error: e.message }));
   });
 }
@@ -5348,12 +5575,16 @@ ipcMain.handle('MOMusic-open-update-installer', async (_event, filePath) => {
     // 系统打开失败（关联/拦截等）时回退：直接启动安装器进程
     console.warn('[Update] shell.openPath failed, falling back to spawn:', error);
     const child = spawn(target, [], { detached: true, stdio: 'ignore', windowsHide: false });
-    child.on('error', (err) => {
-      console.error('[Update] installer spawn failed:', err && err.message);
-      return { ok: false, error: err && err.message || 'OPEN_UPDATE_FAILED' };
+    // 等待 spawn 结果（spawn/error 二选一触发），确保启动失败能真正传回渲染进程
+    const spawnResult = await new Promise((resolve) => {
+      child.once('spawn', () => resolve({ ok: true, fallback: 'spawn' }));
+      child.once('error', (err) => {
+        console.error('[Update] installer spawn failed:', err && err.message);
+        resolve({ ok: false, error: (err && err.message) || 'OPEN_UPDATE_FAILED' });
+      });
     });
     child.unref();
-    return { ok: true, fallback: 'spawn' };
+    return spawnResult;
   } catch (e) {
     return { ok: false, error: e.message || 'OPEN_UPDATE_FAILED' };
   }
@@ -5369,16 +5600,27 @@ ipcMain.handle('MOMusic-silent-install-update', async (_event, filePath) => {
       return { ok: false, error: 'INVALID_UPDATE_PATH' };
     }
     if (!fs.existsSync(target)) return { ok: false, error: 'UPDATE_FILE_MISSING' };
+    // Portable 便携版不是 NSIS 安装器，/S 静默参数无效，静默安装只会白白退出应用
+    if (/portable/i.test(path.basename(target))) {
+      return { ok: false, error: 'PORTABLE_INSTALLER_NOT_SUPPORTED' };
+    }
     const installer = spawn(target, ['/S'], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
     });
-    installer.on('error', (err) => {
-      console.error('[Update] silent install spawn failed:', err && err.message);
+    // 必须等 spawn 真正成功（进程已创建）才能退出应用；
+    // 之前 spawn 失败（杀软拦截等）时 800ms 后仍会 app.exit，导致应用退出但新版没装
+    const spawnResult = await new Promise((resolve) => {
+      installer.once('spawn', () => resolve({ ok: true }));
+      installer.once('error', (err) => {
+        console.error('[Update] silent install spawn failed:', err && err.message);
+        resolve({ ok: false, error: (err && err.message) || 'SILENT_INSTALL_SPAWN_FAILED' });
+      });
     });
+    if (!spawnResult.ok) return spawnResult;
     installer.unref();
-    // 先退出当前应用，让安装器可以覆盖正在运行的程序文件
+    // 确认安装器已启动后再退出当前应用，让安装器可以覆盖正在运行的程序文件
     setTimeout(() => {
       try { app.exit(0); } catch (_) {}
     }, 800);

@@ -1,0 +1,105 @@
+/* ================================================================
+   MOMusic Visual Console (fx-panel) -> pure white transparent glass.
+   Same treatment as the login card / listen together panel:
+     - panel + cards: thin white glass with soft white border
+     - rest/hover: brighter white + white glow
+     - active / has-save: white accent (--fc-accent), white text
+     - a stale global rule (rgba(0,0,0,.90) !important) pins the
+       panel black, so we re-assert the saved glass theme here.
+   Loaded after index.css; overrides the app's saved glass theme.
+   ================================================================ */
+
+/* ---- Panel container: white transparent glass (replaces 90% black) ---- */
+#fx-panel {
+  background: var(--saved-panel-glass-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+#fx-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
+}
+
+/* ---- Control rows: same white glass language ---- */
+.fx-slider,
+.fx-text-row,
+.lyric-color-row {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 22px rgba(0, 0, 0, 0.14) !important;
+  backdrop-filter: blur(12px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2) !important;
+}
+
+/* Neutralize the wallpaper-engine row blue tint */
+.lyric-color-row.wallpaper-engine-row {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)) !important;
+}
+
+/* ---- Preset cards + user archive slots + share panel ---- */
+.preset-card,
+.user-archive-slot,
+.user-archive-share-panel {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 22px rgba(0, 0, 0, 0.16) !important;
+  backdrop-filter: blur(16px) saturate(1.2) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.2) !important;
+}
+
+/* ---- Hover: lift + brighter white glass ---- */
+.preset-card:hover,
+.user-archive-slot:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.26), 0 0 20px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+/* ---- Active / has-save: white accent ---- */
+.preset-card.active,
+.user-archive-slot.has-save {
+  border-color: rgba(var(--fc-accent-rgb), 0.5) !important;
+  background: rgba(var(--fc-accent-rgb), 0.13) !important;
+  box-shadow: 0 0 0 1px rgba(var(--fc-accent-rgb), 0.2), 0 16px 46px rgba(0, 0, 0, 0.3), 0 0 22px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+.preset-card.active .pc-name { color: #fff; }
+.preset-card.active .pc-icon { color: rgba(255, 255, 255, 0.9); }
+.preset-card .pc-name { color: rgba(255, 255, 255, 0.94); }
+.preset-card .pc-desc { color: rgba(255, 255, 255, 0.5); }
+
+/* ---- New archive slot: dashed white glass ---- */
+.user-archive-slot.is-new {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+.user-archive-slot.is-new:hover {
+  border-color: rgba(var(--fc-accent-rgb), 0.45) !important;
+  background: rgba(var(--fc-accent-rgb), 0.1) !important;
+  color: #fff;
+}
+
+/* ---- Share panel inner bits ---- */
+.user-archive-share-input {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.user-archive-share-actions button {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+}
+.user-archive-share-actions button:hover {
+  border-color: rgba(var(--fc-accent-rgb), 0.45);
+  background: rgba(var(--fc-accent-rgb), 0.11);
+  color: #fff;
+}

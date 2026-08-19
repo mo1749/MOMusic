@@ -34,3 +34,8 @@ temp/
 spotify-credentials.json
 .spotify-token.json
 spotify-token.json
+
+# 本地设计文档与登录状态
+.arts/
+output/
+.qishui-qr-login.json

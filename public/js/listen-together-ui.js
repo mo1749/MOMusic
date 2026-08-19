@@ -537,7 +537,7 @@ function initListenTogetherUI() {
     try { window.dispatchEvent(new CustomEvent('lt:room-enter', { detail: { roomName: room.name || 'MOMusic 房间', roomId: room.id } })); } catch (_) {}
     var nameEl = document.getElementById('lt-active-room-name');
     if (nameEl) nameEl.textContent = room.name || 'MOMusic 房间';
-    if (data.members) updateMembers(room.members);
+    if (data.members) updateMembers(data.members);
     var badge = document.getElementById('lt-host-badge');
     if (badge) badge.style.display = (data.myMemberInfo && data.myMemberInfo.isHost) ? 'inline' : 'none';
     startListenTogetherDurationTracking();

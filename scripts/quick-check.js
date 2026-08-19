@@ -1411,8 +1411,8 @@ function checkQishuiProviderGuard() {
     fail('Qishui status must keep public search separate from the required local SodaMusic session import');
   }
   const oldQishuiCredentialPrompt = new RegExp('当前版本还没有内置' + '抖音开放平台应用凭证');
-  if (!/function qishuiPublicSearchReady/.test(qishuiLoginText) || !/function openQishuiPublicSearch/.test(qishuiLoginText) || !/hasQishuiLocalImportBridge/.test(qishuiLoginText) || !/refreshBtn\.onclick = openQishuiWebLogin;/.test(qishuiLoginText) || oldQishuiCredentialPrompt.test(qishuiLoginText)) {
-    fail('Qishui login modal must expose the desktop local-session import bridge without hiding public search elsewhere');
+  if (!/function qishuiPublicSearchReady/.test(qishuiLoginText) || !/function openQishuiPublicSearch/.test(qishuiLoginText) || !/canUseQishuiQrLogin/.test(qishuiLoginText) || !/refreshBtn\.onclick = isQishui \? openQishuiWebLogin/.test(qishuiLoginText) || oldQishuiCredentialPrompt.test(qishuiLoginText)) {
+    fail('Qishui login modal must expose the official QR-login bridge without hiding public search elsewhere');
   }
   if (!/searchReady/.test(qishuiStatusText) || !/capabilities\.search/.test(qishuiStatusText)) {
     fail('Qishui frontend status must expose public search readiness separately from OAuth login');
@@ -1438,8 +1438,8 @@ function checkQishuiProviderGuard() {
   if (!/本机汽水会话已导入/.test(accountLogoutText) || !/可同步我的喜欢、歌单并直接播放/.test(accountLogoutText) || /授权: '\s*\+/.test(accountLogoutText) || /OpenAPI token/.test(accountLogoutText)) {
     fail('Qishui account status must describe the imported local PC session without exposing internal ids');
   }
-  if (!/canOpenQishuiOfficialWindow/.test(qishuiLoginText) || !/openQishuiWebLogin/.test(qishuiLoginText) || !/读取本机汽水/.test(qishuiLoginText) || !/本机汽水登录态导入失败/.test(qishuiLoginText) || /扫码连接汽水|汽水扫码连接/.test(qishuiLoginText)) {
-    fail('Qishui login UI must expose only the local SodaMusic session import path');
+  if (!/canUseQishuiQrLogin/.test(qishuiLoginText) || !/openQishuiWebLogin/.test(qishuiLoginText) || !/\/api\/qishui\/login\/qrcode/.test(qishuiLoginText) || !/pollQishuiQr/.test(qishuiLoginText) || !/使用抖音 App 扫码/.test(qishuiLoginText)) {
+    fail('Qishui login UI must expose the official QR-login path while keeping public search available');
   }
   if (!/\/luna\/pc\/me/.test(qishuiText) || !/\/luna\/pc\/user\/playlist/.test(qishuiText) || !/\/luna\/pc\/playlist\/detail/.test(qishuiText) || !/function qishuiPcAppParams/.test(qishuiText) || !/pcApp: true/.test(qishuiText) || !/count: Math\.min\(100/.test(qishuiText) || /\/luna\/pc\/playlist\/detail[\s\S]{0,260}cnt:/.test(qishuiText)) {
     fail('Qishui playlist sync must use PC app APIs with user playlist, count/next_cursor, and LunaPC headers');
@@ -2175,7 +2175,7 @@ function checkSearchGlassEntranceGuard() {
   const searchBoxSourceMergeCount = (searchBoxFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchPillSourceMergeCount = (searchPillFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchBoxFilterMatchesSavedRgbGlass =
-    /css\/index\.css\?v=20260816-momusic-1\.5\.0/.test(indexText) &&
+    /css\/index\.css\?v=20260819-momusic-1\.5\.1/.test(indexText) &&
     /x="-24%"\s+y="-34%"\s+width="158%"/.test(searchBoxFilterText) &&
     /height="168%"/.test(searchBoxFilterText) &&
     /id="search-box-glass-map"\s+x="-10%"\s+y="-4%"\s+width="120%"\s+height="108%"/.test(searchBoxFilterText) &&
@@ -2340,7 +2340,7 @@ function checkQQVipStatusSyncGuard() {
   if (!/function refreshQQVipStatusNow/.test(loginStatusText) || !/function qqLoginNeedsAuthorizationRefresh/.test(loginStatusText) || !/forceVip=1/.test(loginStatusText) || !/window\.addEventListener\('focus'/.test(loginStatusText) || !/visibilitychange/.test(loginStatusText)) {
     fail('QQ frontend must force VIP refresh on manual refresh and foreground return');
   }
-  if (!/membershipKnown === false/.test(loginStatusText) ||
+  if (!/membershipKnown !== true/.test(loginStatusText) ||
       !/Object\.assign\(\{\}, qqLoginStatus,[\s\S]{0,180}membershipStale:\s*true/.test(loginStatusText) ||
       /mergeQQPlaybackVipEvidence\(Object\.assign/.test(loginStatusText)) {
     fail('QQ frontend must keep last-known-good membership on transient failures and show unknown membership as pending');
@@ -2348,7 +2348,7 @@ function checkQQVipStatusSyncGuard() {
   if (!/openQQMusicLoginWindow\(owner, options\)/.test(mainText) ||
       !/options\.forceReauth[\s\S]{0,180}clearStorageData/.test(mainText) ||
       !/openQQMusicLogin:\s*\(options\)/.test(preloadText) ||
-      !/forceReauth:\s*!!\(qqLoginStatus && qqLoginStatus\.loggedIn\)/.test(loginFlowText)) {
+      !/forceReauth:\s*!!\(qqLoginStatus && qqLoginStatus\.authorizationIncomplete/.test(loginFlowText)) {
     fail('QQ membership resync must force a fresh official login instead of reusing a stale playback key');
   }
   if (!/cookieIsExpired/.test(mainText) || !/qqLoginCookieCandidateScore/.test(mainText) ||
@@ -2360,7 +2360,7 @@ function checkQQVipStatusSyncGuard() {
   if (!/providerVipAuditSameUser/.test(loginStatusText) || !/已同步/.test(loginStatusText)) {
     fail('provider VIP audit must detect normal-to-VIP sync as well as VIP loss');
   }
-  if (!/qqLoginStatusText/.test(loginFlowText) || !/qqNeedsMembershipSync/.test(loginFlowText) || !/同步会员/.test(loginFlowText) || !/重新打开官方窗口同步会员/.test(loginFlowText) || !/qqNeedsAuthRefresh \|\| qqNeedsMembershipSync/.test(loginFlowText)) {
+  if (!/qqLoginStatusText/.test(loginFlowText) || !/qqNeedsMembershipSync/.test(loginFlowText) || !/同步会员/.test(loginFlowText) || !/重新打开官方窗口同步会员/.test(loginFlowText) || !/qqNeedsAuthRefresh \? openQQWebLogin/.test(loginFlowText)) {
     fail('QQ login panel must show membership-aware status and use reauthorization when the local QQ session is stale');
   }
   if (!/pendingQQSync/.test(accountUtilsText) || !/待同步/.test(accountUtilsText) || !/\.top-account-vip\.pending/.test(cssText)) {
@@ -2434,7 +2434,7 @@ async function checkProviderAuthCookiePathGuard() {
   if (singleInstanceBranch < 0 || mainText.slice(0, singleInstanceBranch).includes(startupStateCall) || !mainText.slice(singleInstanceBranch).includes(startupStateCall)) {
     fail('Secondary instances must quit before they can overwrite the primary startup-state.json');
   }
-  if (!/resolve\(qqCookieHasLogin\(cookie\)[\s\S]{0,140}partial: !qqCookieHasPlaybackLogin\(cookie\)/.test(mainText)) {
+  if (!/function qqLoginCompletionFromCookie[\s\S]{0,120}qqCookieHasLogin[\s\S]{0,180}partial: true/.test(mainText)) {
     fail('QQ login must return partial:true when only web account cookies are available');
   }
   if (/resolve\(neteaseCookieHasLogin\(cookie\)[\s\S]{0,140}!qqCookieHasPlaybackLogin/.test(mainText)) {

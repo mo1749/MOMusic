@@ -350,6 +350,10 @@ class LTRoom {
       avatar: sanitizeAvatar(avatar),
     };
     this.members.push(member);
+    // 空房重进（sessionStartTime 被清空后）：重新开始会话计时，避免累计空房时段
+    if (!this.sessionStartTime) {
+      this.sessionStartTime = Date.now();
+    }
     return { ok: true, member };
   }
 
@@ -798,10 +802,10 @@ function leaveRoom(client) {
     });
   }
 
-  // 记录会话时长（每次离开结算一段，并重置起点，避免同一段时长被多次累计）
+  // 记录会话时长（每次离开结算一段；房间清空则结束会话置 null，避免空房时段被 5 分钟清理定时器重复累计）
   if (room.sessionStartTime) {
     recordSessionEnd(room.id, room.sessionStartTime);
-    room.sessionStartTime = Date.now();
+    room.sessionStartTime = room.memberCount > 0 ? Date.now() : null;
   }
 
   // 如果房间没人了，保存最终时长并5分钟后自动销毁

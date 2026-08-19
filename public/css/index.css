@@ -7612,7 +7612,7 @@ body.login-guide-active #login-guide-canvas {
 .login-easter-egg-wish {
   position: absolute;
   left: 50%;
-  top: 202px;
+  top: 172px;
   width: min(390px, calc(100% - 58px));
   opacity: 0;
   filter: blur(18px);
@@ -7730,9 +7730,13 @@ body.login-guide-active #login-guide-canvas {
   margin-top: 8px;
   font-size: 10px;
   letter-spacing: .04em;
-  color: rgba(255, 255, 255, .30);
-  line-height: 1.4;
-  max-width: 220px;
+  color: rgba(255, 255, 255, .34);
+  line-height: 1.5;
+}
+
+#login-easter-skip-btn {
+  margin-top: 12px;
+  white-space: nowrap;
 }
 
 .login-easter-egg-wish.error-shake {
@@ -7756,6 +7760,20 @@ body.login-guide-active #login-guide-canvas {
 #login-modal.login-easter-egg-unlocking .login-easter-eye-trigger {
   opacity: 0;
   transform: translateY(-146px) scale(.62)
+}
+
+/* 矮窗口下压缩彩蛋卡片纵向布局，避免跳过按钮被 overflow:hidden 裁切 */
+@media (max-height: 560px) {
+  #login-modal.login-easter-egg-locked .login-easter-egg-gate {
+    min-height: 392px;
+    padding-top: 12px;
+  }
+  .login-easter-egg-wish { top: 128px; }
+  .login-easter-egg-wish h1 { font-size: 40px; margin-bottom: 16px; }
+  .login-easter-cell { height: 54px; font-size: 24px; }
+  .login-easter-status { margin-top: 12px; min-height: 18px; }
+  .login-easter-tip { margin-top: 6px; }
+  #login-easter-skip-btn { margin-top: 10px; }
 }
 
 .login-easter-unlock-cinematic {
@@ -8683,86 +8701,6 @@ body.login-guide-active #login-guide-canvas {
   display: block;
   padding: 10px;
   box-shadow: 0 16px 42px rgba(0, 0, 0, .32), 0 0 0 1px rgba(244, 210, 138, .18)
-}
-
-.qr-shell #qr-img {
-  margin: 0
-}
-
-.qr-shell.web-login-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px;
-  background: radial-gradient(circle at 50% 42%, rgba(191, 214, 107, .22), transparent 46%), rgba(255, 255, 255, .035);
-  border: 1px solid rgba(191, 214, 107, .26);
-  box-shadow: 0 16px 42px rgba(0, 0, 0, .32), inset 0 1px 0 rgba(255, 255, 255, .08)
-}
-
-.qr-shell.web-login-preview.netease-preview {
-  background: radial-gradient(circle at 50% 42%, rgba(217, 91, 103, .22), transparent 46%), rgba(255, 255, 255, .035);
-  border-color: rgba(217, 91, 103, .28)
-}
-
-.qr-shell.web-login-preview #qr-img {
-  display: none
-}
-
-.qq-login-mark {
-  display: none;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  border: 1px solid rgba(191, 214, 107, .30);
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 8px;
-  color: rgba(243, 255, 209, .88);
-  background: linear-gradient(135deg, rgba(191, 214, 107, .10), rgba(157, 184, 207, .05));
-  cursor: pointer;
-  font-family: inherit;
-  outline: none;
-  transition: transform .22s, border-color .22s, background .22s, box-shadow .22s
-}
-
-.qr-shell.web-login-preview .qq-login-mark {
-  display: flex
-}
-
-.qq-login-mark:hover {
-  transform: translateY(-1px);
-  border-color: rgba(191, 214, 107, .54);
-  background: linear-gradient(135deg, rgba(191, 214, 107, .16), rgba(157, 184, 207, .08));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .10), 0 16px 38px rgba(0, 0, 0, .22)
-}
-
-.qr-shell.netease-preview .qq-login-mark {
-  border-color: rgba(217, 91, 103, .34);
-  color: #ffd7dc;
-  background: linear-gradient(135deg, rgba(217, 91, 103, .10), rgba(244, 210, 138, .05))
-}
-
-.qr-shell.netease-preview .qq-login-mark:hover {
-  border-color: rgba(217, 91, 103, .58);
-  background: linear-gradient(135deg, rgba(217, 91, 103, .16), rgba(244, 210, 138, .08))
-}
-
-.qq-login-mark:disabled {
-  opacity: .66;
-  cursor: wait;
-  transform: none
-}
-
-.qq-login-mark b {
-  font-size: 22px;
-  letter-spacing: .08em
-}
-
-.qq-login-mark span {
-  font-size: 10.5px;
-  color: rgba(255, 255, 255, .46);
-  letter-spacing: .5px
 }
 
 .qq-cookie-panel {
@@ -19294,22 +19232,10 @@ body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] .home-card-label {
 #login-modal .ml-act:active { transform: scale(0.97); }
 #login-modal .ml-act b { color: #7dd3fc; font-weight: 800; }
 #login-modal .ml-act:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-/* 无二维码预览模式（汽水/说明态）：展示平台图标占位 */
-#login-modal .ml-qr.web-login-preview .ml-qr-skeleton { display: none; }
-#login-modal .ml-qr.web-login-preview .ml-qr-stage {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-#login-modal .ml-qr.web-login-preview .ml-qr-stage::after {
-  content: attr(data-mark);
-  font-size: 38px;
-  font-weight: 800;
-  color: rgba(125, 211, 252, 0.85);
-  text-shadow: 0 0 24px rgba(56, 189, 248, 0.5);
-}
+/* 官方窗口登录模式（QQ/网易云/酷狗桌面端）：接口二维码已被风控失效，
+   隐藏旧扫码窗口，仅保留状态行与操作按钮 */
+#login-modal .ml-qr.web-login-preview .ml-qr-skeleton,
+#login-modal .ml-qr.web-login-preview .ml-qr-stage { display: none; }
 
 /* Cookie 模式：隐藏二维码卡片，仅显示导入面板 */
 #login-modal .ml-content:has(.ml-cookie.show) .ml-qr { display: none !important; }

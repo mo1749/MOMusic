@@ -2376,8 +2376,8 @@ function updateStageLyrics3D(dt) {
             data.context.scale.setScalar(data.context.userData.progressPreviewHoldScale);
           } else {
             data.context.userData.progressPreviewMotionLocked = false;
-            var contextY = ((0.5 - shownProgress) * lyricMotion.contextDrift + (style === 'float' && verticalFloatOn ? Math.sin(t * 0.84 + seed) * 0.016 : 0)) * previewMotionBlend + (mesh.userData.enterDirection || 0) * (1 - a) * lineStepWorld * 0.12;
-            var contextScale = 1.0 + (verticalFloatOn ? Math.sin(t * 0.72 + seed) * (style === 'float' ? 0.014 : (style === 'smooth' ? 0.002 : 0.005)) * previewMotionBlend : 0);
+            var contextY = ((0.5 - shownProgress) * lyricMotion.contextDrift + (style === 'float' && verticalFloatOn ? Math.sin(t * 0.84 + seed) * 0.034 : 0)) * previewMotionBlend + (mesh.userData.enterDirection || 0) * (1 - a) * lineStepWorld * 0.12;
+            var contextScale = 1.0 + (verticalFloatOn ? Math.sin(t * 0.72 + seed) * (style === 'float' ? 0.026 : (style === 'smooth' ? 0.002 : (style === 'shine' ? 0.004 : 0.006))) * previewMotionBlend : 0);
             data.context.position.y += (contextY - data.context.position.y) * 0.11;
             data.context.scale.setScalar(previewMotionBlend < 1 ? data.context.scale.x + (contextScale - data.context.scale.x) * 0.06 : contextScale);
           }
@@ -2476,16 +2476,16 @@ function updateStageLyrics3D(dt) {
         var rootScaleTarget = 0.96 + a * 0.055 + breathe + bass * 0.038 + beatPulse * 0.014;
         mesh.scale.setScalar(previewMotionBlend < 1 ? mesh.scale.x + (rootScaleTarget - mesh.scale.x) * 0.06 : rootScaleTarget);
         if (singleLineSwap) {
-          mesh.position.y += ((0.18 + (verticalFloatOn ? (Math.sin(t * 0.55 + seed) * 0.055 + Math.sin(t * 1.35 + seed) * 0.014) * previewMotionBlend : 0)) - mesh.position.y) * 0.075;
-          mesh.position.z += ((1.48 + (verticalFloatOn ? Math.cos(t * 0.48 + seed) * 0.080 * previewMotionBlend : 0)) - mesh.position.z) * 0.080;
+          mesh.position.y += ((0.18 + (verticalFloatOn ? (Math.sin(t * 0.55 + seed) * 0.055 + Math.sin(t * 1.35 + seed) * 0.014) * lyricFloatAmp * previewMotionBlend : 0)) - mesh.position.y) * 0.075;
+          mesh.position.z += ((1.48 + (verticalFloatOn ? Math.cos(t * 0.48 + seed) * 0.080 * Math.min(1.4, lyricFloatAmp) * previewMotionBlend : 0)) - mesh.position.z) * 0.080;
         } else {
           var enterDir = mesh.userData.enterDirection || 0;
           var enterOffsetY = enterDir * lineStepWorld * (1 - a);
           var progressLift = -shownProgress * 0.026;
-          mesh.position.y += ((0.20 + enterOffsetY + progressLift + (verticalFloatOn ? (Math.sin(t * 0.55 + seed) * 0.046 + Math.sin(t * 1.35 + seed) * 0.012) * previewMotionBlend : 0)) - mesh.position.y) * (enterDir ? 0.115 : 0.080);
-          mesh.position.z += ((1.48 - Math.abs(enterDir) * 0.045 * (1 - a) + (verticalFloatOn ? Math.cos(t * 0.48 + seed) * 0.070 * previewMotionBlend : 0)) - mesh.position.z) * 0.090;
+          mesh.position.y += ((0.20 + enterOffsetY + progressLift + (verticalFloatOn ? (Math.sin(t * 0.55 + seed) * 0.046 + Math.sin(t * 1.35 + seed) * 0.012) * lyricFloatAmp * previewMotionBlend : 0)) - mesh.position.y) * (enterDir ? 0.115 : 0.080);
+          mesh.position.z += ((1.48 - Math.abs(enterDir) * 0.045 * (1 - a) + (verticalFloatOn ? Math.cos(t * 0.48 + seed) * 0.070 * Math.min(1.4, lyricFloatAmp) * previewMotionBlend : 0)) - mesh.position.z) * 0.090;
         }
-        var rootRotationTarget = (Math.sin(t * 0.34 + seed) * (style === 'smooth' ? 0.006 : (style === 'float' ? 0.026 : 0.018)) + textJitterX * 0.18 + glitchCameraDrive * glitchAmount * 0.014) * previewMotionBlend;
+        var rootRotationTarget = (Math.sin(t * 0.34 + seed) * (style === 'smooth' ? 0.004 : (style === 'float' ? 0.044 : (style === 'shine' ? 0.010 : 0.016))) + textJitterX * 0.18 + glitchCameraDrive * glitchAmount * 0.014) * previewMotionBlend;
         mesh.rotation.z = previewMotionBlend < 1 ? mesh.rotation.z + (rootRotationTarget - mesh.rotation.z) * 0.18 : rootRotationTarget;
       }
       if (data.sparks && data.sparkMat) data.sparks.visible = fx.lyricGlowParticles || getLyricSparkOpacity(data) > 0.015;

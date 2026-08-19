@@ -24,6 +24,8 @@ function initializeLoginEasterEggCopy() {
   var answerChars = Array.from(answer);
   var wish = document.getElementById('login-easter-egg-wish-title');
   if (wish && !wish.textContent) wish.textContent = String.fromCodePoint(25105, 24076, 26395);
+  var tip = document.querySelector('.login-easter-tip');
+  if (tip) tip.textContent = '💡 ' + answer + '，在无法输入的时候可切换英文键盘输入sjhp';
   var phrase = document.getElementById('login-easter-unlock-phrase');
   if (phrase) {
     Array.prototype.slice.call(phrase.querySelectorAll('span')).forEach(function (node, index) {
@@ -96,6 +98,9 @@ function bindLoginEasterEggGate() {
       handleLoginEasterEggInput(event);
     });
   });
+  // 透明窗口下 IME 可能只触发 compositionstart 而没有 compositionend，
+  // composing 卡在 true 会吞掉后续所有输入，失焦时强制复位
+  input.addEventListener('blur', function () { loginEasterEggState.composing = false; });
   input.addEventListener('beforeinput', function (event) {
     if (loginEasterEggState.composing) return;
     if (!loginEasterEggState.prefixLocked || !/^delete/.test(String(event.inputType || ''))) return;
@@ -250,7 +255,11 @@ function normalizeLoginEasterEggCharacters(value) {
 function loginEasterEggVisibleValue(inputType) {
   var input = document.getElementById('login-easter-egg-input');
   var chars = normalizeLoginEasterEggCharacters(input ? input.value : '');
-  if (!loginEasterEggState.prefixLocked) return chars.join('');
+  var raw = chars.join('');
+  if (!loginEasterEggState.prefixLocked) return raw;
+  // 前缀锁定时允许英文键盘直接输入完整拼音（sjhp）：
+  // 否则逐字母输入会被拼成「世界sj」提前触发校验失败，英文回退彻底卡死
+  if (/^[a-z]{1,4}$/i.test(raw)) return raw;
   var prefix = Array.from(loginEasterEggAnswer()).slice(0, 2);
   var suffix;
   if (chars[0] === prefix[0] && chars[1] === prefix[1]) suffix = chars.slice(2, 4);

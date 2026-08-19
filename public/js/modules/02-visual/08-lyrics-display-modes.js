@@ -141,6 +141,7 @@ function lyricMotionProfile() {
     edgeBoost: 1.0,
     sweep: 0.62,
     shimmer: 0.24,
+    glassSheen: 0.0,
     glitch: 0.0,
     glitchSlice: 0.0,
     glitchChroma: 0.0,
@@ -151,11 +152,17 @@ function lyricMotionProfile() {
     floatAmp: 1.0
   };
   if (style === 'smooth') {
-    profile.enter = 0.72; profile.exit = 0.62; profile.slide = 0.24; profile.progressEase *= 0.72; profile.contextDrift = 0.030; profile.edgeBoost = 0.62; profile.sweep = 0.18; profile.shimmer = 0.05; profile.glowLift = 0.74; profile.floatAmp = 0.55;
+    // 柔滑：去掉一切光效与起伏，只保留最缓的滚动过渡
+    profile.enter = 0.94; profile.exit = 0.84; profile.slide = 0.20; profile.progressEase *= 0.66; profile.contextDrift = 0.022; profile.edgeBoost = 0.42; profile.sweep = 0.0; profile.shimmer = 0.0; profile.glowLift = 0.60; profile.floatAmp = 0.12;
   } else if (style === 'float') {
-    profile.enter = 0.86; profile.exit = 0.76; profile.slide = 0.54; profile.progressEase *= 0.66; profile.contextDrift = 0.120; profile.edgeBoost = 1.04; profile.sweep = 0.36; profile.shimmer = 0.14; profile.glowLift = 1.16; profile.floatAmp = 1.45;
+    // 漂浮：明显的上下起伏、呼吸缩放与缓慢摇摆，光效压到最低
+    profile.enter = 0.88; profile.exit = 0.78; profile.slide = 0.56; profile.progressEase *= 0.66; profile.contextDrift = 0.150; profile.edgeBoost = 0.80; profile.sweep = 0.06; profile.shimmer = 0.04; profile.glowLift = 1.04; profile.floatAmp = 2.60;
   } else if (style === 'shine') {
-    profile.enter = 0.50; profile.exit = 0.44; profile.slide = 0.34; profile.progressEase *= 1.02; profile.contextDrift = 0.052; profile.edgeBoost = 1.42; profile.sweep = 1.22; profile.shimmer = 0.34; profile.glowLift = 1.30; profile.floatAmp = 0.82;
+    // 线光：高频高亮的扫描光束 + 亮芯与细闪线
+    profile.enter = 0.50; profile.exit = 0.44; profile.slide = 0.34; profile.progressEase *= 1.02; profile.contextDrift = 0.052; profile.edgeBoost = 1.50; profile.sweep = 2.30; profile.shimmer = 0.46; profile.glowLift = 1.40; profile.floatAmp = 0.55;
+  } else if (style === 'glass') {
+    // 玻璃：宽幅缓动的玻璃光泽带扫过 + 文字整体玻璃提亮
+    profile.enter = 0.62; profile.exit = 0.52; profile.slide = 0.38; profile.progressEase *= 0.90; profile.contextDrift = 0.066; profile.edgeBoost = 1.24; profile.sweep = 0.14; profile.shimmer = 0.28; profile.glassSheen = 1.0; profile.glowLift = 1.10; profile.floatAmp = 0.66;
   } else if (style === 'glitch') {
     profile.enter = 0.40; profile.exit = 0.36; profile.slide = 0.30; profile.progressEase *= 1.24; profile.contextDrift = 0.035; profile.edgeBoost = 1.18; profile.sweep = 0.54; profile.shimmer = 0.28; profile.glitch = lyricGlitchIntensityValue(); profile.glitchSlice = lyricGlitchSliceValue(); profile.glitchChroma = lyricGlitchChromaValue(); profile.glitchRate = lyricGlitchRateValue(); profile.glitchJitter = lyricGlitchJitterValue(); profile.glitchCameraBind = !!(fx && fx.lyricGlitchCameraBind); profile.glowLift = 1.08 + profile.glitch * 0.10; profile.floatAmp = 0.70;
   } else if (style === 'quick') {

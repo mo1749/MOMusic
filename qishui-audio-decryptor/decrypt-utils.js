@@ -121,15 +121,22 @@ function parseStsc(data) {
 }
 
 function parseSenc(data) {
+  // senc 为 FullBox：首字节 version 决定 IV 长度（0 → 8 字节，1 → 16 字节）
+  const version = data.length > 0 ? data.readUInt8(0) : 0
+  const ivSize = version >= 1 ? 16 : 8
   const count = data.readUInt32BE(4)
   const ivs = []
   let position = 8
 
   for (let index = 0; index < count; index += 1) {
+    // 越界必须显式失败：Buffer.copy 会静默截断产生半零 IV，导致后续 sample 全部解密损坏
+    if (position + ivSize > data.length) {
+      throw new Error('senc box truncated: need ' + (position + ivSize) + ' bytes, have ' + data.length)
+    }
     const iv = Buffer.alloc(16)
-    data.copy(iv, 0, position, position + 8)
+    data.copy(iv, 0, position, position + ivSize)
     ivs.push(iv)
-    position += 8
+    position += ivSize
   }
 
   return ivs

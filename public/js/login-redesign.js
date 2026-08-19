@@ -146,8 +146,23 @@
     // #login-modal 没有 aria-hidden 属性, 打开/关闭由 show class 控制,
     // 故以 classList.contains('show') 判断 (原判断 aria-hidden 恒为 null 永不触发)
     var modalObserver = new MutationObserver(function () {
-      if (modal && modal.classList.contains('show')) start();
-      else stop();
+      if (modal && modal.classList.contains('show')) {
+        // 彩蛋锁定态下 .ml-head 为 display:none，此时 start() 会把画布量成 1×1；
+        // 解锁移除 login-easter-egg-locked 也会触发本回调，画布尺寸与宿主不符时重新量取
+        var host = canvas.parentElement;
+        var hostReady = !!(host && host.offsetWidth > 0 && host.offsetHeight > 0);
+        if (hostReady) {
+          var hostW = Math.max(1, Math.round(host.offsetWidth));
+          var hostH = Math.max(1, Math.round(host.offsetHeight));
+          if (!running) start();
+          else if (W !== hostW || H !== hostH) {
+            resize();
+            initParticles();
+          }
+        }
+      } else {
+        stop();
+      }
     });
     if (modal) {
       modalObserver.observe(modal, { attributes: true, attributeFilter: ['aria-hidden', 'class'] });

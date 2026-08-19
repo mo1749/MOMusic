@@ -85,8 +85,7 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('fx-lyricbgadapt', '亮底避光', '亮背景 可读性 自动压光'),
         fxConsoleItem('t-lyricGlow', '歌词溢光', '后层辉光 开关'),
         fxConsoleItem('t-lyricGlowBeat', '鼓点溢光', '歌词辉光 跟随节拍'),
-        fxConsoleItem('t-lyricGlowParticles', '歌词光粒', '歌词粒子 光点'),
-        fxConsoleItem('t-pixelLyricsEnabled', '像素歌词', '像素字体 歌词 像素化 全局开关 开关')
+        fxConsoleItem('t-lyricGlowParticles', '歌词光粒', '歌词粒子 光点')
       ] },
       { key: 'type', title: '字体与排版', hint: '字体、字重、大小、位置和角度', items: [
         fxConsoleItem('lyric-texture-quality-seg', '歌词清晰度', '分辨率 纹理 1x 2x 3x 4x 标清 高清 超清 极致 低配 显存 放大 清楚'),
@@ -103,6 +102,7 @@ var FX_CONSOLE_LAYOUT = [
       ] },
       { key: 'motion', title: '歌词动画', hint: '滚动手感、上下文层次与故障效果', items: [
         fxConsoleItem('lyric-motion-style-seg', '歌词动画', '漂浮 柔滑 玻璃 线光 故障'),
+        fxConsoleItem('t-pixelLyricsEnabled', '像素歌词', '像素字体 歌词 像素化 全局开关 开关'),
         fxConsoleItem('lyric-glitch-controls', '故障细节', '故障强度 切片 色散 触发速度 抖动 鼓点'),
         fxConsoleItem('fx-lyriccontextopacity', '上下句清晰', '上下文透明度'),
         fxConsoleItem('fx-lyriccontextspread', '上下句间距', '上下文距离'),

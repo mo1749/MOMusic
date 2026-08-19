@@ -78,6 +78,8 @@ const {
   resolveQQVipFromProbes,
   qqVipSessionCacheKey,
   qqVipCacheTtlMs,
+  qqVipEntitlementRights,
+  preserveQQVipStalePositive,
   qqVipObjectLooksExpired: qqVipObjectLooksExpiredStrict,
 } = require('./qq-vip-api');
 const {
@@ -118,6 +120,7 @@ const {
   handleQishuiLyric,
   handleQishuiSongUrl,
 } = require('./qishui-api');
+const qishuiQrLogin = require('./qishui-qr-login');
 const {
   getSpotifyConfig,
   clearSpotifyToken,
@@ -173,6 +176,8 @@ const LOGIN_EASTER_EGG_PROTECTED_ROUTES = new Set([
   '/api/kugou/login/cookie',
   '/api/qishui/login/token',
   '/api/qishui/login/cookie',
+  '/api/qishui/login/qrcode',
+  '/api/qishui/login/check',
   '/api/spotify/config',
 ]);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -719,7 +724,10 @@ function extractReleaseNotes(body) {
 }
 function pickReleaseAsset(assets) {
   const list = Array.isArray(assets) ? assets : [];
-  const preferred = list.find(a => /\.(exe|msi)$/i.test(a && a.name || ''))
+  // 必须优先选 NSIS 安装包（Setup）：Portable 便携版不是安装器，静默安装 /S 对它无效，
+  // 且资产列表中 Portable 常排在前面，直接 find 第一个 exe 会选错
+  const preferred = list.find(a => /setup[^/\\]*\.(exe|msi)$/i.test(a && a.name || ''))
+    || list.find(a => /\.(exe|msi)$/i.test(a && a.name || '') && !/portable/i.test(a && a.name || ''))
     || list.find(a => /\.(zip|7z)$/i.test(a && a.name || ''))
     || list[0];
   if (!preferred) return null;
@@ -989,6 +997,31 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
     clearTimeout(timer);
   }
 }
+// 更新下载守护：连接阶段与响应体读取阶段分别计时。
+// fetchWithTimeout 只保护到响应头返回，读取大文件途中若上游停滞，
+// 之前要等 undici 默认 5 分钟 bodyTimeout 才报错切线路，这里 30 秒内无新数据即中断。
+function createUpdateDownloadGuard(connectTimeoutMs, stallTimeoutMs) {
+  const controller = new AbortController();
+  const state = { timer: null, reason: null };
+  function clearTimer() {
+    if (state.timer) { clearTimeout(state.timer); state.timer = null; }
+  }
+  function armWith(code, reason, timeoutMs) {
+    clearTimer();
+    state.reason = updateError(code, reason);
+    state.timer = setTimeout(() => controller.abort(), timeoutMs);
+  }
+  return {
+    signal: controller.signal,
+    armConnect() { armWith('UPDATE_CONNECT_TIMEOUT', '连接服务器超时', connectTimeoutMs || 14000); },
+    armStall() { armWith('UPDATE_STALL_TIMEOUT', '下载中途停滞', stallTimeoutMs || 30000); },
+    wrapError(err) {
+      if (err && (err.name === 'AbortError' || err.code === 'ABORT_ERR') && state.reason) return state.reason;
+      return err;
+    },
+    dispose: clearTimer,
+  };
+}
 function promiseWithTimeout(promise, timeoutMs, code) {
   let timer = null;
   return Promise.race([
@@ -1197,75 +1230,6 @@ function trimUpdateJobs() {
   const jobs = Array.from(updateDownloadJobs.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   jobs.slice(8).forEach(job => updateDownloadJobs.delete(job.id));
 }
-async function downloadUpdateAsset(job) {
-  const tmpPath = job.filePath + '.download';
-  try {
-    fs.mkdirSync(UPDATE_DOWNLOAD_DIR, { recursive: true });
-    job.status = 'downloading';
-    job.updatedAt = Date.now();
-
-    const resp = await fetch(job.downloadUrl, {
-      headers: {
-        'User-Agent': `MOMusic/${APP_VERSION}`,
-      },
-    });
-    if (!resp.ok) throw new Error('Download failed ' + resp.status);
-
-    const totalHeader = parseInt(resp.headers.get('content-length') || '0', 10) || 0;
-    job.total = totalHeader || job.total || 0;
-    job.received = 0;
-    job.progress = 0;
-    job.speedBps = 0;
-    job.etaSeconds = 0;
-    job.message = job.total ? '正在下载完整安装包' : '正在下载完整安装包，等待服务器返回大小';
-    job.updatedAt = Date.now();
-    let speedWindowAt = Date.now();
-    let speedWindowBytes = 0;
-
-    const writer = fs.createWriteStream(tmpPath);
-    const reader = resp.body.getReader();
-    try {
-      while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        const buf = Buffer.from(chunk.value);
-        job.received += buf.length;
-        speedWindowBytes += buf.length;
-        const now = Date.now();
-        if (now - speedWindowAt >= 900) {
-          job.speedBps = Math.round(speedWindowBytes / Math.max(0.001, (now - speedWindowAt) / 1000));
-          speedWindowAt = now;
-          speedWindowBytes = 0;
-        }
-        if (job.total > 0) {
-          job.progress = Math.max(1, Math.min(99, Math.round((job.received / job.total) * 100)));
-          job.etaSeconds = job.speedBps > 0 ? Math.max(0, Math.round((job.total - job.received) / job.speedBps)) : 0;
-        } else {
-          const kb = Math.max(1, job.received / 1024);
-          job.progress = Math.max(1, Math.min(88, Math.round(Math.log10(kb + 1) * 24)));
-        }
-        job.message = job.total > 0 ? '正在下载完整安装包' : '正在下载完整安装包，服务器未提供总大小';
-        job.updatedAt = Date.now();
-        if (!writer.write(buf)) await once(writer, 'drain');
-      }
-    } finally {
-      writer.end();
-      await once(writer, 'finish').catch(() => {});
-    }
-
-    if (fs.existsSync(job.filePath)) fs.unlinkSync(job.filePath);
-    fs.renameSync(tmpPath, job.filePath);
-    job.status = 'ready';
-    job.progress = 100;
-    job.message = '安装包已下载';
-    job.updatedAt = Date.now();
-  } catch (e) {
-    try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (_) {}
-    job.status = 'error';
-    job.error = e.message || 'UPDATE_DOWNLOAD_FAILED';
-    job.updatedAt = Date.now();
-  }
-}
 function sha512Base64(buffer) {
   return crypto.createHash('sha512').update(buffer).digest('base64');
 }
@@ -1395,9 +1359,19 @@ async function downloadUpdateAssetWithMirrors(job) {
       prepareUpdateJobAttempt(job, candidate, i, candidates.length);
       job.message = job.total ? '正在下载完整安装包' : '正在下载完整安装包，等待服务器返回大小';
 
-      const resp = await fetchWithTimeout(candidate.url, {
-        headers: { 'User-Agent': `MOMusic/${APP_VERSION}` },
-      }, 14000);
+      const guard = createUpdateDownloadGuard(14000, 30000);
+      let resp;
+      try {
+        guard.armConnect();
+        resp = await fetch(candidate.url, {
+          headers: { 'User-Agent': `MOMusic/${APP_VERSION}` },
+          signal: guard.signal,
+        });
+      } catch (fetchErr) {
+        throw guard.wrapError(fetchErr);
+      } finally {
+        guard.dispose();
+      }
       if (!resp.ok) throw updateError('HTTP_' + resp.status, 'HTTP ' + resp.status);
 
       const totalHeader = parseInt(resp.headers.get('content-length') || '0', 10) || 0;
@@ -1409,11 +1383,18 @@ async function downloadUpdateAssetWithMirrors(job) {
 
       const writer = fs.createWriteStream(tmpPath);
       const reader = resp.body.getReader();
+      guard.armStall();
       try {
         while (true) {
-          const chunk = await reader.read();
+          let chunk;
+          try {
+            chunk = await reader.read();
+          } catch (readErr) {
+            throw guard.wrapError(readErr);
+          }
           if (chunk.done) break;
           const buf = Buffer.from(chunk.value);
+          guard.armStall();
           job.received += buf.length;
           speedWindowBytes += buf.length;
           const now = Date.now();
@@ -1434,6 +1415,7 @@ async function downloadUpdateAssetWithMirrors(job) {
           if (!writer.write(buf)) await once(writer, 'drain');
         }
       } finally {
+        guard.dispose();
         writer.end();
         await once(writer, 'finish').catch(() => {});
       }
@@ -1584,59 +1566,6 @@ function normalizePatchPayload(payload) {
   if (files.length > 40) throw new Error('PATCH_TOO_MANY_FILES');
   return { from, to, files, restartRequired: payload.restartRequired !== false };
 }
-async function downloadAndApplyPatch(job) {
-  const chunks = [];
-  try {
-    fs.mkdirSync(UPDATE_DOWNLOAD_DIR, { recursive: true });
-    job.status = 'downloading';
-    job.mode = 'patch';
-    job.message = '正在下载快速补丁';
-    job.updatedAt = Date.now();
-
-    const resp = await fetch(job.downloadUrl, {
-      headers: { 'User-Agent': `MOMusic/${APP_VERSION}` },
-    });
-    if (!resp.ok) throw new Error('Patch download failed ' + resp.status);
-
-    job.total = parseInt(resp.headers.get('content-length') || '0', 10) || job.total || 0;
-    job.received = 0;
-    const reader = resp.body.getReader();
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      const buf = Buffer.from(chunk.value);
-      job.received += buf.length;
-      if (job.received > PATCH_MAX_BYTES) throw new Error('PATCH_TOO_LARGE');
-      chunks.push(buf);
-      job.progress = job.total > 0
-        ? Math.max(1, Math.min(84, Math.round((job.received / job.total) * 84)))
-        : Math.max(1, Math.min(76, Math.round(Math.log10(job.received / 1024 + 1) * 24)));
-      job.updatedAt = Date.now();
-    }
-
-    const raw = Buffer.concat(chunks);
-    const expectedPatchHash = String(job.sha256 || '').trim().toLowerCase();
-    if (expectedPatchHash && sha256Hex(raw) !== expectedPatchHash) throw new Error('PATCH_PACKAGE_HASH_MISMATCH');
-    const patch = normalizePatchPayload(JSON.parse(raw.toString('utf8').replace(/^\uFEFF/, '')));
-    job.version = patch.to;
-    job.message = '正在应用快速补丁';
-    job.progress = 88;
-    job.updatedAt = Date.now();
-    const changed = [];
-    patch.files.forEach(file => changed.push(writePatchFile(job, file)));
-    job.changedFiles = changed;
-    job.status = 'ready';
-    job.progress = 100;
-    job.restartRequired = patch.restartRequired;
-    job.message = patch.restartRequired ? '快速补丁已应用，重启后生效' : '快速补丁已应用';
-    job.updatedAt = Date.now();
-  } catch (e) {
-    job.status = 'error';
-    job.error = e.message || 'PATCH_APPLY_FAILED';
-    job.message = '快速补丁失败，可改用完整安装包';
-    job.updatedAt = Date.now();
-  }
-}
 async function downloadPatchBufferFromCandidate(job, candidate, index, total) {
   ensureMirrorCanBeVerified(job, candidate);
   prepareUpdateJobAttempt(job, candidate, index, total);
@@ -1645,9 +1574,19 @@ async function downloadPatchBufferFromCandidate(job, candidate, index, total) {
   job.progress = 0;
   job.updatedAt = Date.now();
 
-  const resp = await fetchWithTimeout(candidate.url, {
-    headers: { 'User-Agent': `MOMusic/${APP_VERSION}` },
-  }, 12000);
+  const guard = createUpdateDownloadGuard(12000, 30000);
+  let resp;
+  try {
+    guard.armConnect();
+    resp = await fetch(candidate.url, {
+      headers: { 'User-Agent': `MOMusic/${APP_VERSION}` },
+      signal: guard.signal,
+    });
+  } catch (fetchErr) {
+    throw guard.wrapError(fetchErr);
+  } finally {
+    guard.dispose();
+  }
   if (!resp.ok) throw updateError('HTTP_' + resp.status, 'HTTP ' + resp.status);
 
   job.total = parseInt(resp.headers.get('content-length') || '0', 10) || job.expectedSize || job.total || 0;
@@ -1656,25 +1595,36 @@ async function downloadPatchBufferFromCandidate(job, candidate, index, total) {
   const reader = resp.body.getReader();
   let speedWindowAt = Date.now();
   let speedWindowBytes = 0;
-  while (true) {
-    const chunk = await reader.read();
-    if (chunk.done) break;
-    const buf = Buffer.from(chunk.value);
-    job.received += buf.length;
-    speedWindowBytes += buf.length;
-    if (job.received > PATCH_MAX_BYTES) throw updateError('PATCH_TOO_LARGE', 'Patch package is too large');
-    chunks.push(buf);
-    const now = Date.now();
-    if (now - speedWindowAt >= 700) {
-      job.speedBps = Math.round(speedWindowBytes / Math.max(0.001, (now - speedWindowAt) / 1000));
-      speedWindowAt = now;
-      speedWindowBytes = 0;
+  guard.armStall();
+  try {
+    while (true) {
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (readErr) {
+        throw guard.wrapError(readErr);
+      }
+      if (chunk.done) break;
+      const buf = Buffer.from(chunk.value);
+      guard.armStall();
+      job.received += buf.length;
+      speedWindowBytes += buf.length;
+      if (job.received > PATCH_MAX_BYTES) throw updateError('PATCH_TOO_LARGE', 'Patch package is too large');
+      chunks.push(buf);
+      const now = Date.now();
+      if (now - speedWindowAt >= 700) {
+        job.speedBps = Math.round(speedWindowBytes / Math.max(0.001, (now - speedWindowAt) / 1000));
+        speedWindowAt = now;
+        speedWindowBytes = 0;
+      }
+      job.progress = job.total > 0
+        ? Math.max(1, Math.min(84, Math.round((job.received / job.total) * 84)))
+        : Math.max(1, Math.min(76, Math.round(Math.log10(job.received / 1024 + 1) * 24)));
+      job.etaSeconds = job.total > 0 && job.speedBps > 0 ? Math.max(0, Math.round((job.total - job.received) / job.speedBps)) : 0;
+      job.updatedAt = Date.now();
     }
-    job.progress = job.total > 0
-      ? Math.max(1, Math.min(84, Math.round((job.received / job.total) * 84)))
-      : Math.max(1, Math.min(76, Math.round(Math.log10(job.received / 1024 + 1) * 24)));
-    job.etaSeconds = job.total > 0 && job.speedBps > 0 ? Math.max(0, Math.round((job.total - job.received) / job.speedBps)) : 0;
-    job.updatedAt = Date.now();
+  } finally {
+    guard.dispose();
   }
   const raw = Buffer.concat(chunks);
   verifyUpdateBuffer(raw, job);
@@ -1818,7 +1768,8 @@ function normalizeQQUin(raw) {
 }
 function qqCookieUin(obj) {
   obj = obj || qqCookieObject();
-  const raw = Number(obj.login_type) === 2 ? (obj.wxuin || obj.uin || obj.p_uin) : (obj.uin || obj.qqmusic_uin || obj.wxuin || obj.p_uin);
+  const isWechat = !!obj.wxopenid || Number(obj.login_type) === 2;
+  const raw = isWechat ? (obj.wxuin || obj.uin || obj.p_uin) : (obj.uin || obj.qqmusic_uin || obj.wxuin || obj.p_uin);
   return normalizeQQUin(raw);
 }
 function qqCookieMusicKey(obj) {
@@ -1918,7 +1869,7 @@ function qqCookieAvatar(obj, uin) {
 }
 function normalizeQQCookieInput(cookieText) {
   const obj = parseCookieString(cookieText);
-  if (Number(obj.login_type) === 2 && obj.wxuin && !obj.uin) obj.uin = obj.wxuin;
+  if ((obj.wxopenid || Number(obj.login_type) === 2) && obj.wxuin) obj.uin = obj.wxuin;
   if (!obj.uin && (obj.qqmusic_uin || obj.p_uin)) obj.uin = obj.qqmusic_uin || obj.p_uin;
   if (obj.uin) obj.uin = normalizeQQUin(obj.uin);
   return serializeCookieObject(obj);
@@ -3402,18 +3353,24 @@ function withQQVipSyncState(info, probeAvailable) {
   info = info || {};
   const authIncomplete = !!(info.loggedIn && !info.playbackKeyReady);
   const membershipUnknown = !!(info.loggedIn && info.membershipKnown !== true);
+  const stalePositive = !!(info.loggedIn && info.membershipStale && info.isVip);
   const membershipStale = !!(info.loggedIn && (
     authIncomplete
     || membershipUnknown
+    || stalePositive
     || (info.profileUnavailable && !probeAvailable)
   ));
-  return {
+  const normalized = {
     ...info,
     membershipStale,
     authorizationIncomplete: authIncomplete,
     vipSyncState: authIncomplete
       ? 'authorization_incomplete'
-      : (membershipUnknown ? 'unknown' : (probeAvailable ? 'checked' : (membershipStale ? 'stale' : 'profile'))),
+      : (stalePositive ? 'stale_positive' : (membershipUnknown ? 'unknown' : (probeAvailable ? 'checked' : (membershipStale ? 'stale' : 'profile')))),
+  };
+  return {
+    ...normalized,
+    membershipRights: qqVipEntitlementRights(normalized),
   };
 }
 
@@ -3436,9 +3393,9 @@ function mergeQQVipStatus(info, vip, source) {
       vipSource: info.vipSource || 'profile',
     }, false);
   }
-  // A verified positive profile result wins over a stale ordinary response
-  // returned by one of QQ's replicated VIP query endpoints.
-  if (profilePositive && !vip.isVip) {
+  // A profile positive only survives an incomplete/conflicting probe. A
+  // current-account negative quorum is authoritative and must downgrade now.
+  if (profilePositive && !vip.isVip && vip.authoritativeNegative !== true) {
     return withQQVipSyncState({
       ...info,
       membershipKnown: true,
@@ -3465,6 +3422,14 @@ function mergeQQVipStatus(info, vip, source) {
     isSvip: !!vip.isSvip,
     vipLabel: vip.vipLabel || (vip.isVip ? 'VIP' : '无VIP'),
     membershipKnown: true,
+    membershipStale: !!vip.membershipStale,
+    vipEvidenceConflict: !!vip.vipEvidenceConflict,
+    probeDecision: vip.probeDecision || '',
+    authoritativeNegative: vip.authoritativeNegative === true,
+    probeIncomplete: vip.probeIncomplete === true,
+    negativeProbeCount: Math.max(0, Number(vip.negativeProbeCount) || 0),
+    negativeQuorum: Math.max(0, Number(vip.negativeQuorum) || 0),
+    staleUntil: Number(vip.staleUntil) || 0,
     expiresAt: Number(vip.expiresAt) || 0,
     vipCheckedAt: Date.now(),
     vipProbeAvailable: true,
@@ -3476,7 +3441,7 @@ async function fetchQQVipStatus(cookieObj, opts) {
   opts = opts || {};
   cookieObj = cookieObj || qqCookieObject();
   const uin = qqCookieUin(cookieObj);
-  const musicKey = qqCookieMusicKey(cookieObj);
+  const musicKey = qqCookiePlaybackKey(cookieObj);
   if (!uin || !musicKey) return null;
   const cacheKey = qqVipSessionCacheKey(uin, musicKey, cookieObj);
   const cached = cacheKey ? qqVipInfoCache.get(cacheKey) : null;
@@ -3527,6 +3492,11 @@ async function fetchQQVipStatus(cookieObj, opts) {
   const value = await resolveQQVipFromProbes(probes, async probe => {
     return qqMusicRequest(probe.body, { cookie: true, timeoutMs: 4200 });
   });
+  const now = Date.now();
+  const stableValue = preserveQQVipStalePositive(cached, value, { now });
+  if (stableValue && stableValue.membershipStale) {
+    return stableValue;
+  }
   if (value && value.resolved) {
     const ttlMs = qqVipCacheTtlMs(value, {
       positiveTtlMs: QQ_VIP_INFO_CACHE_TTL_MS,
@@ -3534,7 +3504,13 @@ async function fetchQQVipStatus(cookieObj, opts) {
     });
     if (cacheKey && ttlMs > 0) {
       boundedCacheSet(qqVipInfoCache, cacheKey, {
-        expiresAt: Date.now() + ttlMs,
+        expiresAt: now + ttlMs,
+        staleUntil: value.isVip
+          ? Math.min(
+            now + ttlMs + 10 * 60 * 1000,
+            Number(value.expiresAt) > 0 ? Number(value.expiresAt) : Number.MAX_SAFE_INTEGER
+          )
+          : 0,
         value,
       }, 256);
     }
@@ -4594,8 +4570,8 @@ async function handleQQSongUrl(mid, mediaMid, qualityPreference, playbackHints) 
   const guid = String(10000000 + Math.floor(Math.random() * 90000000));
   const cookieObj = qqCookieObject();
   const uin = qqCookieUin(cookieObj) || '0';
-  const musicKey = qqCookieMusicKey(cookieObj);
   const playbackKey = qqCookiePlaybackKey(cookieObj);
+  const musicKey = playbackKey;
   const fileMediaMid = String(mediaMid || '').trim();
   const requestedQuality = normalizeQualityPreference(qualityPreference);
   const memberTrackHint = qqPlaybackMemberHints(playbackHints);
@@ -6400,6 +6376,95 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (pn === '/api/qishui/login/qrcode') {
+    try {
+      const result = await qishuiQrLogin.createQrCode();
+      const data = result && result.data || {};
+      sendJSON(res, {
+        provider: 'qishui',
+        token: String(data.token || ''),
+        qrcode: String(data.qrcode || ''),
+        qrcodeIndexUrl: String(data.qrcode_index_url || ''),
+        expireTime: Number(data.expire_time || 0),
+        message: '请使用抖音 App 扫码并确认登录',
+      });
+    } catch (err) {
+      console.error('[QishuiQRCode]', err);
+      sendJSON(res, {
+        provider: 'qishui',
+        token: '',
+        qrcode: '',
+        error: err && err.code || 'QISHUI_QR_CREATE_FAILED',
+        message: err && err.message || '汽水音乐二维码生成失败',
+      }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/qishui/login/check') {
+    try {
+      const token = String(url.searchParams.get('token') || '').trim();
+      if (!token) {
+        sendJSON(res, {
+          provider: 'qishui',
+          loggedIn: false,
+          status: 'missing_token',
+          error: 'QISHUI_QR_TOKEN_REQUIRED',
+          message: '二维码登录 token 缺失',
+        }, 400);
+        return;
+      }
+      const result = await qishuiQrLogin.checkQrConnect(token);
+      const data = result && result.data || {};
+      const errorCode = Number(data.error_code || 0);
+      const bridgeStatus = qishuiQrLogin.getStatus();
+      if (bridgeStatus.loggedIn) {
+        const cookie = qishuiQrLogin.getCookie();
+        if (!qishuiCookieHasLogin(cookie)) throw new Error('QISHUI_QR_SESSION_COOKIE_MISSING');
+        saveQishuiCookie(cookie);
+        const status = await handleQishuiStatus(qishuiCookie);
+        sendJSON(res, {
+          ...status,
+          provider: 'qishui',
+          ok: true,
+          loggedIn: true,
+          webSession: true,
+          cookieReady: true,
+          status: 'confirmed',
+          errorCode: 0,
+          error_code: 0,
+          message: '登录成功',
+        });
+        return;
+      }
+      let status = String(data.status || '').trim();
+      if (errorCode === 2) status = 'expired';
+      else if (errorCode === 7) status = 'rate_limited';
+      else if (status === '2') status = 'scanned';
+      else if (!status || status === '1') status = 'waiting';
+      sendJSON(res, {
+        provider: 'qishui',
+        loggedIn: false,
+        status,
+        errorCode,
+        error_code: errorCode,
+        retryAfterMs: errorCode === 7 ? 60000 : 0,
+        message: result && result.message || data.description || '',
+      });
+    } catch (err) {
+      console.error('[QishuiLoginCheck]', err);
+      const cancelled = err && err.code === 'QISHUI_MFA_CANCELLED';
+      sendJSON(res, {
+        provider: 'qishui',
+        loggedIn: false,
+        status: cancelled ? 'mfa_cancelled' : 'error',
+        error: err && err.code || 'QISHUI_QR_CHECK_FAILED',
+        message: err && err.message || '汽水音乐登录状态检查失败',
+      }, cancelled ? 409 : 500);
+    }
+    return;
+  }
+
   if (pn === '/api/qishui/status' || pn === '/api/qishui/login/status') {
     try {
       sendJSON(res, await handleQishuiStatus(qishuiCookie));
@@ -6449,6 +6514,7 @@ const server = http.createServer(async (req, res) => {
 
   if (pn === '/api/qishui/logout') {
     try {
+      try { await qishuiQrLogin.clear(); } catch (clearErr) { console.warn('[QishuiLogout] v6 clear failed:', clearErr.message); }
       saveQishuiCookie('');
       sendJSON(res, { ...clearQishuiAccessToken(), webSession: false, cookieReady: false, configured: getQishuiStatus('').configured, loggedIn: getQishuiStatus('').loggedIn });
     } catch (err) {
@@ -6849,8 +6915,17 @@ const server = http.createServer(async (req, res) => {
       const raw = body.cookie || body.data || body.text || '';
       const normalized = normalizeQQCookieInput(raw);
       const obj = parseCookieString(normalized);
-      if (!qqCookieUin(obj) || !qqCookieMusicKey(obj)) {
-        sendJSON(res, { provider: 'qq', loggedIn: false, error: 'INVALID_QQ_COOKIE', message: 'QQ cookie 缺少 uin 或有效登录票据' }, 400);
+      if (!qqCookieUin(obj) || !qqCookiePlaybackKey(obj)) {
+        const hasWebSession = !!(qqCookieUin(obj) && qqCookieMusicKey(obj));
+        sendJSON(res, {
+          provider: 'qq',
+          loggedIn: false,
+          partial: hasWebSession,
+          error: hasWebSession ? 'QQ_PLAYBACK_AUTH_INCOMPLETE' : 'INVALID_QQ_COOKIE',
+          message: hasWebSession
+            ? 'QQ 账号验证已完成，但 QQ 音乐播放授权尚未生成，请重新打开官方登录窗口完成授权'
+            : 'QQ cookie 缺少 uin 或有效 QQ 音乐播放票据',
+        }, 400);
         return;
       }
       saveQQCookie(normalized);

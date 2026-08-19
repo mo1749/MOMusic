@@ -188,20 +188,26 @@ function qqLoginNeedsAuthorizationRefresh(status) {
   status = status || qqLoginStatus;
   return !!(status && status.loggedIn && (
     status.authorizationIncomplete ||
-    status.membershipStale ||
-    status.membershipKnown === false ||
     status.playbackKeyReady === false
   ));
 }
+function qqMembershipNeedsSync(status) {
+  status = status || qqLoginStatus;
+  return !!(status && status.loggedIn && (
+    status.membershipKnown !== true ||
+    status.membershipStale
+  ));
+}
 function qqMembershipLabel(status) {
-  if (qqLoginNeedsAuthorizationRefresh(status)) return '会员待同步';
+  if (qqMembershipNeedsSync(status)) return '会员待同步';
   var level = providerVipLevel('qq', status);
   return level === 'svip' ? 'SVIP 会员' : (level === 'vip' ? 'VIP 会员' : '浪客');
 }
 function qqLoginStatusText(info) {
   info = normalizeQQLoginStatus(info || qqLoginStatus);
   if (!info.loggedIn) return '点击“扫码登录”打开 QQ 音乐官方窗口';
-  if (qqLoginNeedsAuthorizationRefresh(info)) return 'QQ 会话需要重新授权 · 会员状态待同步';
+  if (qqLoginNeedsAuthorizationRefresh(info)) return 'QQ 网页会话已连接 · 播放授权尚未完成';
+  if (qqMembershipNeedsSync(info)) return '已保存 QQ 音乐播放授权 · 会员状态待同步';
   var syncText = info.vipCheckedAt ? ' · 会员已复验' : '';
   return '已保存 QQ 音乐会话 · ' + (info.nickname || 'QQ 音乐') + ' · ' + qqMembershipLabel(info) + syncText;
 }

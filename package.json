@@ -1,7 +1,7 @@
 {
   "name": "MOMusic",
   "productName": "MoMusic",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "MOMusic - 多平台音乐聚合播放器，支持QQ音乐、网易云音乐、酷狗音乐、汽水音乐，融合桌面模式、歌词舞台、粒子视觉和3D歌单架，支持一起听功能。",
   "author": "MOMusic",
   "license": "GPL-3.0-only",
@@ -39,6 +39,9 @@
       "lx-proxy.js",
       "lx-sources/**/*",
       "lx-sources-local/**/*",
+      "qishui-auth-v6.js",
+      "qishui-qr-login.js",
+      "qishui-auth-v6/**/*",
       "qishui-audio-decryptor/**/*",
       "dj-analyzer.js",
       "LICENSE",
@@ -118,6 +121,7 @@
     "gsap": "^3.15.0",
     "mpg123-decoder": "^1.0.3",
     "NeteaseCloudMusicApi": "^4.32.0",
+    "qrcode": "^1.5.4",
     "ws": "^8.16.0"
   },
   "overrides": {
