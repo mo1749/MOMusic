@@ -6,7 +6,10 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { Readable } = require('stream');
 
-const WALLPAPER_ENGINE_SCHEME = 'MOMusic-wallpaper';
+// Chromium lowercases URL schemes before matching, so this must stay lowercase;
+// a mixed-case registration silently never matches and every request fails
+// with ERR_UNKNOWN_URL_SCHEME before the handler runs.
+const WALLPAPER_ENGINE_SCHEME = 'momusic-wallpaper';
 const WALLPAPER_ENGINE_APP_ID = '431960';
 const CONFIG_FILE = 'wallpaper-engine-library.json';
 const MAX_PROJECT_JSON_BYTES = 1024 * 1024;
@@ -49,8 +52,9 @@ const VIDEO_MIME = new Map([
 const SAFE_MIME = new Map([...IMAGE_MIME, ...VIDEO_MIME]);
 
 function registerWallpaperEngineScheme(protocol) {
+  const scheme = String(WALLPAPER_ENGINE_SCHEME).toLowerCase();
   protocol.registerSchemesAsPrivileged([{
-    scheme: WALLPAPER_ENGINE_SCHEME,
+    scheme,
     privileges: {
       standard: true,
       secure: true,
@@ -821,6 +825,20 @@ class WallpaperEngineLibrary {
   }
 
   async mediaResponse(request) {
+    try {
+      return await this.handleMediaRequest(request);
+    } catch (error) {
+      console.warn('[Wallpaper Engine] media request failed:',
+        error && error.stack || error,
+        'url:', request && request.url);
+      return new Response('Media handler error', {
+        status: 500,
+        headers: { 'X-Content-Type-Options': 'nosniff' },
+      });
+    }
+  }
+
+  async handleMediaRequest(request) {
     const method = String(request && request.method || 'GET').toUpperCase();
     if (method !== 'GET' && method !== 'HEAD') {
       return new Response('Method not allowed', {
@@ -877,7 +895,7 @@ class WallpaperEngineLibrary {
 
   async installProtocol(protocol) {
     if (this.protocolInstalled) return;
-    await protocol.handle(WALLPAPER_ENGINE_SCHEME, (request) => this.mediaResponse(request));
+    await protocol.handle(String(WALLPAPER_ENGINE_SCHEME).toLowerCase(), (request) => this.mediaResponse(request));
     this.protocolInstalled = true;
   }
 

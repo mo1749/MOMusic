@@ -8399,13 +8399,13 @@ const server = http.createServer(async (req, res) => {
         : /music\.163\.com|music\.126\.net/i.test(coverHost) ? 'https://music.163.com/'
         : /kugou\.com/i.test(coverHost) ? 'https://www.kugou.com/'
         : 'https://music.163.com/';
-      const resp = await fetch(coverUrl, {
+      const resp = await fetchWithTimeout(coverUrl, {
         headers: {
           'User-Agent': UA,
           'Referer': coverReferer,
           'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         },
-      });
+      }, 9000);
       const ct  = resp.headers.get('content-type') || 'image/jpeg';
       const cl  = resp.headers.get('content-length');
       const cors = corsHeaderFor(req);
@@ -8417,15 +8417,35 @@ const server = http.createServer(async (req, res) => {
       if (cors) hdr['Access-Control-Allow-Origin'] = cors;
       if (cl) hdr['Content-Length'] = cl;
       res.writeHead(resp.status, hdr);
+      if (!resp.body) { res.end(); return; }
       const reader = resp.body.getReader();
-      while (true) { const c = await reader.read(); if (c.done) break; res.write(c.value); }
+      let clientClosed = false;
+      const closeReader = () => {
+        clientClosed = true;
+        try { Promise.resolve(reader.cancel()).catch(() => {}); } catch (_) {}
+      };
+      res.once('close', closeReader);
+      try {
+        while (!clientClosed) {
+          const c = await readStreamChunkWithTimeout(reader, 12000);
+          if (c.done) break;
+          res.write(c.value);
+        }
+      } finally {
+        res.removeListener('close', closeReader);
+        if (clientClosed) {
+          try { await reader.cancel(); } catch (_) {}
+        }
+      }
+      if (clientClosed) return;
       res.end();
     } catch (err) {
-      console.error('[Cover]', err);
+      console.error('[Cover]', err && (err.code || err.name || err.message || 'COVER_PROXY_FAILED'));
       if (res.headersSent) {
         try { res.destroy(); } catch (_) {}
       } else {
-        res.writeHead(500); res.end();
+        res.writeHead(err && err.name === 'AbortError' ? 504 : 502, { 'Cache-Control': 'no-store' });
+        res.end();
       }
     }
     return;

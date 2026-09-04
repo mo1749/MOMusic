@@ -36,6 +36,9 @@ var FX_CONSOLE_LAYOUT = [
   {
     key: 'interface',
     groups: [
+      { key: 'desktop-mode', title: '桌面模式', hint: '完整桌面层开关，Ctrl+Shift+M 快速切换', open: true, items: [
+        fxConsoleItem('t-wallpaperMode', '完整桌面模式', '完整 MOMusic 进入桌面层 Ctrl Shift M 切换操作层 本次启动有效', false)
+      ] },
       { key: 'background', title: '背景媒体', hint: '颜色、封面、图片、视频与 Wallpaper Engine', open: true, items: [
         fxConsoleItem('bg-color-picker', '背景颜色', '纯色 封面取色'),
         fxConsoleItem('bg-media-preview', '背景媒体', '封面 图片 视频 上传 裁切 清除', false),
@@ -345,9 +348,6 @@ var FX_CONSOLE_LAYOUT = [
       ] },
       { key: 'custom-source', title: '自定义音源', hint: '落雪协议脚本,链式回退接入 ls 音源', items: [
         fxConsoleItem('custom-source-panel', '音源管理', '自定义音源 落雪 脚本 导入 ls 链式回退', false)
-      ] },
-      { key: 'experimental', title: '实验功能', hint: '尚未开放或需要谨慎使用的能力', items: [
-        fxConsoleItem('t-wallpaperMode', '完整桌面模式', '完整 MOMusic 进入桌面层 Ctrl Shift M 切换操作层 本次启动有效', false)
       ] }
     ]
   }

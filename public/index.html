@@ -13,7 +13,7 @@
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260819-momusic-1.5.1">
+  <link rel="stylesheet" href="css/index.css?v=20260904-momusic-1.5.3">
   <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
   <link rel="stylesheet" href="css/login-console-style.css?v=20260813-login-saved-glass">
   <link rel="stylesheet" href="css/fx-console-glass.css?v=20260813-fx-console-glass3">
@@ -774,7 +774,7 @@
               title="桌面歌词按播放进度高亮"><span>桌面歌词高亮跟随</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')"
               title="把当前完整 MOMusic 放到 Windows 桌面；右上控制器可显示、隐藏桌面图标，Esc 退出">
-              <span>完整桌面模式<em class="fx-dev-badge">试验</em></span><span class="dot"></span></div>
+              <span>完整桌面模式</span><span class="dot"></span></div>
           </div>
           <div class="fx-section-label">桌面 / 壁纸</div>
           <div class="fx-slider"><label>桌面歌词大小</label><input id="fx-desktoplyricssize" type="range" min="0.72"
@@ -1828,52 +1828,6 @@
       </div>
     </div>
 
-    <div id="wallpaper-engine-modal" class="modal-mask" role="dialog" aria-modal="true"
-      aria-labelledby="wallpaper-engine-modal-title" onclick="if(event.target===this)closeWallpaperEngineLibrary()">
-      <div class="modal wallpaper-engine-library-modal">
-        <div class="wallpaper-engine-library-head">
-          <div>
-            <div class="wallpaper-engine-kicker">LOCAL WALLPAPER LIBRARY</div>
-            <h2 id="wallpaper-engine-modal-title">Wallpaper Engine 壁纸导入</h2>
-            <p>只建立本地索引，不复制大型项目；Video 直接播放，Scene 项目与有效 PKGV 场景包由本机 Wallpaper Engine 原生引擎实时运行。</p>
-          </div>
-          <button class="wallpaper-engine-close" type="button" onclick="closeWallpaperEngineLibrary()" aria-label="关闭">×</button>
-        </div>
-        <div class="wallpaper-engine-toolbar">
-          <input id="wallpaper-engine-search" type="search" placeholder="搜索壁纸名称" autocomplete="off"
-            oninput="scheduleWallpaperEngineLibraryRender()">
-          <button class="fx-mini-btn ghost" type="button" onclick="chooseWallpaperEngineProjectFile()">导入项目 / 场景包</button>
-          <button class="fx-mini-btn ghost" type="button" onclick="chooseWallpaperEngineDirectory()">导入目录</button>
-          <button class="fx-mini-btn ghost" type="button" onclick="refreshWallpaperEngineLibrary()">刷新识别</button>
-          <button class="fx-mini-btn ghost" type="button" onclick="restoreHiddenWallpaperEngineItems()">恢复隐藏</button>
-        </div>
-        <div id="wallpaper-engine-library-status" class="wallpaper-engine-library-status">等待识别本机 Wallpaper Engine 库</div>
-        <div id="wallpaper-engine-manual-roots" class="wallpaper-engine-manual-roots"></div>
-        <div id="wallpaper-engine-grid" class="wallpaper-engine-grid" aria-live="polite"></div>
-        <div id="wallpaper-engine-details-drawer" class="wallpaper-engine-details-drawer" aria-hidden="true"
-          onclick="if(event.target===this)closeWallpaperEngineProjectDetails()">
-          <section class="wallpaper-engine-details-panel" aria-labelledby="wallpaper-engine-details-title">
-            <div class="wallpaper-engine-details-head">
-              <div>
-                <div class="wallpaper-engine-kicker">PROJECT PROPERTIES</div>
-                <h3 id="wallpaper-engine-details-title">项目设置</h3>
-              </div>
-              <button class="wallpaper-engine-close" type="button" onclick="closeWallpaperEngineProjectDetails()" aria-label="关闭项目设置">×</button>
-            </div>
-            <p id="wallpaper-engine-details-summary" class="wallpaper-engine-details-summary"></p>
-            <div id="wallpaper-engine-details-properties" class="wallpaper-engine-details-properties"></div>
-            <div class="wallpaper-engine-details-actions">
-              <button id="wallpaper-engine-details-we" class="fx-mini-btn" type="button"
-                onclick="launchWallpaperEngineProjectDetails('we')">在 WE 中打开设置（实验）</button>
-              <button id="wallpaper-engine-details-workshop" class="fx-mini-btn ghost" type="button"
-                onclick="launchWallpaperEngineProjectDetails('workshop')">创意工坊详情</button>
-            </div>
-            <small class="wallpaper-engine-details-note">每次载入自动应用静音值（音量 0 / 静音开启 / 音频关闭）；Scene 包只处理缓存副本，原文件不变。其他视觉设置仍由 Wallpaper Engine 管理。</small>
-          </section>
-        </div>
-      </div>
-    </div>
-
     <!-- 收藏到歌单模态 -->
     <div id="collect-modal" class="modal-mask">
       <div class="modal collect-modal">
@@ -1945,34 +1899,6 @@
       </div>
     </div>
 
-    <div id="update-modal" class="modal-mask">
-      <div class="modal update-modal">
-        <div class="update-panel-inner">
-          <div class="update-panel-head">
-            <div>
-              <div class="update-kicker">MOMusic</div>
-              <div id="update-modal-title" class="update-title">New release</div>
-              <div id="update-modal-version" class="update-version">v1.0.0</div>
-            </div>
-          </div>
-          <div class="update-hero">
-            <div id="update-hero-main" class="update-hero-main">电影镜头更稳，音源兜底更顺。</div>
-            <div id="update-hero-sub" class="update-hero-sub"></div>
-          </div>
-          <div id="update-list" class="update-list"></div>
-          <div class="update-actions">
-            <button id="update-primary-btn" class="update-primary-btn" type="button"
-              onclick="startUpdatePreviewDownload()">
-              <span id="update-btn-fill" class="update-btn-fill"></span>
-              <span id="update-btn-label" class="update-btn-label">立即更新</span>
-            </button>
-            <button class="update-secondary-btn" type="button" onclick="closeUpdatePanel()">取消</button>
-          </div>
-          <div id="update-footnote" class="update-footnote">预览版只演示更新手感，不会真的下载安装。</div>
-        </div>
-      </div>
-    </div>
-
     <div id="toast"></div>
     <div id="cuefield-feedback" aria-live="polite" aria-label="Cuefield AutoMix 反馈">
       <div class="cuefield-feedback-kicker">CUEFIELD · LOCAL FEEDBACK</div>
@@ -2020,6 +1946,80 @@
     </div>
 
   </div>
+  </div>
+
+  <div id="wallpaper-engine-modal" class="modal-mask" role="dialog" aria-modal="true"
+    aria-labelledby="wallpaper-engine-modal-title" onclick="if(event.target===this)closeWallpaperEngineLibrary()">
+    <div class="modal wallpaper-engine-library-modal">
+      <div class="wallpaper-engine-library-head">
+        <div>
+          <div class="wallpaper-engine-kicker">LOCAL WALLPAPER LIBRARY</div>
+          <h2 id="wallpaper-engine-modal-title">Wallpaper Engine 壁纸导入</h2>
+          <p>只建立本地索引，不复制大型项目；Video 直接播放，Scene 项目与有效 PKGV 场景包由本机 Wallpaper Engine 原生引擎实时运行。</p>
+        </div>
+        <button class="wallpaper-engine-close" type="button" onclick="closeWallpaperEngineLibrary()" aria-label="关闭">×</button>
+      </div>
+      <div class="wallpaper-engine-toolbar">
+        <input id="wallpaper-engine-search" type="search" placeholder="搜索壁纸名称" autocomplete="off"
+          oninput="scheduleWallpaperEngineLibraryRender()">
+        <button class="fx-mini-btn ghost" type="button" onclick="chooseWallpaperEngineProjectFile()">导入项目 / 场景包</button>
+        <button class="fx-mini-btn ghost" type="button" onclick="chooseWallpaperEngineDirectory()">导入目录</button>
+        <button class="fx-mini-btn ghost" type="button" onclick="refreshWallpaperEngineLibrary()">刷新识别</button>
+        <button class="fx-mini-btn ghost" type="button" onclick="restoreHiddenWallpaperEngineItems()">恢复隐藏</button>
+      </div>
+      <div id="wallpaper-engine-library-status" class="wallpaper-engine-library-status">等待识别本机 Wallpaper Engine 库</div>
+      <div id="wallpaper-engine-manual-roots" class="wallpaper-engine-manual-roots"></div>
+      <div id="wallpaper-engine-grid" class="wallpaper-engine-grid" aria-live="polite"></div>
+      <div id="wallpaper-engine-details-drawer" class="wallpaper-engine-details-drawer" aria-hidden="true"
+        onclick="if(event.target===this)closeWallpaperEngineProjectDetails()">
+        <section class="wallpaper-engine-details-panel" aria-labelledby="wallpaper-engine-details-title">
+          <div class="wallpaper-engine-details-head">
+            <div>
+              <div class="wallpaper-engine-kicker">PROJECT PROPERTIES</div>
+              <h3 id="wallpaper-engine-details-title">项目设置</h3>
+            </div>
+            <button class="wallpaper-engine-close" type="button" onclick="closeWallpaperEngineProjectDetails()" aria-label="关闭项目设置">×</button>
+          </div>
+          <p id="wallpaper-engine-details-summary" class="wallpaper-engine-details-summary"></p>
+          <div id="wallpaper-engine-details-properties" class="wallpaper-engine-details-properties"></div>
+          <div class="wallpaper-engine-details-actions">
+            <button id="wallpaper-engine-details-we" class="fx-mini-btn" type="button"
+              onclick="launchWallpaperEngineProjectDetails('we')">在 WE 中打开设置（实验）</button>
+            <button id="wallpaper-engine-details-workshop" class="fx-mini-btn ghost" type="button"
+              onclick="launchWallpaperEngineProjectDetails('workshop')">创意工坊详情</button>
+          </div>
+          <small class="wallpaper-engine-details-note">每次载入自动应用静音值（音量 0 / 静音开启 / 音频关闭）；Scene 包只处理缓存副本，原文件不变。其他视觉设置仍由 Wallpaper Engine 管理。</small>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="update-modal" class="modal-mask">
+    <div class="modal update-modal">
+      <div class="update-panel-inner">
+        <div class="update-panel-head">
+          <div>
+            <div class="update-kicker">MOMusic</div>
+            <div id="update-modal-title" class="update-title">New release</div>
+            <div id="update-modal-version" class="update-version">v1.0.0</div>
+          </div>
+        </div>
+        <div class="update-hero">
+          <div id="update-hero-main" class="update-hero-main">电影镜头更稳，音源兜底更顺。</div>
+          <div id="update-hero-sub" class="update-hero-sub"></div>
+        </div>
+        <div id="update-list" class="update-list"></div>
+        <div class="update-actions">
+          <button id="update-primary-btn" class="update-primary-btn" type="button"
+            onclick="startUpdatePreviewDownload()">
+            <span id="update-btn-fill" class="update-btn-fill"></span>
+            <span id="update-btn-label" class="update-btn-label">立即更新</span>
+          </button>
+          <button class="update-secondary-btn" type="button" onclick="closeUpdatePanel()">取消</button>
+        </div>
+        <div id="update-footnote" class="update-footnote">预览版只演示更新手感，不会真的下载安装。</div>
+      </div>
+    </div>
   </div>
 
   <div id="desktop-mode-control-dock" aria-label="桌面模式控制器">

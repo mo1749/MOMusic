@@ -2,12 +2,15 @@
 
 ## 更新内容
 
-- **修复**：修复了版本自动回退的问题
+- **新增**：桌面模式播放栏支持自由拖动与固定位置（位置自动记忆）
+- **修复**：Wallpaper Engine 壁纸媒体无法加载的问题（自定义协议名大小写导致请求失败）
+- **修复**：特殊情况下更新 / 壁纸弹窗无法打开的问题（弹窗层级调整）
+- **优化**：封面图加载稳定性（超时与断连处理）；「完整桌面模式」开关移至 界面 → 桌面模式
 
 ## 下载
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| Windows | MoMusic-1.5.2-Setup.exe | 安装程序 (NSIS) |
-| Windows | MoMusic-1.5.2-Portable.exe | 便携版 (免安装) |
+| Windows | MoMusic-1.5.3-Setup.exe | 安装程序 (NSIS) |
+| Windows | MoMusic-1.5.3-Portable.exe | 便携版 (免安装) |
 | Android | [夸克网盘下载](https://pan.quark.cn/s/bfc02aecf2f6) | 安卓版 APK |

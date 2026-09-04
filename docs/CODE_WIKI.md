@@ -134,8 +134,7 @@ MOMusic/
 │   ├── desktop-native-icon-layer-runtime.js # 原生桌面图标层
 │   ├── qishui-local-session-discovery.js  # 汽水本地会话发现
 │   ├── login-easter-egg-gate.js   # 登录彩蛋闸门（密码"世界和平"）
-│   ├── app-memory.js              # 应用内存管理（EmptyWorkingSet）
-│   ├── system-memory.js           # 系统级内存清理（NtSetSystemInformation）
+│   ├── system-memory.js           # 内存管理（NtSetSystemInformation + EmptyWorkingSet）
 │   └── startup.html               # 启动占位页
 ├── server.js                 # 后端聚合 HTTP 服务器（100+ 端点）
 ├── kugou-api.js              # 酷狗音乐适配器
@@ -303,13 +302,6 @@ MOMusic/
 
 - **类**：`LoginEasterEggGate`
 - **常量**：`LOGIN_EASTER_EGG_GATE_VERSION='world-peace-v1'`、`LOGIN_EASTER_EGG_PASSWORD='世界和平'`、`LOGIN_EASTER_EGG_CREDENTIAL_FILES`（`.cookie`/`.qq-cookie`/`.kugou-cookie`/`.qishui-cookie`/`.spotify-token.json` 等）
-
-### `desktop/app-memory.js` — 应用内存管理
-
-获取内存快照（`os` + `process.memoryUsage`）；Windows 下用 PowerShell 调 `EmptyWorkingSet` 修剪应用进程工作集。
-
-- **导出**：`getMemorySnapshot`、`trimAppWorkingSets(pids)`
-- 内嵌 C# `MOMusicTrim` 类（`psapi.EmptyWorkingSet` + `kernel32.OpenProcess`）
 
 ### `desktop/system-memory.js` — 系统级内存清理
 
@@ -796,7 +788,6 @@ beatmap 缓存 + LRC 歌词
 ```
 desktop/main.js
   ├── desktop/system-memory.js
-  ├── desktop/app-memory.js
   ├── desktop/wallpaper-engine-library.js
   ├── desktop/wallpaper-engine-runtime.js
   ├── desktop/full-desktop-mode-runtime.js

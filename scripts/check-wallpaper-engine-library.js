@@ -7,6 +7,7 @@ const path = require('path');
 const {
   WallpaperEngineLibrary,
   parseByteRange,
+  WALLPAPER_ENGINE_SCHEME,
 } = require('../desktop/wallpaper-engine-library');
 
 function writeProject(root, name, manifest, files) {
@@ -22,6 +23,36 @@ function writeProject(root, name, manifest, files) {
 }
 
 async function main() {
+  assert.strictEqual(
+    WALLPAPER_ENGINE_SCHEME,
+    String(WALLPAPER_ENGINE_SCHEME).toLowerCase(),
+    'custom scheme must be lowercase: Chromium lowercases URL schemes, so a mixed-case registration never matches and every request fails with ERR_UNKNOWN_URL_SCHEME'
+  );
+  assert(
+    /momusic-wallpaper/.test(
+      fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'modules', '07-fx', '03-wallpaper-engine-library.js'), 'utf8')
+    ),
+    'renderer media URLs must use the lowercase protocol scheme'
+  );
+  const indexLines = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8').split(/\r?\n/);
+  const modalRange = (id) => {
+    const open = indexLines.findIndex((line) => line.includes('id="' + id + '"'));
+    assert(open >= 0, id + ' must exist in index.html');
+    let depth = 0;
+    for (let i = open; i < indexLines.length; i++) {
+      depth += (indexLines[i].match(/<div\b/g) || []).length - (indexLines[i].match(/<\/div>/g) || []).length;
+      if (depth <= 0) return [open, i];
+    }
+    throw new Error(id + ' never closes');
+  };
+  const [loginOpen, loginClose] = modalRange('login-modal');
+  const [wallpaperOpen] = modalRange('wallpaper-engine-modal');
+  const [updateOpen] = modalRange('update-modal');
+  assert(
+    wallpaperOpen > loginClose && updateOpen > loginClose,
+    'wallpaper-engine-modal and update-modal must be siblings of login-modal, never nested inside it: a hidden login modal (display:none) would make them unopenable'
+  );
+  void loginOpen;
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'MOMusic-we-'));
   const libraryRoot = path.join(temp, 'library');
   const userData = path.join(temp, 'user-data');

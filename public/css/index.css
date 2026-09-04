@@ -17646,6 +17646,90 @@ body.desktop-shell.desktop-wallpaper-mode.diy-mode #bottom-bar.stage-mode {
   }
 }
 
+/* ─── 桌面模式播放栏拖动 / 固定 ─── */
+
+/* 自由拖动态：播放栏空白处显示可抓取光标（控件自身 cursor 优先） */
+body.desktop-wallpaper-mode.desktop-wallpaper-interactive:not(.desktop-bar-pinned) #bottom-bar.visible:not(.collapsed) {
+  cursor: grab;
+}
+
+body.desktop-wallpaper-mode.desktop-wallpaper-interactive.desktop-bar-pinned #bottom-bar.visible:not(.collapsed) {
+  cursor: default;
+}
+
+#bottom-bar.desktop-bar-dragging {
+  cursor: grabbing !important;
+  transition: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 拖动中冻结子元素命中，避免途经控件时闪烁 hover 态（指针捕获保证事件仍派发到播放栏） */
+#bottom-bar.desktop-bar-dragging * {
+  pointer-events: none;
+}
+
+#desktop-bar-position-menu {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9700;
+  min-width: 172px;
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 14px;
+  background: rgba(16, 18, 24, .82);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .45);
+  color: rgba(255, 255, 255, .92);
+  font-size: 13px;
+}
+
+#desktop-bar-position-menu.open {
+  display: flex;
+}
+
+.desktop-bar-position-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.desktop-bar-position-menu-item:hover,
+.desktop-bar-position-menu-item:focus-visible {
+  background: rgba(255, 255, 255, .09);
+  outline: none;
+}
+
+.desktop-bar-position-menu-item .check {
+  visibility: hidden;
+}
+
+.desktop-bar-position-menu-item.active .check {
+  visibility: visible;
+  color: #00f5d4;
+}
+
+.desktop-bar-position-menu-divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(255, 255, 255, .08);
+}
+
 /* /* u2500u2500 一起听 (Listen Together) UI u2500u2500 */
 
 .lt-panel {

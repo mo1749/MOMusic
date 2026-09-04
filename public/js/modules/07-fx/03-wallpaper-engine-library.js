@@ -228,7 +228,9 @@ function wallpaperEngineProjectById(id) {
 function wallpaperEngineMediaUrl(item, kind) {
   item = item || {};
   kind = kind === 'media' ? 'media' : 'preview';
-  return 'MOMusic-wallpaper://' + kind + '/' + encodeURIComponent(item.id || '') + '?v=' + encodeURIComponent(String(item.updatedAt || 0)) + '&token=' + encodeURIComponent(wallpaperEngineMediaToken);
+  // Scheme must be lowercase to match the privileged registration; Chromium
+  // lowercases the scheme of every outgoing URL before dispatch.
+  return 'momusic-wallpaper://' + kind + '/' + encodeURIComponent(item.id || '') + '?v=' + encodeURIComponent(String(item.updatedAt || 0)) + '&token=' + encodeURIComponent(wallpaperEngineMediaToken);
 }
 
 function wallpaperEngineProjectLabel(item) {

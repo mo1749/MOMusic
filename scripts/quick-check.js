@@ -2175,7 +2175,7 @@ function checkSearchGlassEntranceGuard() {
   const searchBoxSourceMergeCount = (searchBoxFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchPillSourceMergeCount = (searchPillFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchBoxFilterMatchesSavedRgbGlass =
-    /css\/index\.css\?v=20260819-momusic-1\.5\.1/.test(indexText) &&
+    /css\/index\.css\?v=20260904-momusic-1\.5\.3/.test(indexText) &&
     /x="-24%"\s+y="-34%"\s+width="158%"/.test(searchBoxFilterText) &&
     /height="168%"/.test(searchBoxFilterText) &&
     /id="search-box-glass-map"\s+x="-10%"\s+y="-4%"\s+width="120%"\s+height="108%"/.test(searchBoxFilterText) &&
