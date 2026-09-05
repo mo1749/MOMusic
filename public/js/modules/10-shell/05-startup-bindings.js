@@ -31,9 +31,10 @@ if (fx.floatLayer) createFloatLayer();
 if (fx.particleLyrics) createLyricsParticles();
 if (fx.backCover) createBackCoverLayer();
 initIdleGuideCanvas();
-var startupLoginStatusPromise = Promise.allSettled([refreshLoginStatus(), refreshQQLoginStatus({ forceVip: true, reason: 'startup' }), refreshKugouLoginStatus(), refreshQishuiLoginStatus(), refreshSpotifyLoginStatus()]);
+var startupLoginStatusPromise = Promise.allSettled([refreshLoginStatus(), refreshQQLoginStatus({ forceVip: true, reason: 'startup' }), refreshKugouLoginStatus(), refreshKugouConceptLoginStatus(), refreshQishuiLoginStatus(), refreshSpotifyLoginStatus()]);
 startQQLoginStatusAutoRefresh();
 startKugouLoginStatusAutoRefresh();
+startKugouConceptLoginStatusAutoRefresh();
 startQishuiLoginStatusAutoRefresh();
 startSpotifyLoginStatusAutoRefresh();
 if (startupLoginStatusPromise && startupLoginStatusPromise.then) {

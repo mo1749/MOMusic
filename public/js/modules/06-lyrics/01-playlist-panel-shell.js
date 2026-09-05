@@ -482,6 +482,7 @@ function playlistCatalogProviderArray(provider) {
   if (provider === 'netease') return neteasePlaylists;
   if (provider === 'qq') return qqPlaylists;
   if (provider === 'kugou') return kugouPlaylists;
+  if (provider === 'kugou-concept') return kugouConceptPlaylists;
   if (provider === 'qishui') return qishuiPlaylists;
   if (provider === 'spotify') return spotifyPlaylists;
   if (provider === 'local') return localPlaylists;
@@ -492,6 +493,7 @@ function setPlaylistCatalogProviderArray(provider, rows) {
   if (provider === 'netease') neteasePlaylists = rows;
   else if (provider === 'qq') qqPlaylists = rows;
   else if (provider === 'kugou') kugouPlaylists = rows;
+  else if (provider === 'kugou-concept') kugouConceptPlaylists = rows;
   else if (provider === 'qishui') qishuiPlaylists = rows;
   else if (provider === 'spotify') spotifyPlaylists = rows;
   else if (provider === 'local') localPlaylists = rows;
@@ -500,6 +502,7 @@ function playlistCatalogProviderLoggedIn(provider) {
   if (provider === 'netease') return !!loginStatus.loggedIn;
   if (provider === 'qq') return !!qqLoginStatus.loggedIn;
   if (provider === 'kugou') return !!kugouLoginStatus.loggedIn;
+  if (provider === 'kugou-concept') return !!kugouConceptLoginStatus.loggedIn;
   if (provider === 'qishui') return !!qishuiLoginStatus.loggedIn;
   if (provider === 'spotify') return !!spotifyLoginStatus.loggedIn;
   if (provider === 'local') return true;
@@ -512,6 +515,7 @@ function playlistCatalogPageUrl(provider, offset, limit) {
   if (provider === 'spotify') return '/api/spotify/user/playlists?limit=' + Math.min(500, limit) + '&offset=' + offset;
   if (provider === 'qq') return '/api/qq/user/playlists';
   if (provider === 'kugou') return '/api/kugou/user/playlists';
+  if (provider === 'kugou-concept') return '/api/kugou-concept/user/playlists';
   if (provider === 'qishui') return '/api/qishui/user/playlists';
   if (provider === 'local') return '/api/local/playlists';
   return '';
@@ -532,7 +536,7 @@ function mergePlaylistCatalogRows(existing, incoming, provider) {
 }
 function rebuildUserPlaylistsFromCatalog(opts) {
   opts = opts || {};
-  userPlaylists = neteasePlaylists.concat(qqPlaylists, kugouPlaylists, qishuiPlaylists, spotifyPlaylists, localPlaylists);
+  userPlaylists = neteasePlaylists.concat(qqPlaylists, kugouPlaylists, kugouConceptPlaylists, qishuiPlaylists, spotifyPlaylists, localPlaylists);
   if (typeof applyUserPlaylistOrder === 'function') applyUserPlaylistOrder();
   playlistCatalogRevision += 1;
   renderUserPlaylistsList({ animate: !!opts.animate, reset: !!opts.reset, preserveScroll: opts.preserveScroll !== false });
@@ -591,7 +595,7 @@ function playlistCatalogHasPendingPages() {
 function requestNextPlaylistCatalogPage(reason) {
   var root = playlistCatalogSyncState;
   if (!root || !root.providers) return false;
-  var order = ['netease', 'spotify', 'qq', 'kugou', 'qishui', 'local'];
+  var order = ['netease', 'spotify', 'qq', 'kugou', 'kugou-concept', 'qishui', 'local'];
   var provider = order.find(function (key) {
     var state = root.providers[key];
     return state && state.hasMore && !state.loading;
@@ -615,12 +619,12 @@ function requestNextPlaylistCatalogPage(reason) {
   return true;
 }
 async function refreshUserPlaylists(force) {
-  if (!loginStatus.loggedIn && !qqLoginStatus.loggedIn && !kugouLoginStatus.loggedIn && !qishuiLoginStatus.loggedIn && !spotifyLoginStatus.loggedIn) {
+  if (!loginStatus.loggedIn && !qqLoginStatus.loggedIn && !kugouLoginStatus.loggedIn && !kugouConceptLoginStatus.loggedIn && !qishuiLoginStatus.loggedIn && !spotifyLoginStatus.loggedIn) {
     // 本地收藏歌单无需登录即可显示，但仍需拉取
     var podcastListLoggedOut = document.getElementById('podcast-list');
     if (podcastListLoggedOut) podcastListLoggedOut.innerHTML = '<div style="text-align:center;padding:14px 0;color:rgba(255,255,255,.28);font-size:11.5px">登录后显示我的播客</div>';
   }
-  var catalogNeedsNewProvider = playlistCatalogSyncState.loading && ['netease', 'qq', 'kugou', 'qishui', 'spotify', 'local'].some(function (provider) {
+  var catalogNeedsNewProvider = playlistCatalogSyncState.loading && ['netease', 'qq', 'kugou', 'kugou-concept', 'qishui', 'spotify', 'local'].some(function (provider) {
     var state = playlistCatalogSyncState.providers && playlistCatalogSyncState.providers[provider];
     return playlistCatalogProviderLoggedIn(provider) && (!state || !state.enabled);
   });
@@ -644,7 +648,7 @@ async function refreshUserPlaylists(force) {
   if (playlistCatalogSyncState.timer) clearTimeout(playlistCatalogSyncState.timer);
   var token = playlistCatalogSyncState.token + 1;
   playlistCatalogSyncState = { token: token, loading: true, timer: 0, providers: {}, error: '', startedAt: Date.now() };
-  ['netease', 'qq', 'kugou', 'qishui', 'spotify', 'local'].forEach(function (provider) {
+  ['netease', 'qq', 'kugou', 'kugou-concept', 'qishui', 'spotify', 'local'].forEach(function (provider) {
     if (force && playlistCatalogProviderLoggedIn(provider)) setPlaylistCatalogProviderArray(provider, []);
     playlistCatalogSyncState.providers[provider] = {
       enabled: playlistCatalogProviderLoggedIn(provider),

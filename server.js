@@ -89,10 +89,14 @@ const {
   handleKugouGuessLike,
   handleKugouUserPlaylists,
   handleKugouPlaylistTracks,
+  handleKugouUserPlaylistsAuto,
+  handleKugouPlaylistTracksAuto,
   handleKugouLikeCheck,
   handleKugouLikeToggle,
   handleKugouPlaylistAddSong,
   getKugouLoginInfo,
+  handleKugouConceptSongUrl,
+  getKugouConceptLoginInfo,
   normalizeKugouCookieInput,
   kugouCookieHasPlayback,
   extractKugouAuth,
@@ -174,6 +178,7 @@ const LOGIN_EASTER_EGG_PROTECTED_ROUTES = new Set([
   '/api/login/qr/check',
   '/api/qq/login/cookie',
   '/api/kugou/login/cookie',
+  '/api/kugou-concept/login/cookie',
   '/api/qishui/login/token',
   '/api/qishui/login/cookie',
   '/api/qishui/login/qrcode',
@@ -184,6 +189,7 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 const DEFAULT_COOKIE_FILE = path.join(__dirname, '.cookie');
 const DEFAULT_QQ_COOKIE_FILE = path.join(__dirname, '.qq-cookie');
 const DEFAULT_KUGOU_COOKIE_FILE = path.join(__dirname, '.kugou-cookie');
+const DEFAULT_KUGOU_CONCEPT_COOKIE_FILE = path.join(__dirname, '.kugou-concept-cookie');
 const DEFAULT_QISHUI_COOKIE_FILE = path.join(__dirname, '.qishui-cookie');
 const UPDATE_WORK_DIR = process.env.MOMusic_UPDATE_DIR || path.join(__dirname, 'updates');
 const UPDATE_DOWNLOAD_DIR = process.env.MOMusic_UPDATE_DOWNLOAD_DIR || path.join(UPDATE_WORK_DIR, 'downloads');
@@ -359,6 +365,9 @@ function getQQCookieFile() {
 function getKugouCookieFile() {
   return process.env.KUGOU_COOKIE_FILE || DEFAULT_KUGOU_COOKIE_FILE;
 }
+function getKugouConceptCookieFile() {
+  return process.env.KUGOU_CONCEPT_COOKIE_FILE || DEFAULT_KUGOU_CONCEPT_COOKIE_FILE;
+}
 function getQishuiCookieFile() {
   return process.env.QISHUI_COOKIE_FILE || DEFAULT_QISHUI_COOKIE_FILE;
 }
@@ -379,6 +388,7 @@ const configuredCookieStores = {
   netease: { file: '', value: '', getFile: getCookieFile },
   qq: { file: '', value: '', getFile: getQQCookieFile },
   kugou: { file: '', value: '', getFile: getKugouCookieFile },
+  kugouConcept: { file: '', value: '', getFile: getKugouConceptCookieFile },
   qishui: { file: '', value: '', getFile: getQishuiCookieFile },
 };
 function refreshConfiguredCookieStore(store, force) {
@@ -414,6 +424,11 @@ function saveKugouCookie(c) {
   kugouCookie = saveConfiguredCookieStore(configuredCookieStores.kugou, normalizeCookieHeader(c) || rawCookieFallback(c));
 }
 
+let kugouConceptCookie = '';
+function saveKugouConceptCookie(c) {
+  kugouConceptCookie = saveConfiguredCookieStore(configuredCookieStores.kugouConcept, normalizeCookieHeader(c) || rawCookieFallback(c));
+}
+
 let qishuiCookie = '';
 function saveQishuiCookie(c) {
   qishuiCookie = saveConfiguredCookieStore(configuredCookieStores.qishui, normalizeQishuiCookieInput(c) || normalizeCookieHeader(c) || rawCookieFallback(c));
@@ -422,6 +437,7 @@ function refreshConfiguredCookieStores(force) {
   userCookie = refreshConfiguredCookieStore(configuredCookieStores.netease, force);
   qqCookie = refreshConfiguredCookieStore(configuredCookieStores.qq, force);
   kugouCookie = refreshConfiguredCookieStore(configuredCookieStores.kugou, force);
+  kugouConceptCookie = refreshConfiguredCookieStore(configuredCookieStores.kugouConcept, force);
   qishuiCookie = refreshConfiguredCookieStore(configuredCookieStores.qishui, force);
 }
 function refreshQQConfiguredCookieStore(force) {
@@ -434,6 +450,7 @@ function clearAllRuntimeLoginCredentials(reason) {
   userCookie = '';
   qqCookie = '';
   kugouCookie = '';
+  kugouConceptCookie = '';
   qishuiCookie = '';
   Object.keys(configuredCookieStores).forEach((key) => {
     configuredCookieStores[key].value = '';
@@ -5640,13 +5657,23 @@ function qqHash33(str) {
   return e;
 }
 
-// ---------- 酷狗扫码登录（kguser v2 协议） ----------
+// ---------- 酷狗扫码登录（kguser v2 协议，普通版/概念版共用变体配置） ----------
 const KG_SALT = 'NVPh5oo715z5DIWAeQlhMDsWXXQV4hwt';
-let kugouQrSession = { qrcode: '', mid: '', dfid: '' };
-function kgSign(params) {
+const KG_CONCEPT_SALT = 'LnT6xpN3khm36zse0QzvmgTZ3waWdRSA';
+// 概念版差异: QR 创建 endpoint query appid=1001、二维码文本内嵌 appid=3116（扫码唤起概念版 App）、轮询 appid=3116
+const KUGOU_QR_VARIANTS = {
+  kugou: { salt: KG_SALT, endpointAppId: '1005', pollAppId: '1005', qrTextAppId: '1005', scanLabel: '酷狗音乐 App' },
+  'kugou-concept': { salt: KG_CONCEPT_SALT, endpointAppId: '1001', pollAppId: '3116', qrTextAppId: '3116', scanLabel: '酷狗概念版 App' },
+};
+let kugouQrSessions = {
+  kugou: { qrcode: '', mid: '', dfid: '', salt: '' },
+  'kugou-concept': { qrcode: '', mid: '', dfid: '', salt: '' },
+};
+function kgSign(params, salt) {
+  const activeSalt = salt || KG_SALT;
   const keys = Object.keys(params).sort();
   const parts = keys.map((k) => k + '=' + params[k]);
-  return crypto.createHash('md5').update(KG_SALT + parts.join('') + KG_SALT, 'utf8').digest('hex');
+  return crypto.createHash('md5').update(activeSalt + parts.join('') + activeSalt, 'utf8').digest('hex');
 }
 async function kgRequest(url, headers) {
   return await fetchWithTimeout(url, {
@@ -5656,9 +5683,9 @@ async function kgRequest(url, headers) {
     }, headers || {})
   }, 12000);
 }
-async function kgGetSigned(baseUrl, params) {
+async function kgGetSigned(baseUrl, params, salt) {
   const finalParams = Object.assign({}, params);
-  finalParams.signature = kgSign(finalParams);
+  finalParams.signature = kgSign(finalParams, salt);
   const qs = Object.keys(finalParams).map((k) => k + '=' + (k === 'qrcode_txt' ? encodeURIComponent(finalParams[k]) : finalParams[k])).join('&');
   const r = await kgRequest(baseUrl + '?' + qs);
   return JSON.parse(await r.text());
@@ -5704,14 +5731,14 @@ function kgAesEncrypt(plaintext) {
   });
   return { key: key, encryptedStr: cipher.ciphertext.toString(CryptoJS.enc.Hex) };
 }
-async function kgLoginByToken(token, userid) {
+async function kgLoginByToken(token, userid, session) {
   const nowMs = Date.now();
   const nowSec = Math.floor(nowMs / 1000);
   const aes = kgAesEncrypt(JSON.stringify({ token: token }));
   const pk = kgRsaEncrypt(JSON.stringify({ clienttime_ms: nowMs, key: aes.key }));
   const params = {
     appid: '1005', srcappid: '2919', clientver: '1000', clienttime: String(nowSec),
-    mid: kugouQrSession.mid, uuid: kugouQrSession.mid, dfid: kugouQrSession.dfid,
+    mid: session.mid, uuid: session.mid, dfid: session.dfid,
     dev: 'web', userid: String(userid), plat: '4', clienttime_ms: String(nowMs),
     pk: pk, params: aes.encryptedStr
   };
@@ -5723,6 +5750,104 @@ async function kgLoginByToken(token, userid) {
   const setCookies = (typeof r.headers.getSetCookie === 'function') ? r.headers.getSetCookie() : [];
   console.log('[KgLogin] resp=' + text.slice(0, 200) + ' cookies=' + setCookies.length);
   return { text: text, cookies: setCookies };
+}
+
+async function kugouQrCreatePayload(variantKey) {
+  const variant = KUGOU_QR_VARIANTS[variantKey];
+  if (!variant) return { ok: false, error: 'unknown kugou qr variant' };
+  // 概念版签名盐优先用其专属盐; 若服务端拒绝则回退 H5 盐重试一次
+  const saltCandidates = variant.salt === KG_SALT ? [KG_SALT] : [variant.salt, KG_SALT];
+  let lastError = null;
+  for (const salt of saltCandidates) {
+    try {
+      const ct = Date.now();
+      const mid = crypto.randomBytes(16).toString('hex');
+      const dfid = crypto.randomBytes(16).toString('hex');
+      const qrcodeTxt = 'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=' + variant.qrTextAppId;
+      const params = {
+        appid: variant.endpointAppId, srcappid: '2919', clientver: '20000',
+        clienttime: String(ct), mid: mid, uuid: mid, dfid: dfid,
+        type: '1', plat: '4', qrcode_txt: qrcodeTxt
+      };
+      const out = await kgGetSigned('https://login-user.kugou.com/v2/qrcode', params, salt);
+      if (!out || out.status !== 1 || !out.data || !out.data.qrcode) {
+        lastError = { ok: false, error: String((out && out.error_code) || 'kugou qr create failed') };
+        continue;
+      }
+      kugouQrSessions[variantKey] = { qrcode: out.data.qrcode, mid: mid, dfid: dfid, salt: salt };
+      // 解码官方二维码内容（诊断：确认官方图 URL 格式）
+      try {
+        if (out.data.qrcode_img && out.data.qrcode_img.indexOf('data:image/png;base64,') === 0) {
+          const b64 = out.data.qrcode_img.slice('data:image/png;base64,'.length);
+          const PNG = require('pngjs').PNG;
+          const jsQR = require('jsqr');
+          const png = PNG.sync.read(Buffer.from(b64, 'base64'));
+          const decoded = jsQR(new Uint8ClampedArray(png.data.buffer), png.width, png.height);
+          console.log('[KgQr:' + variantKey + '] official-img decoded:', decoded ? decoded.data : '(decode failed)');
+        }
+      } catch (decErr) { console.warn('[KgQr:' + variantKey + '] decode skip:', (decErr && decErr.message) || decErr); }
+      // 用 qrcode 包本地生成二维码（内容 = h5 确认页 URL + qrcode 参数，确保 App 扫码可识别）
+      const qrContent = qrcodeTxt + '&qrcode=' + out.data.qrcode;
+      const qrDataUrl = await new Promise((resolveQr, rejectQr) => {
+        try {
+          require('qrcode').toDataURL(qrContent, { width: 280, margin: 1 }, (err, url) => err ? rejectQr(err) : resolveQr(url));
+        } catch (e) { rejectQr(e); }
+      });
+      console.log('[KgQr:' + variantKey + '] qrcode=' + out.data.qrcode + ' content=' + qrContent);
+      return { ok: true, img: qrDataUrl, key: out.data.qrcode };
+    } catch (kgErr) {
+      lastError = { ok: false, error: String((kgErr && kgErr.message) || kgErr) };
+    }
+  }
+  return lastError || { ok: false, error: 'kugou qr create failed' };
+}
+
+async function kugouQrCheckPayload(variantKey) {
+  const variant = KUGOU_QR_VARIANTS[variantKey];
+  const session = kugouQrSessions[variantKey];
+  if (!variant || !session || !session.qrcode) return { ok: false, code: 4, message: '二维码未生成' };
+  const params = {
+    appid: variant.pollAppId, srcappid: '2919', clientver: '20000', clienttime: String(Math.floor(Date.now() / 1000)),
+    mid: session.mid, uuid: session.mid, dfid: session.dfid,
+    plat: '4', qrcode: session.qrcode
+  };
+  const out = await kgGetSigned('https://login-user.kugou.com/v2/get_userinfo_qrcode', params, session.salt || variant.salt);
+  const st = out && out.data ? Number(out.data.status) : 0;
+  console.log('[KgQrCheck:' + variantKey + '] data.status=' + st + ' raw=' + JSON.stringify(out).slice(0, 260));
+  if (st === 1) return { ok: true, code: 1, message: '请使用' + variant.scanLabel + '扫码' };
+  if (st === 2) return { ok: true, code: 2, message: '已扫码，请在手机确认', nickname: out.data.nickname || '', userid: out.data.userid || 0 };
+  if (st === 4) {
+    // 扫码完成：data 携带 token（登录凭证）
+    const kgToken = out.data && out.data.token;
+    const kgUserId = out.data && out.data.userid;
+    if (!kgToken || !kgUserId) {
+      return { ok: true, code: 3, message: '扫码成功但未取得会话，请使用 Cookie 导入', pending: true };
+    }
+    if (variantKey === 'kugou-concept') {
+      // 概念版: 轮询直接返回 token+userid（概念版 token 与普通酷狗不通用, 无法走 RSA/AES 换会话），本地合成 cookie
+      const conceptPairs = { token: kgToken, userid: kgUserId, kg_mid: session.mid, kg_dfid: session.dfid };
+      if (out.data.nickname) conceptPairs.nickname = encodeURIComponent(out.data.nickname);
+      if (out.data.pic) conceptPairs.pic = out.data.pic;
+      saveKugouConceptCookie(Object.keys(conceptPairs).map((k) => k + '=' + conceptPairs[k]).join('; '));
+      return { ok: true, code: 3, message: '登录成功', loggedIn: true };
+    }
+    try {
+      const lg = await kgLoginByToken(kgToken, kgUserId, session);
+      const cookies = lg.cookies;
+      if (cookies && cookies.length) {
+        const cookieStr = cookies.map((c) => String(c).split(';')[0]).join('; ');
+        if (cookieStr) {
+          saveKugouCookie(cookieStr);
+          return { ok: true, code: 3, message: '登录成功', loggedIn: true };
+        }
+      }
+      return { ok: true, code: 3, message: '扫码成功但会话换取失败，请使用 Cookie 导入', pending: true, raw: lg.text.slice(0, 120) };
+    } catch (lgErr) {
+      return { ok: true, code: 3, message: '扫码成功但会话换取异常，请使用 Cookie 导入', pending: true, error: String((lgErr && lgErr.message) || lgErr) };
+    }
+  }
+  if (st === 0) return { ok: true, code: 0, message: '二维码无效，请刷新' };
+  return { ok: true, code: st || 0, message: '未知状态' };
 }
 
 // LS 链式音源当前活跃音源ID
@@ -5780,6 +5905,12 @@ const server = http.createServer(async (req, res) => {
         playlists: true, likeRead: true, likeWrite: true, albumRead: false,
         albumCollect: false, commentsRead: false, commentsWrite: false,
         listenReport: false,
+      },
+      kugouConcept: {
+        // 概念版复用酷狗搜索/歌词/歌单能力, 仅登录态与播放取链独立
+        playlists: true, likeRead: true, likeWrite: true, albumRead: false,
+        albumCollect: false, commentsRead: false, commentsWrite: false,
+        listenReport: false, conceptPlayback: kugouCookieHasPlayback(kugouConceptCookie),
       },
       qishui: {
         playlists: true, likeRead: true, likeWrite: qishuiCookieHasLogin(qishuiCookie),
@@ -6776,6 +6907,98 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // ---------- 酷狗概念版：登录态 + 播放取链（搜索/歌词/歌单复用普通酷狗端点） ----------
+  if (pn === '/api/kugou-concept/song/url') {
+    try {
+      const info = await handleKugouConceptSongUrl({
+        hash: url.searchParams.get('hash') || url.searchParams.get('id') || '',
+        albumId: url.searchParams.get('albumId') || url.searchParams.get('album_id') || '',
+        albumAudioId: url.searchParams.get('albumAudioId') || url.searchParams.get('album_audio_id') || url.searchParams.get('mixSongId') || '',
+        mixSongId: url.searchParams.get('mixSongId') || url.searchParams.get('albumAudioId') || url.searchParams.get('album_audio_id') || '',
+        hqHash: url.searchParams.get('hqHash') || url.searchParams.get('hq_hash') || '',
+        sqHash: url.searchParams.get('sqHash') || url.searchParams.get('sq_hash') || '',
+        resHash: url.searchParams.get('resHash') || url.searchParams.get('res_hash') || '',
+        quality: url.searchParams.get('quality') || '',
+        vipRequired: url.searchParams.get('vipRequired') || '',
+        needVip: url.searchParams.get('needVip') || url.searchParams.get('need_vip') || '',
+        onlyVipPlayable: url.searchParams.get('onlyVipPlayable') || url.searchParams.get('only_vip_playable') || '',
+        privilege: url.searchParams.get('privilege') || url.searchParams.get('mediaPrivilege') || url.searchParams.get('media_privilege') || '',
+        fee: url.searchParams.get('fee') || '',
+      }, kugouConceptCookie);
+      sendJSON(res, info);
+    } catch (err) {
+      console.error('[KugouConceptSongUrl]', err);
+      sendJSON(res, { provider: 'kugou-concept', url: '', playable: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/kugou-concept/login/status') {
+    try {
+      sendJSON(res, await getKugouConceptLoginInfo(kugouConceptCookie));
+    } catch (err) {
+      console.error('[KugouConceptLoginStatus]', err);
+      sendJSON(res, { provider: 'kugou-concept', loggedIn: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/kugou-concept/login/cookie') {
+    try {
+      const body = await readRequestBody(req);
+      const raw = body.cookie || body.data || body.text || '';
+      const normalized = normalizeKugouCookieInput(raw);
+      const auth = extractKugouAuth(normalized);
+      if (!auth.loggedIn && !parseCookieString(normalized).kg_mid) {
+        sendJSON(res, { provider: 'kugou-concept', loggedIn: false, error: 'INVALID_KUGOU_CONCEPT_COOKIE', message: '酷狗概念版 cookie 无效或缺少登录标识' }, 400);
+        return;
+      }
+      saveKugouConceptCookie(normalized);
+      const info = await getKugouConceptLoginInfo(kugouConceptCookie);
+      sendJSON(res, { ...info, saved: true, partial: auth.loggedIn && !auth.playbackReady });
+    } catch (err) {
+      console.error('[KugouConceptLoginCookie]', err);
+      sendJSON(res, { provider: 'kugou-concept', loggedIn: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/kugou-concept/logout') {
+    saveKugouConceptCookie('');
+    sendJSON(res, { provider: 'kugou-concept', loggedIn: false, ok: true });
+    return;
+  }
+
+  if (pn === '/api/kugou-concept/user/playlists') {
+    try {
+      const info = await handleKugouUserPlaylists(kugouConceptCookie, { conceptRequest: true });
+      console.log('[KugouConceptUserPlaylists] ok playlists=' + (info && info.playlists || []).length);
+      sendJSON(res, Object.assign({}, info, {
+        provider: 'kugou-concept',
+        playlists: (info && info.playlists || []).map(pl => Object.assign({}, pl, { provider: 'kugou-concept', source: 'kugou-concept' })),
+      }));
+    } catch (err) {
+      console.error('[KugouConceptUserPlaylists]', err);
+      sendJSON(res, { provider: 'kugou-concept', loggedIn: false, error: err.message, playlists: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/kugou-concept/playlist/tracks') {
+    try {
+      const id = url.searchParams.get('id') || url.searchParams.get('global_collection_id') || '';
+      const paged = url.searchParams.has('limit') || url.searchParams.has('offset');
+      const limit = Math.max(10, Math.min(50, parseInt(url.searchParams.get('limit') || '50', 10) || 50));
+      const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
+      const opts = Object.assign(paged ? { limit, offset, paged: true } : {}, { conceptRequest: true });
+      sendJSON(res, await handleKugouPlaylistTracks(id, kugouConceptCookie, opts));
+    } catch (err) {
+      console.error('[KugouConceptPlaylistTracks]', err);
+      sendJSON(res, { provider: 'kugou-concept', error: err.message, tracks: [] }, 500);
+    }
+    return;
+  }
+
   if (pn === '/api/kugou/user/playlists') {
     try {
       sendJSON(res, await handleKugouUserPlaylists(kugouCookie));
@@ -6792,7 +7015,7 @@ const server = http.createServer(async (req, res) => {
       const paged = url.searchParams.has('limit') || url.searchParams.has('offset');
       const limit = Math.max(10, Math.min(50, parseInt(url.searchParams.get('limit') || '50', 10) || 50));
       const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10) || 0);
-      sendJSON(res, await handleKugouPlaylistTracks(id, kugouCookie, paged ? { limit, offset, paged: true } : {}));
+      sendJSON(res, await handleKugouPlaylistTracksAuto(id, kugouCookie, kugouConceptCookie, paged ? { limit, offset, paged: true } : {}));
     } catch (err) {
       console.error('[KugouPlaylistTracks]', err);
       sendJSON(res, { provider: 'kugou', error: err.message, tracks: [] }, 500);
@@ -8519,90 +8742,22 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, { ok: true, url: qqLoginUrl, callback: qqCallbackUrl });
     return;
   }
-  // ---------- 酷狗扫码登录 ----------
-  if (pn === '/api/kugou/qr/create') {
+  // ---------- 酷狗扫码登录（普通版 + 概念版共用） ----------
+  if (pn === '/api/kugou/qr/create' || pn === '/api/kugou-concept/qr/create') {
+    const variantKey = pn === '/api/kugou-concept/qr/create' ? 'kugou-concept' : 'kugou';
     try {
-      const ct = Date.now();
-      const mid = crypto.randomBytes(16).toString('hex');
-      const dfid = crypto.randomBytes(16).toString('hex');
-      const qrcodeTxt = 'https://h5.kugou.com/apps/loginQRCode/html/index.html?appid=1005';
-      const params = {
-        appid: '1005', srcappid: '2919', clientver: '20000',
-        clienttime: String(ct), mid: mid, uuid: mid, dfid: dfid,
-        type: '1', plat: '4', qrcode_txt: qrcodeTxt
-      };
-      const out = await kgGetSigned('https://login-user.kugou.com/v2/qrcode', params);
-      if (!out || out.status !== 1 || !out.data || !out.data.qrcode) {
-        sendJSON(res, { ok: false, error: String((out && out.error_code) || 'kugou qr create failed') });
-        return;
-      }
-      kugouQrSession = { qrcode: out.data.qrcode, mid: mid, dfid: dfid };
-      // 解码官方二维码内容（诊断：确认官方图 URL 格式）
-      try {
-        if (out.data.qrcode_img && out.data.qrcode_img.indexOf('data:image/png;base64,') === 0) {
-          const b64 = out.data.qrcode_img.slice('data:image/png;base64,'.length);
-          const PNG = require('pngjs').PNG;
-          const jsQR = require('jsqr');
-          const png = PNG.sync.read(Buffer.from(b64, 'base64'));
-          const decoded = jsQR(new Uint8ClampedArray(png.data.buffer), png.width, png.height);
-          console.log('[KgQr] official-img decoded:', decoded ? decoded.data : '(decode failed)');
-        }
-      } catch (decErr) { console.warn('[KgQr] decode skip:', (decErr && decErr.message) || decErr); }
-      // 用 qrcode 包本地生成二维码（内容 = h5 确认页 URL + qrcode 参数，确保 App 扫码可识别）
-      const qrContent = qrcodeTxt + '&qrcode=' + out.data.qrcode;
-      const qrDataUrl = await new Promise((resolveQr, rejectQr) => {
-        try {
-          require('qrcode').toDataURL(qrContent, { width: 280, margin: 1 }, (err, url) => err ? rejectQr(err) : resolveQr(url));
-        } catch (e) { rejectQr(e); }
-      });
-      console.log('[KgQr] qrcode=' + out.data.qrcode + ' content=' + qrContent);
-      sendJSON(res, { ok: true, img: qrDataUrl, key: out.data.qrcode });
+      sendJSON(res, await kugouQrCreatePayload(variantKey));
     } catch (kgErr) {
       sendJSON(res, { ok: false, error: String((kgErr && kgErr.message) || kgErr) });
     }
     return;
   }
-  if (pn === '/api/kugou/qr/check') {
+  if (pn === '/api/kugou/qr/check' || pn === '/api/kugou-concept/qr/check') {
+    const variantKey = pn === '/api/kugou-concept/qr/check' ? 'kugou-concept' : 'kugou';
     try {
-      if (!kugouQrSession.qrcode) { sendJSON(res, { ok: false, code: 4, message: '二维码未生成' }); return; }
-      const params = {
-        appid: '1005', srcappid: '2919', clientver: '20000', clienttime: String(Math.floor(Date.now() / 1000)),
-        mid: kugouQrSession.mid, uuid: kugouQrSession.mid, dfid: kugouQrSession.dfid,
-        plat: '4', qrcode: kugouQrSession.qrcode
-      };
-      const out = await kgGetSigned('https://login-user.kugou.com/v2/get_userinfo_qrcode', params);
-      const st = out && out.data ? Number(out.data.status) : 0;
-      console.log('[KgQrCheck] data.status=' + st + ' raw=' + JSON.stringify(out).slice(0, 260));
-      if (st === 1) sendJSON(res, { ok: true, code: 1, message: '请使用酷狗音乐 App 扫码' });
-      else if (st === 2) sendJSON(res, { ok: true, code: 2, message: '已扫码，请在手机确认', nickname: out.data.nickname || '', userid: out.data.userid || 0 });
-      else if (st === 4) {
-        // 扫码完成：data 携带 token（登录凭证）→ 换 cookie
-        const kgToken = out.data && out.data.token;
-        const kgUserId = out.data && out.data.userid;
-        if (kgToken && kgUserId) {
-          try {
-            const lg = await kgLoginByToken(kgToken, kgUserId);
-            const cookies = lg.cookies;
-            if (cookies && cookies.length) {
-              const cookieStr = cookies.map((c) => String(c).split(';')[0]).join('; ');
-              if (cookieStr) {
-                saveKugouCookie(cookieStr);
-                sendJSON(res, { ok: true, code: 3, message: '登录成功', loggedIn: true });
-                return;
-              }
-            }
-            sendJSON(res, { ok: true, code: 3, message: '扫码成功但会话换取失败，请使用 Cookie 导入', pending: true, raw: lg.text.slice(0, 120) });
-            return;
-          } catch (lgErr) {
-            sendJSON(res, { ok: true, code: 3, message: '扫码成功但会话换取异常，请使用 Cookie 导入', pending: true, error: String((lgErr && lgErr.message) || lgErr) });
-            return;
-          }
-        }
-        sendJSON(res, { ok: true, code: 3, message: '扫码成功但未取得会话，请使用 Cookie 导入', pending: true });
-      } else if (st === 0) sendJSON(res, { ok: true, code: 0, message: '二维码无效，请刷新' });
-      else sendJSON(res, { ok: true, code: st || 0, message: '未知状态' });
-    } catch (kgErr2) {
-      sendJSON(res, { ok: false, error: String((kgErr2 && kgErr2.message) || kgErr2) });
+      sendJSON(res, await kugouQrCheckPayload(variantKey));
+    } catch (kgErr) {
+      sendJSON(res, { ok: false, error: String((kgErr && kgErr.message) || kgErr) });
     }
     return;
   }

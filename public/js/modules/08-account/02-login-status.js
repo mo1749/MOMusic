@@ -122,7 +122,7 @@ async function refreshLoginStatus(force) {
       syncLikeStatusForSongs(playQueue.concat(playlist || []));
     } else {
       neteasePlaylists = [];
-      userPlaylists = qqPlaylists.concat(kugouPlaylists || [], qishuiPlaylists || [], spotifyPlaylists || []);
+      userPlaylists = qqPlaylists.concat(kugouPlaylists || [], kugouConceptPlaylists || [], qishuiPlaylists || [], spotifyPlaylists || []);
       playlistCatalogRevision += 1;
       myPodcastCollections = [];
       myPodcastItems = {};
@@ -293,7 +293,8 @@ function normalizeKugouLoginStatus(info) {
     isVip: normalizedLevel !== 'none' || !!(info && info.isVip),
     isSvip: normalizedLevel === 'svip' || !!(info && info.isSvip),
     stale: !!(info && info.stale),
-    playbackKeyReady: !!(info && info.playbackKeyReady)
+    // 服务端字段是 playbackReady, 历史字段名 playbackKeyReady 兼容: 只认后者会让概念版优先通道永远不触发
+    playbackKeyReady: !!(info && (info.playbackKeyReady || info.playbackReady))
   });
   return Object.assign({}, fallback, info, {
     provider: 'kugou',
@@ -306,12 +307,35 @@ function normalizeKugouLoginStatus(info) {
     vipLevel: normalizedLevel,
     isVip: normalizedLevel !== 'none' || !!info.isVip,
     isSvip: normalizedLevel === 'svip' || !!info.isSvip,
-    playbackKeyReady: !!info.playbackKeyReady,
+    playbackKeyReady: !!(info.playbackKeyReady || info.playbackReady),
     stale: !!info.stale
   });
 }
 function applyKugouPlaybackStatusEvidence(info) {
-  if (!info || info.provider !== 'kugou' || !info.loggedIn) return false;
+  if (!info || !info.loggedIn) return false;
+  if (info.provider === 'kugou-concept') {
+    var existingConcept = kugouConceptLoginStatus || {};
+    var verifiedConceptMembership = info.membershipVerified === true && info.membershipSource === 'kugou-concept-vip-api';
+    var conceptUpdate = {
+      provider: 'kugou-concept',
+      loggedIn: true,
+      playbackKeyReady: !!(info.playbackReady || info.playbackKeyReady || existingConcept.playbackKeyReady)
+    };
+    if (verifiedConceptMembership) {
+      conceptUpdate.vipType = Number(info.vipType || 0) || 0;
+      conceptUpdate.svipType = Number(info.svipType || 0) || 0;
+      conceptUpdate.vipLevel = info.vipLevel === 'svip' ? 'svip' : (info.vipLevel === 'vip' ? 'vip' : 'none');
+      conceptUpdate.isVip = info.isVip === true;
+      conceptUpdate.isSvip = info.isSvip === true;
+      conceptUpdate.membershipVerified = true;
+      conceptUpdate.membershipSource = info.membershipSource;
+    }
+    kugouConceptLoginStatus = normalizeKugouConceptLoginStatus(Object.assign({}, existingConcept, conceptUpdate));
+    kugouConceptLoginWasLoggedIn = true;
+    renderUserBtn();
+    return true;
+  }
+  if (info.provider !== 'kugou') return false;
   var existing = kugouLoginStatus || {};
   var verifiedMembership = info.membershipVerified === true &&
     (info.membershipSource === 'kugou-vip-api' || info.membershipSource === 'kugou-cookie-explicit');
@@ -376,6 +400,76 @@ function startKugouLoginStatusAutoRefresh() {
   if (kugouLoginAutoRefreshTimer) clearInterval(kugouLoginAutoRefreshTimer);
   kugouLoginAutoRefreshTimer = setInterval(function () {
     refreshKugouLoginStatus().catch(function (e) { console.warn('Kugou login auto refresh failed:', e); });
+  }, 45000);
+}
+
+function normalizeKugouConceptLoginStatus(info) {
+  var fallback = { provider: 'kugou-concept', loggedIn: false, preview: false, nickname: '酷狗概念版', userId: '', avatar: '', vipType: 0, svipType: 0, vipLevel: 'none', isVip: false, isSvip: false, stale: false, playbackKeyReady: false };
+  var normalizedLevel = info && info.loggedIn ? providerVipLevel('kugou-concept', info) : (info && (info.vipLevel || info.vip_level) || 'none');
+  if (!info || !info.loggedIn) return Object.assign({}, fallback, info || {}, {
+    provider: 'kugou-concept',
+    loggedIn: false,
+    nickname: info && info.nickname || fallback.nickname,
+    userId: info && (info.userId || info.userid) || '',
+    avatar: info && info.avatar || '',
+    vipType: Number(info && (info.vipType || info.vip_type) || 0) || 0,
+    svipType: Number(info && (info.svipType || info.svip_type) || 0) || 0,
+    vipLevel: normalizedLevel,
+    isVip: normalizedLevel !== 'none' || !!(info && info.isVip),
+    isSvip: normalizedLevel === 'svip' || !!(info && info.isSvip),
+    stale: !!(info && info.stale),
+    playbackKeyReady: !!(info && (info.playbackKeyReady || info.playbackReady))
+  });
+  return Object.assign({}, fallback, info, {
+    provider: 'kugou-concept',
+    loggedIn: true,
+    nickname: info.nickname || fallback.nickname,
+    userId: info.userId || info.userid || '',
+    avatar: info.avatar || '',
+    vipType: Number(info.vipType || info.vip_type || 0) || 0,
+    svipType: Number(info.svipType || info.svip_type || 0) || 0,
+    vipLevel: normalizedLevel,
+    isVip: normalizedLevel !== 'none' || !!info.isVip,
+    isSvip: normalizedLevel === 'svip' || !!info.isSvip,
+    playbackKeyReady: !!(info.playbackKeyReady || info.playbackReady),
+    stale: !!info.stale
+  });
+}
+async function refreshKugouConceptLoginStatus() {
+  try {
+    var info = await apiJson('/api/kugou-concept/login/status?t=' + Date.now());
+    var prevLogged = !!kugouConceptLoginStatus.loggedIn;
+    kugouConceptLoginStatus = normalizeKugouConceptLoginStatus(info);
+    auditProviderVipState('kugou-concept', kugouConceptLoginStatus);
+    // 概念版歌单独立分组: 掉登录只清概念版自己的歌单
+    if (!kugouConceptLoginStatus.loggedIn) {
+      if (prevLogged || kugouConceptLoginWasLoggedIn) showToast(kugouConceptLoginStatus.stale ? '酷狗概念版登录已失效' : '酷狗概念版已掉登录');
+      kugouConceptPlaylists = [];
+      userPlaylists = userPlaylists.filter(function (pl) { return pl.provider !== 'kugou-concept'; });
+      playlistCatalogRevision += 1;
+    } else {
+      if (!userPlaylists.some(function (pl) { return pl && pl.provider === 'kugou-concept'; })) {
+        try { refreshUserPlaylists(true); } catch (_) {}
+      }
+      if (kugouConceptLoginStatus.stale) {
+        showToast('酷狗概念版登录状态可能已失效');
+      }
+    }
+    kugouConceptLoginWasLoggedIn = !!kugouConceptLoginStatus.loggedIn;
+    if (!hasPlatformLogin(activeAccountProvider)) activeAccountProvider = firstLoggedProvider();
+    renderUserBtn();
+    return kugouConceptLoginStatus;
+  } catch (e) {
+    console.warn('Kugou concept login status failed:', e);
+    kugouConceptLoginStatus = normalizeKugouConceptLoginStatus(null);
+    renderUserBtn();
+    return kugouConceptLoginStatus;
+  }
+}
+function startKugouConceptLoginStatusAutoRefresh() {
+  if (kugouConceptLoginAutoRefreshTimer) clearInterval(kugouConceptLoginAutoRefreshTimer);
+  kugouConceptLoginAutoRefreshTimer = setInterval(function () {
+    refreshKugouConceptLoginStatus().catch(function (e) { console.warn('Kugou concept login auto refresh failed:', e); });
   }, 45000);
 }
 

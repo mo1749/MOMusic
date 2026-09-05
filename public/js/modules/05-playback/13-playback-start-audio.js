@@ -551,6 +551,34 @@ async function retryNeteaseSourceMatchPlayback(song, data, idx, token, opts, req
   return retryStarted === true;
 }
 
+function kugouSongUrlQuery(song) {
+  return '/api/kugou/song/url?hash=' + encodeURIComponent(song.hash || song.fileHash || song.audioHash || song.id || '') +
+    '&albumId=' + encodeURIComponent(song.albumId || song.album_id || '') +
+    '&albumAudioId=' + encodeURIComponent(song.albumAudioId || song.album_audio_id || song.mixSongId || '') +
+    '&mixSongId=' + encodeURIComponent(song.mixSongId || '') +
+    '&hqHash=' + encodeURIComponent(song.hqHash || song.hq_hash || '') +
+    '&sqHash=' + encodeURIComponent(song.sqHash || song.sq_hash || '') +
+    '&resHash=' + encodeURIComponent(song.resHash || song.res_hash || '') +
+    '&vipRequired=' + encodeURIComponent(song.vipRequired || song.needVip || song.onlyVipPlayable || song.only_vip_playable ? '1' : '') +
+    '&privilege=' + encodeURIComponent(song.privilege || song.Privilege || song.mediaPrivilege || song.media_privilege || '') +
+    '&fee=' + encodeURIComponent(song.fee || song.Fee || '');
+}
+
+// 概念版通道优先: 概念版已登录且播放凭证就绪时先走概念版取链(按概念版会员权益播放), 失败自动回退普通酷狗
+async function fetchKugouSongUrlData(song, qualityParam) {
+  var conceptReady = !!(kugouConceptLoginStatus && kugouConceptLoginStatus.loggedIn && kugouConceptLoginStatus.playbackKeyReady);
+  if (conceptReady) {
+    try {
+      var conceptData = await apiJson(kugouSongUrlQuery(song).replace('/api/kugou/song/url', '/api/kugou-concept/song/url') + qualityParam, { timeoutMs: 9000 });
+      if (conceptData && conceptData.url) return conceptData;
+      console.warn('[KugouConceptPriority] concept url unavailable (' + ((conceptData && (conceptData.reason || conceptData.message)) || 'no url') + '), fallback to kugou');
+    } catch (e) {
+      console.warn('[KugouConceptPriority] concept url failed, fallback to kugou:', (e && e.message) || e);
+    }
+  }
+  return apiJson(kugouSongUrlQuery(song) + qualityParam, { timeoutMs: 9000 });
+}
+
 async function resolveAlbumGaplessPlaybackData(song) {
   if (!song || song.type === 'local' || song.source === 'local' || song.localUrl) return null;
   var playbackProvider = normalizePlaybackProvider(songProviderKey(song));
@@ -563,17 +591,7 @@ async function resolveAlbumGaplessPlaybackData(song) {
     return apiJson('/api/qq/song/url?mid=' + encodeURIComponent(song.mid || song.songmid || song.id || '') + '&mediaMid=' + encodeURIComponent(song.mediaMid || song.media_mid || '') + qqPlaybackEvidenceQuery(song) + qualityParam, { timeoutMs: 15000 });
   }
   if (playbackProvider === 'kugou') {
-    return apiJson('/api/kugou/song/url?hash=' + encodeURIComponent(song.hash || song.fileHash || song.audioHash || song.id || '') +
-      '&albumId=' + encodeURIComponent(song.albumId || song.album_id || '') +
-      '&albumAudioId=' + encodeURIComponent(song.albumAudioId || song.album_audio_id || song.mixSongId || '') +
-      '&mixSongId=' + encodeURIComponent(song.mixSongId || '') +
-      '&hqHash=' + encodeURIComponent(song.hqHash || song.hq_hash || '') +
-      '&sqHash=' + encodeURIComponent(song.sqHash || song.sq_hash || '') +
-      '&resHash=' + encodeURIComponent(song.resHash || song.res_hash || '') +
-      '&vipRequired=' + encodeURIComponent(song.vipRequired || song.needVip || song.onlyVipPlayable || song.only_vip_playable ? '1' : '') +
-      '&privilege=' + encodeURIComponent(song.privilege || song.Privilege || song.mediaPrivilege || song.media_privilege || '') +
-      '&fee=' + encodeURIComponent(song.fee || song.Fee || '') +
-      qualityParam, { timeoutMs: 9000 });
+    return fetchKugouSongUrlData(song, qualityParam);
   }
   if (playbackProvider === 'qishui') {
     return apiJson('/api/qishui/song/url?id=' + encodeURIComponent(song.id || song.providerSongId || '') + qqPlaybackEvidenceQuery(song) + qualityParam, { timeoutMs: 9000 });
@@ -1094,17 +1112,7 @@ async function playQueueAt(idx, opts) {
       } else if (isQQPlayback) {
         data = await apiJson('/api/qq/song/url?mid=' + encodeURIComponent(song.mid || song.songmid || song.id || '') + '&mediaMid=' + encodeURIComponent(song.mediaMid || song.media_mid || '') + qqPlaybackEvidenceQuery(song) + qualityParam, { timeoutMs: 15000 });
       } else if (isKugouPlayback) {
-        data = await apiJson('/api/kugou/song/url?hash=' + encodeURIComponent(song.hash || song.fileHash || song.audioHash || song.id || '') +
-          '&albumId=' + encodeURIComponent(song.albumId || song.album_id || '') +
-          '&albumAudioId=' + encodeURIComponent(song.albumAudioId || song.album_audio_id || song.mixSongId || '') +
-          '&mixSongId=' + encodeURIComponent(song.mixSongId || '') +
-          '&hqHash=' + encodeURIComponent(song.hqHash || song.hq_hash || '') +
-          '&sqHash=' + encodeURIComponent(song.sqHash || song.sq_hash || '') +
-          '&resHash=' + encodeURIComponent(song.resHash || song.res_hash || '') +
-          '&vipRequired=' + encodeURIComponent(song.vipRequired || song.needVip || song.onlyVipPlayable || song.only_vip_playable ? '1' : '') +
-          '&privilege=' + encodeURIComponent(song.privilege || song.Privilege || song.mediaPrivilege || song.media_privilege || '') +
-          '&fee=' + encodeURIComponent(song.fee || song.Fee || '') +
-          qualityParam, { timeoutMs: 9000 });
+        data = await fetchKugouSongUrlData(song, qualityParam);
       } else if (isQishuiPlayback) {
         data = await apiJson('/api/qishui/song/url?id=' + encodeURIComponent(song.id || song.providerSongId || '') + qqPlaybackEvidenceQuery(song) + qualityParam, { timeoutMs: 9000 });
       } else if (isSpotifyPlayback) {

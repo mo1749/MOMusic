@@ -5410,6 +5410,7 @@ function loginCookieExportMeta(provider) {
     netease: { label: '网易云音乐', files: [process.env.COOKIE_FILE, path.join(userData, '.cookie')] },
     qq: { label: 'QQ音乐', files: [process.env.QQ_COOKIE_FILE, path.join(userData, '.qq-cookie')] },
     kugou: { label: '酷狗音乐', files: [process.env.KUGOU_COOKIE_FILE, path.join(userData, '.kugou-cookie')] },
+    'kugou-concept': { label: '酷狗概念版', files: [process.env.KUGOU_CONCEPT_COOKIE_FILE, path.join(userData, '.kugou-concept-cookie')] },
     qishui: { label: '汽水音乐', files: [process.env.QISHUI_COOKIE_FILE, path.join(userData, '.qishui-cookie'), process.env.QISHUI_TOKEN_FILE, path.join(userData, '.qishui-token')] },
     spotify: { label: 'Spotify', files: [process.env.SPOTIFY_TOKEN_FILE, path.join(userData, '.spotify-token.json')] },
   };
@@ -5779,6 +5780,7 @@ function configureLocalServerEnvironment(port) {
   process.env.COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.cookie');
   process.env.QQ_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.qq-cookie');
   process.env.KUGOU_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.kugou-cookie');
+  process.env.KUGOU_CONCEPT_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.kugou-concept-cookie');
   process.env.QISHUI_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.qishui-cookie');
   process.env.QISHUI_TOKEN_FILE = path.join(STABLE_USER_DATA_PATH, '.qishui-token');
   process.env.MOMusic_LISTEN_SYNC_FILE = path.join(STABLE_USER_DATA_PATH, 'listen-sync-journal.json');
@@ -5798,6 +5800,7 @@ const APP_OWNED_MIGRATION_FILES = [
   '.cookie',
   '.qq-cookie',
   '.kugou-cookie',
+  '.kugou-concept-cookie',
   '.qishui-cookie',
   '.qishui-token',
   '.qishui-oauth.json',
@@ -5818,6 +5821,7 @@ function appOwnedMigrationFileValid(name, file) {
     if (name === '.cookie') return neteaseCookieHasLogin(text);
     if (name === '.qq-cookie') return qqCookieHasLogin(text);
     if (name === '.kugou-cookie') return kugouCookieHasLogin(text);
+    if (name === '.kugou-concept-cookie') return kugouCookieHasLogin(text);
     if (name === '.qishui-cookie') return qishuiCookieHasLogin(text);
     if (name === '.qishui-token') return text.length >= 10;
     if (name === 'cuefield-feedback.jsonl') {

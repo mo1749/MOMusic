@@ -68,12 +68,12 @@ function makeShelfManager() {
     if (hasAnyPlatformLogin() && (userPlaylists.length || myPodcastCollections.length)) {
       var source = activePlaylists();
       var items = source.map(function (pl) {
-        var provider = pl.provider === 'qq' ? 'qq' : (pl.provider === 'kugou' ? 'kugou' : (pl.provider === 'qishui' ? 'qishui' : (pl.provider === 'spotify' ? 'spotify' : (pl.provider === 'local' ? 'local' : 'netease'))));
-        var sourceLabel = provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : (provider === 'local' ? 'LC' : 'NE'))));
+        var provider = pl.provider === 'qq' ? 'qq' : (pl.provider === 'kugou' ? 'kugou' : (pl.provider === 'kugou-concept' ? 'kugou-concept' : (pl.provider === 'qishui' ? 'qishui' : (pl.provider === 'spotify' ? 'spotify' : (pl.provider === 'local' ? 'local' : 'netease')))));
+        var sourceLabel = provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'kugou-concept' ? 'KGC' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : (provider === 'local' ? 'LC' : 'NE')))));
         if (provider === 'spotify' && String(pl.id || '').indexOf('spotify:') !== 0) pl = Object.assign({}, pl, { id: 'spotify:' + pl.id });
         var pane = pl.shelfPane || pl.shelf_pane;
-        var tag = pane === 'local' || provider === 'local' ? '本地收藏' : (pane === 'fav' || (!pane && pl.subscribed) ? '收藏歌单' : (provider === 'qishui' ? '汽水歌单' : '我的歌单'));
-        var idPrefix = provider === 'qq' ? 'qq:' : (provider === 'kugou' ? 'kugou:' : (provider === 'qishui' ? 'qishui:' : (provider === 'spotify' ? 'spotify:' : (provider === 'local' ? 'local:' : ''))));
+        var tag = pane === 'local' || provider === 'local' ? '本地收藏' : (pane === 'fav' || (!pane && pl.subscribed) ? '收藏歌单' : (provider === 'qishui' ? '汽水歌单' : (provider === 'kugou-concept' ? '概念版歌单' : '我的歌单')));
+        var idPrefix = provider === 'qq' ? 'qq:' : (provider === 'kugou' ? 'kugou:' : (provider === 'kugou-concept' ? 'kugou-concept:' : (provider === 'qishui' ? 'qishui:' : (provider === 'spotify' ? 'spotify:' : (provider === 'local' ? 'local:' : '')))));
         return {
           type: 'playlist', title: pl.name, sub: sourceLabel + ' · ' + (pl.trackCount || 0) + ' 首 · 播放 ' + compactCount(pl.playCount || 0),
           cover: pl.cover || '', tag: tag, playlistId: idPrefix + pl.id, provider: provider

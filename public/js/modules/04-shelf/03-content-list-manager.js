@@ -252,6 +252,9 @@ function makeContentListManager() {
     if (contentSource.provider === 'kugou') {
       return '/api/kugou/playlist/tracks?id=' + encodeURIComponent(contentSource.id) + '&limit=' + limit + '&offset=' + Math.max(0, offset || 0);
     }
+    if (contentSource.provider === 'kugou-concept') {
+      return '/api/kugou-concept/playlist/tracks?id=' + encodeURIComponent(contentSource.id) + '&limit=' + limit + '&offset=' + Math.max(0, offset || 0);
+    }
     if (contentSource.provider === 'qishui') {
       return '/api/qishui/playlist/tracks?id=' + encodeURIComponent(contentSource.id) + '&limit=' + limit + '&offset=' + Math.max(0, offset || 0);
     }
@@ -705,13 +708,14 @@ function makeContentListManager() {
       var podcastCollectionKey = String(playlistId || '').indexOf('podcast:') === 0 ? String(playlistId).slice(8) : '';
       var qqPlaylistId = String(playlistId || '').indexOf('qq:') === 0 ? String(playlistId).slice(3) : '';
       var kugouPlaylistId = String(playlistId || '').indexOf('kugou:') === 0 ? String(playlistId).slice(6) : '';
+      var kugouConceptPlaylistId = String(playlistId || '').indexOf('kugou-concept:') === 0 ? String(playlistId).slice(14) : '';
       var qishuiPlaylistId = String(playlistId || '').indexOf('qishui:') === 0 ? String(playlistId).slice(7) : '';
       var spotifyPlaylistId = String(playlistId || '').indexOf('spotify:') === 0 ? String(playlistId).slice(8) : '';
       var localPlaylistId = String(playlistId || '').indexOf('local:') === 0 ? String(playlistId).slice(6) : '';
       contentKind = podcastCollectionKey ? 'podcast' : 'playlist';
       contentSource = podcastCollectionKey ? null : {
-        provider: qqPlaylistId ? 'qq' : (kugouPlaylistId ? 'kugou' : (qishuiPlaylistId ? 'qishui' : (spotifyPlaylistId ? 'spotify' : (localPlaylistId ? 'local' : 'netease')))),
-        id: qqPlaylistId || kugouPlaylistId || qishuiPlaylistId || spotifyPlaylistId || localPlaylistId || playlistId
+        provider: qqPlaylistId ? 'qq' : (kugouPlaylistId ? 'kugou' : (kugouConceptPlaylistId ? 'kugou-concept' : (qishuiPlaylistId ? 'qishui' : (spotifyPlaylistId ? 'spotify' : (localPlaylistId ? 'local' : 'netease'))))),
+        id: qqPlaylistId || kugouPlaylistId || kugouConceptPlaylistId || qishuiPlaylistId || spotifyPlaylistId || localPlaylistId || playlistId
       };
       // 拉取歌单/播客集合
       var r = null;
@@ -722,13 +726,15 @@ function makeContentListManager() {
             ? await apiJson('/api/qq/playlist/tracks?id=' + encodeURIComponent(qqPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
             : (kugouPlaylistId
               ? await apiJson('/api/kugou/playlist/tracks?id=' + encodeURIComponent(kugouPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
-              : (qishuiPlaylistId
-                ? await apiJson('/api/qishui/playlist/tracks?id=' + encodeURIComponent(qishuiPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
-                : (spotifyPlaylistId
-                  ? await apiJson('/api/spotify/playlist/tracks?id=' + encodeURIComponent(spotifyPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
-                  : (localPlaylistId
-                    ? await apiJson('/api/local/playlist/tracks?id=' + encodeURIComponent(localPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
-                    : await apiJson('/api/playlist/tracks?id=' + encodeURIComponent(playlistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0'))))));
+              : (kugouConceptPlaylistId
+                ? await apiJson('/api/kugou-concept/playlist/tracks?id=' + encodeURIComponent(kugouConceptPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
+                : (qishuiPlaylistId
+                  ? await apiJson('/api/qishui/playlist/tracks?id=' + encodeURIComponent(qishuiPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
+                  : (spotifyPlaylistId
+                    ? await apiJson('/api/spotify/playlist/tracks?id=' + encodeURIComponent(spotifyPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
+                    : (localPlaylistId
+                      ? await apiJson('/api/local/playlist/tracks?id=' + encodeURIComponent(localPlaylistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')
+                      : await apiJson('/api/playlist/tracks?id=' + encodeURIComponent(playlistId) + '&limit=' + PLAYLIST_LAZY_BATCH_SIZE + '&offset=0')))))));
       } catch (e) {
         if (!open || token !== requestToken) return;
         console.warn('[ShelfContentLoadApi]', playlistId, e);

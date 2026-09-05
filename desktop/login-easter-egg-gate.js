@@ -13,6 +13,7 @@ const LOGIN_EASTER_EGG_CREDENTIAL_FILES = [
   '.cookie',
   '.qq-cookie',
   '.kugou-cookie',
+  '.kugou-concept-cookie',
   '.kugou-vip-evidence.json',
   '.qishui-cookie',
   '.qishui-token',

@@ -13,7 +13,7 @@
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260904-momusic-1.5.3">
+  <link rel="stylesheet" href="css/index.css?v=20260905-momusic-1.5.4">
   <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
   <link rel="stylesheet" href="css/login-console-style.css?v=20260813-login-saved-glass">
   <link rel="stylesheet" href="css/fx-console-glass.css?v=20260813-fx-console-glass3">
@@ -80,41 +80,6 @@
     <div id="album-bg-next" aria-hidden="true"></div>
     <div id="canvas-container"></div>
     <canvas id="idle-guide-canvas" aria-hidden="true"></canvas>
-
-    <!-- 启动页 -->
-    <div id="splash">
-      <canvas id="splash-canvas"></canvas>
-
-      <!-- 主内容 -->
-      <div class="splash-content">
-        <div class="splash-logo" id="splash-logo" aria-label="MoMusic">
-          <svg class="splash-logo-icon" viewBox="0 0 96 96" width="96" height="96" fill="none">
-            <defs>
-              <linearGradient id="splashLogoGrad" x1="0" y1="0" x2="96" y2="96">
-                <stop offset="0%" stop-color="#508cf0"/>
-                <stop offset="100%" stop-color="#a855f7"/>
-              </linearGradient>
-            </defs>
-            <!-- 圆形唱片外框 -->
-            <circle cx="48" cy="48" r="44" stroke="url(#splashLogoGrad)" stroke-width="1.5" opacity=".55"/>
-            <!-- 内圈装饰 -->
-            <circle cx="48" cy="48" r="28" stroke="url(#splashLogoGrad)" stroke-width="0.5" opacity=".30"/>
-            <!-- 音符 M 形图案 — 简约风格 -->
-            <path d="M38 60V28l28-4v24" stroke="url(#splashLogoGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>
-            <circle cx="33" cy="60" r="7" fill="url(#splashLogoGrad)" opacity=".80"/>
-            <circle cx="61" cy="52" r="7" fill="url(#splashLogoGrad)" opacity=".80"/>
-            <!-- 中心圆点 -->
-            <circle cx="48" cy="48" r="4" fill="url(#splashLogoGrad)" opacity=".40"/>
-          </svg>
-        </div>
-        <div class="splash-wordmark" id="splash-wordmark">
-          <span class="splash-word-mo">Mo</span><span class="splash-word-music">Music</span>
-        </div>
-        <div class="splash-sub">多平台聚合音乐</div>
-        <div class="splash-pulse-ring" id="splash-pulse-ring"></div>
-        <div class="splash-enter" aria-hidden="true">点击进入</div>
-      </div>
-    </div>
 
     <div id="hint" aria-hidden="true"></div>
 
@@ -1640,6 +1605,8 @@
               onclick="selectLoginProviderNode('qq')"><span class="ml-badge">QQ</span><span class="ml-card-copy"><b>QQ 音乐</b><small>官方扫码</small></span></button>
             <button class="ml-card kugou" id="login-provider-kugou" type="button" data-login-provider="kugou"
               onclick="selectLoginProviderNode('kugou')"><span class="ml-badge">KG</span><span class="ml-card-copy"><b>酷狗音乐</b><small>官方扫码</small></span></button>
+            <button class="ml-card kugou-concept" id="login-provider-kugou-concept" type="button" data-login-provider="kugou-concept"
+              onclick="selectLoginProviderNode('kugou-concept')"><span class="ml-badge">KGC</span><span class="ml-card-copy"><b>酷狗概念版</b><small>App 扫码</small></span></button>
             <button class="ml-card qishui" id="login-provider-qishui" type="button" data-login-provider="qishui"
               onclick="selectLoginProviderNode('qishui')"><span class="ml-badge">QS</span><span class="ml-card-copy"><b>汽水音乐</b><small>本机会话</small></span></button>
             <button class="ml-card spotify" id="login-provider-spotify" type="button" data-login-provider="spotify"
@@ -1660,6 +1627,7 @@
           </div>
           <div id="login-auth-drawer" class="ml-content">
             <div id="kugou-login-hint" class="ml-kugou-hint" hidden>💡 要是扫码登录失败，请点击【网页】→ 点击任意歌曲 → 【手机登录】进行登录</div>
+            <div id="kugou-concept-login-hint" class="ml-kugou-hint ml-kugou-concept-hint" hidden>💡 请使用<b>酷狗概念版 App</b> 扫码并确认；登录后酷狗歌曲将按概念版会员权益自动取链播放</div>
             <div id="qr-shell" class="ml-qr">
               <div class="ml-qr-stage">
                 <div class="ml-qr-skeleton" aria-hidden="true"></div>
@@ -1757,6 +1725,7 @@
             onclick="setActiveAccountProvider('netease')">网易云</button>
           <button id="user-provider-qq" class="qq" type="button" onclick="setActiveAccountProvider('qq')">QQ 音乐</button>
           <button id="user-provider-kugou" class="kugou" type="button" onclick="setActiveAccountProvider('kugou')">酷狗音乐</button>
+          <button id="user-provider-kugou-concept" class="kugou-concept" type="button" onclick="setActiveAccountProvider('kugou-concept')">酷狗概念版</button>
           <button id="user-provider-qishui" class="qishui" type="button" onclick="setActiveAccountProvider('qishui')">汽水音乐</button>
           <button id="user-provider-spotify" class="spotify" type="button" onclick="setActiveAccountProvider('spotify')">Spotify</button>
           <button id="user-provider-both" class="both" type="button" onclick="enableDualAccountView()">我两个都要</button>
@@ -1765,6 +1734,7 @@
           <button id="account-add-netease" class="modal-btn" onclick="openProviderLogin('netease')">补登网易云</button>
           <button id="account-add-qq" class="modal-btn" onclick="openProviderLogin('qq')">补登 QQ 音乐</button>
           <button id="account-add-kugou" class="modal-btn" onclick="openProviderLogin('kugou')">补登酷狗音乐</button>
+          <button id="account-add-kugou-concept" class="modal-btn" onclick="openProviderLogin('kugou-concept')">补登酷狗概念版</button>
           <button id="account-add-qishui" class="modal-btn" onclick="openProviderLogin('qishui')">导入汽水登录态</button>
           <button id="account-add-spotify" class="modal-btn" onclick="openProviderLogin('spotify')">连接 Spotify</button>
         </div>

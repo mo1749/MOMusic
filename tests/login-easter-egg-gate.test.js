@@ -202,9 +202,9 @@ async function run() {
     assert(logoutRenderer.includes('resetLoginEasterEggUiForReplay()'));
 
     const splashRenderer = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'modules', '10-shell', '03-splash.js'), 'utf8');
-    // splash 已重构为 Canvas 2D 实现 (原 retroChord 和弦动画随重构移除)
+    // 启动动画已移除：03-splash.js 现为无启动画面的直进揭示引导
     assert(splashRenderer.includes('splash-active'));
-    assert(splashRenderer.includes("document.getElementById('splash-canvas')"));
+    assert(splashRenderer.includes('finishSplashReveal'));
     assert(splashRenderer.includes('requestAnimationFrame'));
 
     const desktopMain = fs.readFileSync(path.join(__dirname, '..', 'desktop', 'main.js'), 'utf8');

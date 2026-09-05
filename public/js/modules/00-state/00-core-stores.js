@@ -24,15 +24,18 @@ var searchMode = 'song', podcastResults = [], podcastPrograms = [], podcastCurre
 var loginStatus = { loggedIn: false, vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, vipLabel: '无VIP' };
 var qqLoginStatus = { provider: 'qq', loggedIn: false, preview: false, nickname: 'QQ 音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false };
 var kugouLoginStatus = { provider: 'kugou', loggedIn: false, preview: false, nickname: '酷狗音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false };
+var kugouConceptLoginStatus = { provider: 'kugou-concept', loggedIn: false, preview: false, nickname: '酷狗概念版', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false };
 var qishuiLoginStatus = { provider: 'qishui', loggedIn: false, configured: false, preview: false, nickname: '汽水音乐', userId: '', avatar: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false, playbackMode: 'recommend-match' };
 var qqLoginAutoRefreshTimer = null;
 var qqLoginStatusLastForcedAt = 0;
 var kugouLoginAutoRefreshTimer = null;
+var kugouConceptLoginAutoRefreshTimer = null;
 var qishuiLoginAutoRefreshTimer = null;
 var spotifyLoginStatus = { provider: 'spotify', loggedIn: false, configured: false, oauthConfigured: false, oauthMissing: [], preview: false, nickname: 'Spotify', userId: '', avatar: '', product: '', vipType: 0, vipLevel: 'none', isVip: false, isSvip: false, playbackKeyReady: false, playbackMode: 'recommend-match' };
 var spotifyLoginAutoRefreshTimer = null;
 var qqLoginWasLoggedIn = false;
 var kugouLoginWasLoggedIn = false;
+var kugouConceptLoginWasLoggedIn = false;
 var qishuiLoginWasLoggedIn = false;
 var spotifyLoginWasLoggedIn = false;
 var loginProvider = 'netease';
@@ -40,6 +43,7 @@ var activeAccountProvider = 'netease';
 var dualAccountMode = false;
 var qqCookieBusy = false;
 var kugouCookieBusy = false;
+var kugouConceptCookieBusy = false;
 var qishuiTokenBusy = false;
 var qishuiOAuthBusy = false;
 var spotifyConfigBusy = false;
@@ -50,6 +54,7 @@ var kugouWebLoginBusy = false;
 var neteaseManualCookieOpen = false;
 var qqManualCookieOpen = false;
 var kugouManualCookieOpen = false;
+var kugouConceptManualCookieOpen = false;
 var qishuiManualCookieOpen = false;
 var loginStatusChecked = false, loginStatusCheckFailed = false;
 var qrPollTimer = null, qrKey = null;
@@ -69,7 +74,7 @@ var AUDIO_FADE_IN_MS = audioFadePreference.fadeInMs;
 var AUDIO_FADE_OUT_MS = audioFadePreference.fadeOutMs;
 var AUDIO_SILENCE_GAIN = 0.0001;
 var audioFadeEnvelope = 1;
-var userPlaylists = [], neteasePlaylists = [], qqPlaylists = [], kugouPlaylists = [], qishuiPlaylists = [], spotifyPlaylists = [], localPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
+var userPlaylists = [], neteasePlaylists = [], qqPlaylists = [], kugouPlaylists = [], kugouConceptPlaylists = [], qishuiPlaylists = [], spotifyPlaylists = [], localPlaylists = [], myPodcastCollections = [], myPodcastItems = {}, playlistCoverCache = {};
 var queueHydrationState = {
   token: 0,
   active: false,

@@ -1411,7 +1411,7 @@ function checkQishuiProviderGuard() {
     fail('Qishui status must keep public search separate from the required local SodaMusic session import');
   }
   const oldQishuiCredentialPrompt = new RegExp('当前版本还没有内置' + '抖音开放平台应用凭证');
-  if (!/function qishuiPublicSearchReady/.test(qishuiLoginText) || !/function openQishuiPublicSearch/.test(qishuiLoginText) || !/canUseQishuiQrLogin/.test(qishuiLoginText) || !/refreshBtn\.onclick = isQishui \? openQishuiWebLogin/.test(qishuiLoginText) || oldQishuiCredentialPrompt.test(qishuiLoginText)) {
+  if (!/function qishuiPublicSearchReady/.test(qishuiLoginText) || !/function openQishuiPublicSearch/.test(qishuiLoginText) || !/canUseQishuiQrLogin/.test(qishuiLoginText) || !/refreshBtn\.onclick = isKugouConcept \? refreshQr : \(isQishui \? openQishuiWebLogin/.test(qishuiLoginText) || oldQishuiCredentialPrompt.test(qishuiLoginText)) {
     fail('Qishui login modal must expose the official QR-login bridge without hiding public search elsewhere');
   }
   if (!/searchReady/.test(qishuiStatusText) || !/capabilities\.search/.test(qishuiStatusText)) {
@@ -1486,7 +1486,7 @@ function checkQishuiProviderGuard() {
   if (!/\/api\/qishui\/user\/playlists/.test(serverText) || !/\/api\/qishui\/playlist\/tracks/.test(serverText)) {
     fail('server.js must route Qishui user playlists and playlist track detail endpoints');
   }
-  if (!/qishuiPlaylists/.test(coreStoreText) || !/if \(provider === 'qishui'\) return '\/api\/qishui\/user\/playlists'/.test(playlistShellText) || !/neteasePlaylists\.concat\(qqPlaylists, kugouPlaylists, qishuiPlaylists, spotifyPlaylists(, localPlaylists)?\)/.test(playlistShellText)) {
+  if (!/qishuiPlaylists/.test(coreStoreText) || !/if \(provider === 'qishui'\) return '\/api\/qishui\/user\/playlists'/.test(playlistShellText) || !/neteasePlaylists\.concat\(qqPlaylists, kugouPlaylists(, kugouConceptPlaylists)?, qishuiPlaylists, spotifyPlaylists(, localPlaylists)?\)/.test(playlistShellText)) {
     fail('playlist panel refresh must merge Qishui playlists with the other providers');
   }
   if (!/normalizePlaylistProvider/.test(playlistDetailText) || !/\/api\/qishui\/playlist\/tracks/.test(playlistDetailText) || !/qishui:' \+ id/.test(playlistDetailText) || !/汽水音乐歌单/.test(playlistDetailText)) {
@@ -2175,7 +2175,7 @@ function checkSearchGlassEntranceGuard() {
   const searchBoxSourceMergeCount = (searchBoxFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchPillSourceMergeCount = (searchPillFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchBoxFilterMatchesSavedRgbGlass =
-    /css\/index\.css\?v=20260904-momusic-1\.5\.3/.test(indexText) &&
+    /css\/index\.css\?v=20260905-momusic-1\.5\.4/.test(indexText) &&
     /x="-24%"\s+y="-34%"\s+width="158%"/.test(searchBoxFilterText) &&
     /height="168%"/.test(searchBoxFilterText) &&
     /id="search-box-glass-map"\s+x="-10%"\s+y="-4%"\s+width="120%"\s+height="108%"/.test(searchBoxFilterText) &&
@@ -5216,24 +5216,23 @@ function checkFirstLaunchDefaultsAndSplashGuard() {
   if (!/PACKAGED_DEFAULT_FX_SNAPSHOT\s*=\s*Object\.freeze\(Object\.assign\(\{[\s\S]{0,180}visualPresetSchema:\s*VISUAL_PRESET_SCHEMA[\s\S]{0,120}\},\s*fxDefaults\)\)/.test(packagedText)) {
     fail('packaged first-launch snapshot must inherit the synchronized runtime defaults');
   }
-  if (!/function splashTimelineElapsed\(elapsed\)\s*\{\s*return elapsed;\s*\}/.test(splashText)
-    || /elapsed\s*\*\s*3\.32/.test(splashText)
-    || !/setTimeout\(markSplashReadyToEnter,\s*650\)/.test(splashText)
-    || !/setTimeout\(markSplashReadyToEnter,\s*1500\)/.test(splashText)
-    || !/\.splash-logo\s*\{[\s\S]{0,160}animation:\s*splash-logo-in 1800ms/.test(css)
-    || !/\.splash-wordmark\s*\{[\s\S]{0,260}animation:\s*splash-word-in 2000ms/.test(css)
-    || !/\.splash-sub\s*\{[\s\S]{0,160}animation:\s*splash-sub-in 2000ms/.test(css)
-    || !/\.splash-pulse-ring\s*\{[\s\S]{0,200}animation:\s*splash-pulse 3400ms/.test(css)
-    || !/#splash\.ready \.splash-enter\s*\{[\s\S]{0,160}animation:\s*splash-enter-pulse 2000ms/.test(css)
-    || /\.splash-wordmark[\s\S]{0,600}animation-duration|\.splash-logo[\s\S]{0,400}animation-duration/.test(css)) {
-    fail('public-repo splash motion speed and the independent fast click-entry gate must stay decoupled');
+  const splashHtmlText = fs.readFileSync(path.join(appRoot, 'public', 'index.html'), 'utf8');
+  if (/splashTimelineElapsed|markSplashReadyToEnter/.test(splashText)
+    || /<div id="splash"/.test(splashHtmlText)
+    || !/启动动画已移除/.test(splashText)
+    || !/document\.addEventListener\('DOMContentLoaded', function \(\) \{[\s\S]{0,220}finishSplashReveal\(true, \{ fastSkip: true/.test(splashText)
+    || !/document\.body\.classList\.remove\('splash-active'\)/.test(splashText)
+    || !/s\.parentNode\.removeChild\(s\)/.test(splashText)
+    || !/function releaseStartupFastSkipPreload\(\)/.test(splashText)
+    || !/var reduceSplashMotion/.test(splashText)) {
+    fail('startup splash must stay removed with the instant DOMContentLoaded reveal and unchanged global contract');
   }
   if (!/\.user-archive-toolbar\s*\{[\s\S]{0,220}display:\s*grid;[\s\S]{0,160}grid-template-columns:\s*minmax\(0,\s*1fr\)/.test(css)
     || !/\.user-archive-tools\s*\{[\s\S]{0,180}display:\s*grid;[\s\S]{0,160}grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/.test(css)
     || !/\.user-archive-tools \.fx-mini-btn\s*\{[\s\S]{0,180}width:\s*100%;[\s\S]{0,160}white-space:\s*nowrap/.test(css)) {
     fail('user archive actions must stay in one balanced three-column row');
   }
-  console.log(`[OK] ${keys.length} captured defaults match; splash motion is 5.2s/4.2s while entry stays ready at 1.5s/0.65s; archive actions stay in one row.`);
+  console.log(`[OK] ${keys.length} captured defaults match; splash stays removed with instant DOMContentLoaded reveal; archive actions stay in one row.`);
 }
 
 async function main() {

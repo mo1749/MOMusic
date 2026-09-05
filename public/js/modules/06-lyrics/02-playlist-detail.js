@@ -115,17 +115,17 @@ function bindMiniQueueLazyRender() {
   }, { passive: true });
 }
 function normalizePlaylistProvider(provider) {
-  if (provider === 'qq' || provider === 'kugou' || provider === 'qishui' || provider === 'spotify' || provider === 'ls' || provider === 'local') return provider;
+  if (provider === 'qq' || provider === 'kugou' || provider === 'kugou-concept' || provider === 'qishui' || provider === 'spotify' || provider === 'ls' || provider === 'local') return provider;
   return 'netease';
 }
 function playlistProviderLabel(provider) {
   provider = normalizePlaylistProvider(provider);
-  return provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : (provider === 'ls' ? 'LS' : (provider === 'local' ? 'LC' : 'NE')))));
+  return provider === 'qq' ? 'QQ' : (provider === 'kugou' ? 'KG' : (provider === 'kugou-concept' ? 'KGC' : (provider === 'qishui' ? 'QS' : (provider === 'spotify' ? 'SP' : (provider === 'ls' ? 'LS' : (provider === 'local' ? 'LC' : 'NE'))))));
 }
 function playlistProviderName(provider) {
   provider = normalizePlaylistProvider(provider);
   if (provider === 'spotify') return 'Spotify';
-  return provider === 'qq' ? 'QQ 音乐' : (provider === 'kugou' ? '酷狗音乐' : (provider === 'qishui' ? '汽水音乐' : (provider === 'ls' ? '落雪音源' : (provider === 'local' ? '本地收藏' : '网易云音乐'))));
+  return provider === 'qq' ? 'QQ 音乐' : (provider === 'kugou' ? '酷狗音乐' : (provider === 'kugou-concept' ? '酷狗概念版' : (provider === 'qishui' ? '汽水音乐' : (provider === 'ls' ? '落雪音源' : (provider === 'local' ? '本地收藏' : '网易云音乐')))));
 }
 function playlistPanelKey(provider, id) {
   provider = normalizePlaylistProvider(provider);
@@ -135,6 +135,7 @@ function playlistPanelProviderId(provider, id) {
   provider = normalizePlaylistProvider(provider);
   if (provider === 'qq') return 'qq:' + id;
   if (provider === 'kugou') return 'kugou:' + id;
+  if (provider === 'kugou-concept') return 'kugou-concept:' + id;
   if (provider === 'qishui') return 'qishui:' + id;
   if (provider === 'spotify') return 'spotify:' + id;
   if (provider === 'local') return 'local:' + id;
@@ -264,6 +265,7 @@ function playlistTracksEndpoint(provider, id, params) {
   }
   if (provider === 'qq') return '/api/qq/playlist/tracks?' + query;
   if (provider === 'kugou') return '/api/kugou/playlist/tracks?' + query;
+  if (provider === 'kugou-concept') return '/api/kugou-concept/playlist/tracks?' + query;
   if (provider === 'qishui') return '/api/qishui/playlist/tracks?' + query;
   if (provider === 'spotify') return '/api/spotify/playlist/tracks?' + query;
   if (provider === 'local') return '/api/local/playlist/tracks?' + query;
@@ -542,9 +544,9 @@ function playlistPanelBuildVirtualEntries() {
   if (playlistPanelVirtualCache.revision === playlistCatalogRevision &&
       playlistPanelVirtualCache.detailKey === playlistPanelDetailState.key &&
       playlistPanelVirtualCache.detailSig === detailSig) return playlistPanelVirtualCache;
-  var labels = { local: '本地收藏歌单', ls: '落雪音源歌单', netease: '网易云歌单', qq: 'QQ 音乐歌单', kugou: '酷狗音乐歌单', qishui: '汽水音乐歌单', spotify: 'Spotify 歌单' };
-  var order = ['local', 'ls', 'netease', 'qq', 'kugou', 'qishui', 'spotify'];
-  var groups = { local: [], ls: [], netease: [], qq: [], kugou: [], qishui: [], spotify: [] };
+  var labels = { local: '本地收藏歌单', ls: '落雪音源歌单', netease: '网易云歌单', qq: 'QQ 音乐歌单', kugou: '酷狗音乐歌单', 'kugou-concept': '酷狗概念版歌单', qishui: '汽水音乐歌单', spotify: 'Spotify 歌单' };
+  var order = ['local', 'ls', 'netease', 'qq', 'kugou', 'kugou-concept', 'qishui', 'spotify'];
+  var groups = { local: [], ls: [], netease: [], qq: [], kugou: [], 'kugou-concept': [], qishui: [], spotify: [] };
   userPlaylists.forEach(function (pl, sourceIndex) {
     var key = playlistPanelGroupKey(pl);
     if (!groups[key]) groups[key] = [];
