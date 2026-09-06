@@ -77,6 +77,7 @@ function setPreset(p, opts) {
   if (changed && window.MOMusicPixelKaomoji) MOMusicPixelKaomoji.onPresetChange(prev, p, { scene: scene, fx: fx });
   if (changed && window.MOMusicTreeCanopy) MOMusicTreeCanopy.onPresetChange(prev, p, { scene: scene, fx: fx });
   if (changed && window.MOMusicHeartPulse) MOMusicHeartPulse.onPresetChange(prev, p, { scene: scene, fx: fx });
+  if (changed && window.MOMusicLakeRainfall) MOMusicLakeRainfall.onPresetChange(prev, p, { scene: scene, fx: fx });
   uniforms.uPreset.value = p;
   refreshPresetGrid();
   if (typeof updateSonicSeriesControlVisibility === 'function') updateSonicSeriesControlVisibility();
@@ -85,6 +86,7 @@ function setPreset(p, opts) {
   if (typeof updatePixelKaomojiControlVisibility === 'function') updatePixelKaomojiControlVisibility();
   if (typeof updateTreeCanopyControlVisibility === 'function') updateTreeCanopyControlVisibility();
   if (typeof updateHeartPulseControlVisibility === 'function') updateHeartPulseControlVisibility();
+  if (typeof updateLakeRainfallControlVisibility === 'function') updateLakeRainfallControlVisibility();
   if (changed && !opts.skipTransition) triggerPresetParticleTransition(prev, p);
   // 每个预设对应的相机基线 (改 userOrbit)
   if (changed && !opts.preserveCamera) {

@@ -304,6 +304,12 @@ function updateFxInputs() {
   if (typeof updateHeartPulseContentControls === 'function') updateHeartPulseContentControls();
   var heartPulseBpm = document.getElementById('t-heartPulseShowBpm');
   if (heartPulseBpm) heartPulseBpm.classList.toggle('on', fx.heartPulseShowBpm !== false);
+  setRange('fx-lakerainrain', fx.lakeRainfallRain == null ? fxDefaults.lakeRainfallRain : fx.lakeRainfallRain);
+  setRange('fx-lakerainwind', fx.lakeRainfallWind == null ? fxDefaults.lakeRainfallWind : fx.lakeRainfallWind);
+  setRange('fx-lakerainripple', fx.lakeRainfallRipple == null ? fxDefaults.lakeRainfallRipple : fx.lakeRainfallRipple);
+  setRange('fx-lakerainflowglow', fx.lakeRainfallGlow == null ? fxDefaults.lakeRainfallGlow : fx.lakeRainfallGlow);
+  setRange('fx-lakeraincover', fx.lakeRainfallCover == null ? fxDefaults.lakeRainfallCover : fx.lakeRainfallCover);
+  if (typeof updateLakeRainfallColorControls === 'function') updateLakeRainfallColorControls();
   setRange('fx-pixelkaomojisize', fx.pixelKaomojiSize == null ? fxDefaults.pixelKaomojiSize : fx.pixelKaomojiSize);
   setRange('fx-pixelkaomojispeed', fx.pixelKaomojiSpeed == null ? fxDefaults.pixelKaomojiSpeed : fx.pixelKaomojiSpeed);
   setRange('fx-shelfsize', fx.shelfSize);

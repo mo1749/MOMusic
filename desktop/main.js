@@ -5776,7 +5776,6 @@ function configureLocalServerEnvironment(port) {
   process.env.HOST = '127.0.0.1';
   process.env.PORT = String(port);
   process.env.MOMusic_BEAT_CACHE_DIR = cacheSettings.beatmapsPath;
-  process.env.CUEFIELD_FEEDBACK_FILE = path.join(STABLE_USER_DATA_PATH, 'cuefield-feedback.jsonl');
   process.env.COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.cookie');
   process.env.QQ_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.qq-cookie');
   process.env.KUGOU_COOKIE_FILE = path.join(STABLE_USER_DATA_PATH, '.kugou-cookie');
@@ -5808,7 +5807,6 @@ const APP_OWNED_MIGRATION_FILES = [
   '.spotify-credentials.json',
   'current-fx-autosave.json',
   'desktop-behavior.json',
-  'cuefield-feedback.jsonl',
 ];
 
 function appOwnedMigrationFileValid(name, file) {
@@ -5824,11 +5822,6 @@ function appOwnedMigrationFileValid(name, file) {
     if (name === '.kugou-concept-cookie') return kugouCookieHasLogin(text);
     if (name === '.qishui-cookie') return qishuiCookieHasLogin(text);
     if (name === '.qishui-token') return text.length >= 10;
-    if (name === 'cuefield-feedback.jsonl') {
-      return text.split(/\r?\n/).filter(Boolean).every(line => {
-        try { return !!JSON.parse(line); } catch (_) { return false; }
-      });
-    }
     if (/\.json$/i.test(name)) return !!JSON.parse(text);
     return true;
   } catch (_) {

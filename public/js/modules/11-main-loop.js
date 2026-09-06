@@ -601,12 +601,13 @@ function animate() {
   var pixelKaomojiPresetActive = fx && typeof PIXEL_KAOMOJI_PRESET_INDEX !== 'undefined' && Number(fx.preset) === PIXEL_KAOMOJI_PRESET_INDEX;
   var treeCanopyPresetActive = fx && typeof TREE_CANOPY_PRESET_INDEX !== 'undefined' && Number(fx.preset) === TREE_CANOPY_PRESET_INDEX;
   var heartPulsePresetActive = fx && typeof HEART_PULSE_PRESET_INDEX !== 'undefined' && Number(fx.preset) === HEART_PULSE_PRESET_INDEX;
+  var lakeRainfallPresetActive = fx && typeof LAKE_RAINFALL_PRESET_INDEX !== 'undefined' && Number(fx.preset) === LAKE_RAINFALL_PRESET_INDEX;
   var presetUsesStarRiverParticles = fx && (Number(fx.preset) === 5 || (typeof SONIC_PRESET_INDEX !== 'undefined' && Number(fx.preset) === SONIC_PRESET_INDEX));
   var presetStarRiverMuted = presetUsesStarRiverParticles && fx.backgroundStarRiver === false;
-  particles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !presetStarRiverMuted;
-  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
-  if (floatGroup) floatGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive;
-  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive;
+  particles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !lakeRainfallPresetActive && !presetStarRiverMuted;
+  if (bloomParticles) bloomParticles.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !lakeRainfallPresetActive && !presetStarRiverMuted && fx.bloom && fx.bloomStrength > 0.01;
+  if (floatGroup) floatGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !lakeRainfallPresetActive;
+  if (backCoverGroup) backCoverGroup.visible = !skullPresetActive && !goldenCorePresetActive && !pixelKaomojiPresetActive && !treeCanopyPresetActive && !heartPulsePresetActive && !lakeRainfallPresetActive;
   var targetRotY = orbit.centerLocked ? 0 : (headParallax.active ? headParallax.x * 0.5 : 0) + gestureRotation.y;
   var targetRotX = orbit.centerLocked ? 0 : (headParallax.active ? -headParallax.y * 0.35 : 0) + gestureRotation.x;
   particles.rotation.y += (targetRotY - particles.rotation.y) * 0.055;
@@ -695,6 +696,20 @@ function animate() {
     });
   }
   if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.heart-pulse', heartPulsePerfStart);
+  var lakeRainfallPerfStart = performance.now();
+  if (window.MOMusicLakeRainfall) {
+    MOMusicLakeRainfall.update(dt, {
+      scene: scene,
+      fx: fx,
+      time: uniforms.uTime.value,
+      screenHeight: window.innerHeight,
+      dpr: renderer.getPixelRatio ? renderer.getPixelRatio() : (window.devicePixelRatio || 1),
+      visualRotation: particles && particles.rotation ? particles.rotation : null,
+      visualRotationActive: !!(orbit && orbit.rotating),
+      audio: sonicAudioFrame || { bass: bass, mid: mid, treble: treble, beat: beatPulse, energy: audioEnergy }
+    });
+  }
+  if (perfProbe && perfProbe.markSince) perfProbe.markSince('visual.lake-rainfall', lakeRainfallPerfStart);
   var stageLyricsPerfStart = performance.now();
   var stageLyricsStepDt = consumeFrameGate(mainFrameGates.stageLyrics, now, dt, targetMainStageLyricsFps(now), false, 'stage-lyrics');
   if (stageLyricsStepDt > 0) updateStageLyrics3D(stageLyricsStepDt);

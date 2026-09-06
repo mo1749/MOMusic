@@ -974,6 +974,12 @@ async function showLoginModal(opts) {
   opts = opts || {};
   loginProvider = opts.provider ? normalizeLoginProviderKey(opts.provider) : 'netease';
   var modal = document.getElementById('login-modal');
+  // 登录弹窗与更新弹窗互斥：更新面板开着时先收起，避免两窗同开
+  if (typeof closeUpdatePanel === 'function' &&
+      document.getElementById('update-modal') &&
+      document.getElementById('update-modal').classList.contains('show')) {
+    closeUpdatePanel();
+  }
   if (typeof setLoginEasterEggMode === 'function' &&
       (!loginEasterEggState || !loginEasterEggState.ready || !loginEasterEggState.unlocked)) {
     setLoginEasterEggMode(true);

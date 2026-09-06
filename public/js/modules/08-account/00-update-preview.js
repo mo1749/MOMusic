@@ -188,6 +188,12 @@ function openUpdatePanel() {
   var mask = document.getElementById('update-modal');
   var entry = document.getElementById('update-entry');
   if (!mask) return;
+  // 更新弹窗与登录弹窗互斥：登录卡片开着时先收起，避免两窗同开互相压盖
+  if (typeof closeLoginModal === 'function' &&
+      document.getElementById('login-modal') &&
+      document.getElementById('login-modal').classList.contains('show')) {
+    closeLoginModal();
+  }
   renderUpdatePreviewPanel();
   if (entry && window.gsap) {
     window.gsap.fromTo(entry, { scale: 0.93 }, { scale: 1, duration: 0.42, ease: 'back.out(1.7)', overwrite: 'auto' });

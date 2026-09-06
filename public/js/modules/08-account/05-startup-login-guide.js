@@ -106,20 +106,9 @@ function runLoginGuideParticles(done) {
   loginGuideRaf = requestAnimationFrame(draw);
 }
 function maybeRunStartupLoginGuide(source) {
-  if (startupLoginGuideShown || loginGuideAnimating) return;
-  if (typeof loginEasterEggAllowsStartupGuide === 'function' && !loginEasterEggAllowsStartupGuide()) return;
-  if (visualGuideActive) return;
-  if (document.body.classList.contains('splash-active')) return;
-  if (immersiveMode) return;
-  if (!loginStatusChecked || loginStatusCheckFailed || loginStatus.loggedIn || playing) return;
-  var loginModal = document.getElementById('login-modal');
-  var userModal = document.getElementById('user-modal');
-  if ((loginModal && loginModal.classList.contains('show')) || (userModal && userModal.classList.contains('show'))) return;
-  startupLoginGuideShown = true;
-  setTimeout(function () {
-    if (loginStatus.loggedIn || playing || immersiveMode || document.body.classList.contains('splash-active')) return;
-    runLoginGuideParticles(function () { showLoginModal({ guided: true, source: source || 'startup' }); });
-  }, source === 'splash' ? 6200 : 2600);
+  // 启动不再自动弹出登录卡片（此前未登录时启动 2.6s/6.2s 后自动打开，
+  // 已登录非网易平台但主页未显示时也会误触发）。登录入口保留在顶栏
+  // 头像与 Home 磁贴，由用户主动打开。
 }
 
 // ============================================================

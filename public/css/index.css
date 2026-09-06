@@ -5241,19 +5241,9 @@ body.home-controls-locked #bottom-bar {
   animation: play-mode-pop .42s cubic-bezier(.16, 1, .3, 1)
 }
 
-#cuefield-automix-btn.cuefield-automix-on {
-  color: rgba(255, 221, 150, .98);
-  text-shadow: 0 0 14px rgba(255, 191, 100, .42)
-}
-
-#cuefield-automix-btn.cuefield-automix-ready {
-  color: rgba(153, 241, 211, 1);
-  text-shadow: 0 0 16px rgba(86, 255, 189, .52);
-  animation: cuefield-ready-pulse 1.8s ease-in-out infinite
-}
-
-@keyframes cuefield-ready-pulse {
-  50% { transform: translateY(-1px) scale(1.08) }
+#audio-fx-btn.audio-fx-on {
+  color: rgba(var(--fc-accent-rgb), .98);
+  text-shadow: 0 0 14px rgba(var(--fc-accent-rgb), .42)
 }
 
 @keyframes play-mode-pop {
@@ -6957,10 +6947,6 @@ body.diy-mode #controls {
   }
 }
 
-body.diy-mode:not(.desktop-shell) #cuefield-automix-btn {
-  display: none;
-}
-
 @media (max-width:620px) {
 
   #controls,
@@ -6994,7 +6980,6 @@ body.immersive-mode #drop-overlay,
 body.immersive-mode #idle-guide-canvas,
 body.immersive-mode #login-guide-canvas,
 body.immersive-mode #toast,
-body.immersive-mode #cuefield-feedback,
 body.immersive-mode #source-fallback-notice,
 body.immersive-mode .modal-mask {
   opacity: 0 !important;
@@ -9906,74 +9891,309 @@ body.login-guide-active #login-guide-canvas {
   transform: translateX(-50%) translateY(0)
 }
 
-#cuefield-feedback {
+/* ============ 自定义音效弹窗（独立顶层覆盖层 · 质感对齐应用卡片/弹窗） ============ */
+.audio-fx-overlay {
   position: fixed;
-  z-index: 201;
-  left: 50%;
-  bottom: 112px;
-  width: min(330px, calc(100vw - 34px));
-  padding: 13px 14px 12px;
-  border: 1px solid rgba(255, 240, 196, .18);
-  border-radius: 14px;
-  color: rgba(255, 250, 238, .92);
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 14px) scale(.98);
-  transition: opacity .24s ease, transform .28s cubic-bezier(.16, 1, .3, 1);
+  inset: 0;
+  z-index: 100002;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 18px;
+  background: rgba(0, 0, 0, .12)
 }
 
-#cuefield-feedback.show {
+.audio-fx-overlay.show {
+  display: flex;
   opacity: 1;
-  pointer-events: auto;
-  transform: translate(-50%, 0) scale(1)
+  visibility: visible
 }
 
-.cuefield-feedback-kicker {
-  color: rgba(255, 212, 128, .72);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 1.1px
+.audio-fx-dialog {
+  width: min(560px, 94vw);
+  max-width: min(560px, 94vw);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  text-align: left;
+  padding: 20px 22px 16px;
+  border-radius: 20px;
+  border-color: transparent;
+  background: var(--saved-panel-glass-bg);
+  box-shadow: var(--saved-panel-glass-shadow);
+  backdrop-filter: var(--saved-panel-glass-filter);
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
+  will-change: opacity, transform, filter
 }
 
-.cuefield-feedback-title {
-  margin-top: 5px;
-  font-size: 13px;
-  font-weight: 700
+.audio-fx-dialog::-webkit-scrollbar { width: 8px; }
+.audio-fx-dialog::-webkit-scrollbar-track { background: transparent; }
+.audio-fx-dialog::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 999px; }
+.audio-fx-dialog::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .2); }
+
+.audio-fx-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px
 }
 
-.cuefield-feedback-meta {
-  margin-top: 4px;
-  overflow: hidden;
-  color: rgba(255, 255, 255, .55);
+.audio-fx-title {
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  color: rgba(255, 255, 255, .96)
+}
+
+.audio-fx-subtitle {
+  margin-top: 3px;
   font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, .45)
 }
 
-.cuefield-feedback-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-  margin-top: 10px
-}
-
-.cuefield-feedback-actions button {
-  min-height: 29px;
-  border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, .055);
-  color: rgba(255, 255, 255, .82);
+.audio-fx-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .035);
+  color: rgba(255, 255, 255, .74);
   cursor: pointer;
-  font-size: 11px;
-  transition: transform .16s ease, background .16s ease, border-color .16s ease
+  font-size: 15px;
+  line-height: 1;
+  transition: all .2s
 }
 
-.cuefield-feedback-actions button:hover {
+.audio-fx-close:hover {
+  background: rgba(255, 255, 255, .09);
+  border-color: rgba(255, 255, 255, .22);
+  color: #fff
+}
+
+.audio-fx-master {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .03)
+}
+
+.audio-fx-switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .09);
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease, box-shadow .2s ease
+}
+
+.audio-fx-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .85);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+  transition: transform .2s cubic-bezier(.16, 1, .3, 1), background .2s ease
+}
+
+.audio-fx-switch.on {
+  border-color: rgba(var(--fc-accent-rgb), .58);
+  background: rgba(var(--fc-accent-rgb), .28);
+  box-shadow: 0 0 14px rgba(var(--fc-accent-rgb), .22)
+}
+
+.audio-fx-switch.on .audio-fx-switch-knob {
+  transform: translateX(20px);
+  background: #fff
+}
+
+.audio-fx-master-text {
+  flex: 1;
+  min-width: 0
+}
+
+.audio-fx-master-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .92)
+}
+
+.audio-fx-status {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, .45);
+  transition: color .2s
+}
+
+.audio-fx-status.on {
+  color: rgba(var(--fc-accent-rgb), .85)
+}
+
+.audio-fx-status.warn {
+  color: rgba(255, 196, 120, .85)
+}
+
+.audio-fx-reset {
+  flex: none;
+  min-height: 30px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+  font-size: 11.5px;
+  letter-spacing: .5px;
+  transition: all .2s
+}
+
+.audio-fx-reset:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3)
+}
+
+.audio-fx-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 12px
+}
+
+.audio-fx-preset {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .045);
+  color: rgba(255, 255, 255, .85);
+  cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  transition: transform .16s ease, border-color .16s ease, background .16s ease, color .16s ease
+}
+
+.audio-fx-preset:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 218, 144, .42);
-  background: rgba(255, 201, 104, .13)
+  border-color: rgba(255, 255, 255, .3);
+  background: rgba(255, 255, 255, .09);
+  color: #fff
 }
 
+.audio-fx-preset.active {
+  border-color: rgba(var(--fc-accent-rgb), .5);
+  background: rgba(var(--fc-accent-rgb), .14);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(var(--fc-accent-rgb), .16)
+}
+
+.audio-fx-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 16px 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  color: rgba(255, 255, 255, .85)
+}
+
+.audio-fx-hint {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: .2px;
+  color: rgba(255, 255, 255, .35)
+}
+
+.audio-fx-eq {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+  padding: 12px 10px 9px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .025)
+}
+
+.audio-fx-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0
+}
+
+.audio-fx-band input[type=range] {
+  width: 26px;
+  height: 124px;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  accent-color: var(--fc-accent, #fff);
+  cursor: pointer
+}
+
+.audio-fx-band-value {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, .6);
+  font-variant-numeric: tabular-nums
+}
+
+.audio-fx-band-freq {
+  font-size: 9.5px;
+  letter-spacing: .2px;
+  color: rgba(255, 255, 255, .45)
+}
+
+.audio-fx-tune-row {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .028)
+}
+
+.audio-fx-tune-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, .8)
+}
+
+.audio-fx-tune-label span {
+  font-weight: 500;
+  color: rgba(var(--fc-accent-rgb), .8);
+  font-variant-numeric: tabular-nums
+}
+
+.audio-fx-tune-row input[type=range] {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--fc-accent, #fff)
+}
+
+.audio-fx-footnote {
+  margin-top: 14px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, .38)
+}
 .cookie-export-prompt {
   position: fixed;
   z-index: 203;
@@ -11656,6 +11876,10 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   cursor: default
 }
 
+#wallpaper-engine-modal.modal-mask {
+  background: rgba(0, 0, 0, .26)
+}
+
 .wallpaper-engine-library-modal {
   position: relative;
   width: min(1120px, 94vw);
@@ -11666,11 +11890,12 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   flex-direction: column;
   text-align: left;
   overflow: hidden;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 12% -12%, rgba(74, 164, 255, .13), transparent 34%),
-    linear-gradient(180deg, rgba(17, 20, 27, .985), rgba(8, 9, 13, .97));
-  border-color: rgba(119, 198, 255, .18)
+  border-radius: 20px;
+  border-color: rgba(var(--fc-accent-rgb), .16);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(44px) saturate(1.34);
+  -webkit-backdrop-filter: blur(44px) saturate(1.34)
 }
 
 .wallpaper-engine-library-head {
@@ -11697,9 +11922,9 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
 }
 
 .wallpaper-engine-kicker {
-  color: rgba(114, 199, 255, .76);
+  color: rgba(var(--fc-accent-rgb), .66);
   font: 700 9px/1.2 "JetBrains Mono", monospace;
-  letter-spacing: 1.45px
+  letter-spacing: .18em
 }
 
 .wallpaper-engine-close {
@@ -11741,8 +11966,8 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
 }
 
 #wallpaper-engine-search:focus {
-  border-color: rgba(113, 199, 255, .42);
-  box-shadow: 0 0 0 3px rgba(72, 166, 255, .08)
+  border-color: rgba(var(--fc-accent-rgb), .38);
+  box-shadow: 0 0 0 3px rgba(var(--fc-accent-rgb), .08)
 }
 
 .wallpaper-engine-toolbar .fx-mini-btn {
@@ -11765,8 +11990,8 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   height: 8px;
   margin-right: 7px;
   border-radius: 50%;
-  border: 1px solid rgba(124, 207, 255, .28);
-  border-top-color: rgba(124, 207, 255, .95);
+  border: 1px solid rgba(var(--fc-accent-rgb), .28);
+  border-top-color: rgba(var(--fc-accent-rgb), .95);
   animation: wallpaper-engine-spin .7s linear infinite
 }
 
@@ -11791,9 +12016,9 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   height: 24px;
   padding: 0 5px 0 9px;
   border-radius: 999px;
-  border: 1px solid rgba(117, 198, 255, .13);
-  background: rgba(69, 143, 213, .07);
-  color: rgba(215, 239, 255, .58);
+  border: 1px solid rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .05);
+  color: rgba(255, 255, 255, .58);
   font-size: 10px
 }
 
@@ -11854,8 +12079,8 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
 .wallpaper-engine-load-more:hover,
 .wallpaper-engine-load-more:focus-visible {
   color: #fff;
-  border-color: rgba(122, 204, 255, .38);
-  background: rgba(122, 204, 255, .10)
+  border-color: rgba(var(--fc-accent-rgb), .34);
+  background: rgba(var(--fc-accent-rgb), .10)
 }
 
 .wallpaper-engine-card {
@@ -11865,20 +12090,20 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   overflow: hidden;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, .10);
-  background: linear-gradient(145deg, rgba(31, 43, 58, .92), rgba(7, 9, 13, .98));
+  background: linear-gradient(145deg, rgba(31, 32, 35, .92), rgba(7, 8, 11, .98));
   cursor: pointer;
   transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease
 }
 
 .wallpaper-engine-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(122, 204, 255, .34);
+  border-color: rgba(var(--fc-accent-rgb), .34);
   box-shadow: 0 16px 34px rgba(0, 0, 0, .30)
 }
 
 .wallpaper-engine-card.active {
-  border-color: rgba(132, 211, 255, .66);
-  box-shadow: 0 0 0 1px rgba(132, 211, 255, .18), 0 14px 34px rgba(14, 92, 159, .24)
+  border-color: rgba(var(--fc-accent-rgb), .62);
+  box-shadow: 0 0 0 1px rgba(var(--fc-accent-rgb), .18), 0 14px 34px rgba(0, 0, 0, .30)
 }
 
 .wallpaper-engine-card.favorite {
@@ -11892,7 +12117,7 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  background: linear-gradient(145deg, #172132, #07090d)
+  background: linear-gradient(145deg, #17181c, #07080b)
 }
 
 .wallpaper-engine-card-preview {
@@ -11950,7 +12175,7 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
 .wallpaper-engine-card-settings { right: 41px; font-size: 13px }
 .wallpaper-engine-card-hide { right: 7px; font-size: 15px }
 .wallpaper-engine-card-star.active { color: #ffd76c; border-color: rgba(255, 215, 108, .46) }
-.wallpaper-engine-card-settings:hover { color: #dff4ff; background: rgba(40, 131, 194, .72) }
+.wallpaper-engine-card-settings:hover { color: #fff; background: rgba(255, 255, 255, .16) }
 .wallpaper-engine-card-hide:hover { color: #fff; background: rgba(157, 39, 55, .76) }
 
 .wallpaper-engine-details-drawer {
@@ -11960,7 +12185,7 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   display: flex;
   justify-content: flex-end;
   border-radius: inherit;
-  background: rgba(2, 4, 8, .58);
+  background: rgba(3, 4, 6, .58);
   backdrop-filter: blur(7px);
   opacity: 0;
   pointer-events: none;
@@ -11979,11 +12204,11 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border-left: 1px solid rgba(123, 203, 255, .16);
-  background:
-    radial-gradient(circle at 100% 0, rgba(57, 157, 232, .13), transparent 36%),
-    linear-gradient(180deg, rgba(17, 21, 29, .995), rgba(8, 10, 15, .99));
-  box-shadow: -22px 0 50px rgba(0, 0, 0, .34);
+  border-left: 1px solid rgba(255, 255, 255, .08);
+  background: var(--glass-bg);
+  box-shadow: -22px 0 50px rgba(0, 0, 0, .40);
+  backdrop-filter: blur(44px) saturate(1.34);
+  -webkit-backdrop-filter: blur(44px) saturate(1.34);
   transform: translateX(24px);
   transition: transform .22s cubic-bezier(.2, .8, .2, 1)
 }
@@ -12009,21 +12234,31 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
 
 .wallpaper-engine-details-summary {
   margin: 13px 0 10px;
-  color: rgba(216, 239, 255, .62);
+  color: rgba(255, 255, 255, .55);
   font-size: 11px;
   line-height: 1.6;
   flex: 0 0 auto
 }
 
-.wallpaper-engine-details-properties {
-  min-height: 0;
-  flex: 1 1 auto;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding: 1px 4px 8px 0;
-  overscroll-behavior: contain
+.wallpaper-engine-grid::-webkit-scrollbar,
+.wallpaper-engine-details-properties::-webkit-scrollbar {
+  width: 5px
+}
+
+.wallpaper-engine-grid::-webkit-scrollbar-track,
+.wallpaper-engine-details-properties::-webkit-scrollbar-track {
+  background: transparent
+}
+
+.wallpaper-engine-grid::-webkit-scrollbar-thumb,
+.wallpaper-engine-details-properties::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18)
+}
+
+.wallpaper-engine-grid::-webkit-scrollbar-button,
+.wallpaper-engine-details-properties::-webkit-scrollbar-button {
+  display: none
 }
 
 .wallpaper-engine-property-row {
@@ -14188,7 +14423,6 @@ body.empty-home-active #home-btn {
 #upload-tip,
 #trial-banner,
 #toast,
-#cuefield-feedback,
 #source-fallback-notice,
 #ai-depth-chip,
 #beat-chip,
@@ -14225,7 +14459,6 @@ html.control-glass-svg-ok #playlist-panel,
 html.control-glass-svg-ok #upload-tip,
 html.control-glass-svg-ok #trial-banner,
 html.control-glass-svg-ok #toast,
-html.control-glass-svg-ok #cuefield-feedback,
 html.control-glass-svg-ok #source-fallback-notice,
 html.control-glass-svg-ok #ai-depth-chip,
 html.control-glass-svg-ok #beat-chip,
@@ -14686,7 +14919,6 @@ html.control-glass-svg-ok .home-mosaic-cell {
 #upload-tip,
 #trial-banner,
 #toast,
-#cuefield-feedback,
 #source-fallback-notice,
 #ai-depth-chip,
 #beat-chip,
@@ -14717,7 +14949,6 @@ html.control-glass-svg-ok #fx-panel,
 html.control-glass-svg-ok #upload-tip,
 html.control-glass-svg-ok #trial-banner,
 html.control-glass-svg-ok #toast,
-html.control-glass-svg-ok #cuefield-feedback,
 html.control-glass-svg-ok #source-fallback-notice,
 html.control-glass-svg-ok #ai-depth-chip,
 html.control-glass-svg-ok #beat-chip,
@@ -14738,6 +14969,17 @@ html.control-glass-svg-ok .cover-crop-stage,
 html.control-glass-svg-ok #drop-overlay .drop-text {
   backdrop-filter: var(--panel-glass-filter) !important;
   -webkit-backdrop-filter: var(--panel-glass-filter) !important;
+}
+
+/* 自定义音效弹窗：强制使用歌词校准/音量浮层同款高透玻璃，
+   覆盖上面两条针对 .modal 的统一玻璃规则（panel 玻璃偏深，saved 玻璃高透）。
+   backdrop-filter 不在此覆盖：svg-ok 模式下沿用与歌词校准浮层相同的 .modal 规则 */
+.audio-fx-dialog {
+  background: var(--saved-panel-glass-bg) !important;
+  border-color: transparent !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important
 }
 
 .icon-btn:not(.ctrl-btn),

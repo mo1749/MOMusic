@@ -30,7 +30,6 @@
     "desktop/**/*",
     "public/**/*",
     "build/**/*",
-    "cuefield/**/*",
     "server.js",
     "*-api.js",
     "qishui-audio-decryptor/**/*",

@@ -13,6 +13,7 @@ var presetMeta = [
   { name: '像素颜文字', nameHtml: '像素颜文字 <span class="pc-name-en">Pixel-Kaomoji</span>', desc: '像素表情 · 节拍律动', descHtml: '像素表情 · <span class="pc-author-ajin">节拍律动</span>' },
   { name: '树梢乐谱', nameHtml: '树梢乐谱 <span class="pc-name-en">Canopy-Score</span>', desc: '树梢飘谱 · 音符随拍', descHtml: '树梢飘谱 · <span class="pc-author-ajin">音符随拍</span>' },
   { name: '心跳监护', nameHtml: '心跳监护 <span class="pc-name-en">Heart-Pulse</span>', desc: '心电图 · 节拍心跳', descHtml: '心电图 · <span class="pc-author-ajin">节拍心跳</span>' },
+  { name: '湖面雨落', nameHtml: '湖面雨落 <span class="pc-name-en">Lake-Rainfall</span>', desc: '月光湖面 · 雨滴涟漪', descHtml: '月光湖面 · <span class="pc-author-ajin">雨滴涟漪</span>' },
 ];
 var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 14c3-2 5-2 8 0s5 2 8 0M3 10c3-2 5-2 8 0s5 2 8 0M3 18c3-2 5-2 8 0s5 2 8 0"/></svg>',
@@ -28,8 +29,9 @@ var presetIcons = [
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="6" width="16" height="12" rx="1"/><circle cx="9" cy="11" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1" fill="currentColor" stroke="none"/><path d="M8 15h8"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V6.5c4-2.2 6.8-2.2 10 0v12.5"/><path d="M5 9c-2 0-3 1.4-3 2.8S3 14.5 5 14.5"/><path d="M15 7.5c2.3-.1 4.1 1.1 4.1 2.8S17.4 13 15 13"/><path d="M9 5c1.7-2.3 3.4-2.7 5.4-1.4"/><path d="M15 4v-2"/><path d="M18 6l2-1.1"/><path d="M9 21h8"/><path d="M14 17h5"/></svg>',
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l1.7-3.2 3.1 7.2 2.3-5.1H16l1.4 2.1H21"/><path d="M12 4.4c-2.3-2.4-6.2-1.1-6.2 2.2 0 3.4 6.2 6.3 6.2 6.3s6.2-2.9 6.2-6.3c0-3.3-3.9-4.6-6.2-2.2z" opacity=".62"/></svg>',
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c3.2 4 5.4 6.9 5.4 9.6a5.4 5.4 0 1 1-10.8 0c0-2.7 2.2-5.6 5.4-9.6z"/><path d="M9.4 13.6a2.8 2.8 0 0 0 2.1 2.5" opacity=".65"/><path d="M4 21.2c2.6-1.1 5.4-1.1 8 0s5.4 1.1 8 0" opacity=".8"/></svg>',
 ];
-var presetDisplayOrder = [0, 6, 7, 8, 9, 10, 11, 12, 5, 4, 2, 1, 3];
+var presetDisplayOrder = [0, 6, 7, 8, 9, 10, 11, 12, 13, 5, 4, 2, 1, 3];
 var lyricColorPresets = [
   { name: '雾蓝', color: '#a9b8c8' },
   { name: '银蓝', color: '#9db8cf' },
@@ -311,6 +313,8 @@ var USER_FX_SHARE_KEYS = [
   'heartPulseSubtitle',
   'heartPulseShowBpm'
   ,'heartPulseStatus','heartPulseWaveform','heartPulseHeartColor'
+  ,'lakeRainfallWaterColor','lakeRainfallRainColor','lakeRainfallGlowColor'
+  ,'lakeRainfallRain','lakeRainfallWind','lakeRainfallRipple','lakeRainfallGlow','lakeRainfallCover'
 ];
 
 function defaultUserFxArchiveName(index) {
@@ -568,6 +572,14 @@ function normalizeFxArchiveSnapshot(raw) {
     heartPulseShowBpm: raw.heartPulseShowBpm !== false,
     heartPulseStatus: String(raw.heartPulseStatus == null ? fxDefaults.heartPulseStatus : raw.heartPulseStatus).slice(0, 24),
     heartPulseWaveform: /^(clinical|sine|double)$/.test(String(raw.heartPulseWaveform)) ? String(raw.heartPulseWaveform) : fxDefaults.heartPulseWaveform,
+    lakeRainfallWaterColor: normalizeHexColor(raw.lakeRainfallWaterColor || fxDefaults.lakeRainfallWaterColor, fxDefaults.lakeRainfallWaterColor),
+    lakeRainfallRainColor: normalizeHexColor(raw.lakeRainfallRainColor || fxDefaults.lakeRainfallRainColor, fxDefaults.lakeRainfallRainColor),
+    lakeRainfallGlowColor: normalizeHexColor(raw.lakeRainfallGlowColor || fxDefaults.lakeRainfallGlowColor, fxDefaults.lakeRainfallGlowColor),
+    lakeRainfallRain: archiveNumber(raw, 'lakeRainfallRain', fxDefaults.lakeRainfallRain, 0, 2),
+    lakeRainfallWind: archiveNumber(raw, 'lakeRainfallWind', fxDefaults.lakeRainfallWind, 0, 2),
+    lakeRainfallRipple: archiveNumber(raw, 'lakeRainfallRipple', fxDefaults.lakeRainfallRipple, 0, 2),
+    lakeRainfallGlow: archiveNumber(raw, 'lakeRainfallGlow', fxDefaults.lakeRainfallGlow, 0.25, 2),
+    lakeRainfallCover: archiveNumber(raw, 'lakeRainfallCover', fxDefaults.lakeRainfallCover, 0, 1),
     particleLyrics: raw.particleLyrics !== false,
     backCover: !!raw.backCover,
     shelf: archiveShelfMode,

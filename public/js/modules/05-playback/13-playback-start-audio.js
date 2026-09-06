@@ -331,7 +331,6 @@ function runAlbumGaplessBalancedCrossfade(preload, durationMs) {
 function startAlbumGaplessMix(preload, reason, remaining) {
   if (!preload || !preload.media || preload.mixStarted || preload.mixPending || albumGaplessState.handoff) return false;
   if (!albumGaplessQueueCanAdvance(currentIdx)) return false;
-  if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting) return false;
   var outgoingMedia = audio;
   var outgoingToken = trackSwitchToken;
   var outgoingIndex = currentIdx;
@@ -860,11 +859,6 @@ async function playLocalQueueSong(song, idx, token, firstVisualPlay, opts, resum
   lyricSunEnergy = 0; lyricSunTarget = 0; lyricSunHold = 0; lyricSunAvg = 0; lyricSunPeak = 0.55;
   audio.onended = function () {
     if (token !== trackSwitchToken) return;
-    if (this && this.__MOMusicCuefieldEndedRecoveryToken === token) return;
-    if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting) {
-      if (typeof noteCuefieldAutoMixOutgoingEnded === 'function') noteCuefieldAutoMixOutgoingEnded(this, token, currentIdx);
-      return;
-    }
     finalizeListenSession(true);
     if (playAlbumGaplessNextOnEnded(token)) return;
     if (playMode === 'single') setTimeout(function () { playQueueAt(currentIdx, { autoRepeat: true, suppressPlayFailureNotice: true }); }, 0);
@@ -956,12 +950,6 @@ async function playQueueAt(idx, opts) {
     markPlayPhase('cancel-previous-track');
     cancelBeatAnalysisTimer();
     cancelBeatPrefetchTimer();
-    if (typeof resetCuefieldAutoMix === 'function') {
-      resetCuefieldAutoMix(opts.cuefieldAutoMix ? 'cuefield-handoff' : 'track-switch', {
-        preservePreparedAudio: !!opts.cuefieldAutoMix,
-        preserveExecution: !!opts.cuefieldAutoMix
-      });
-    }
     if (!albumGaplessHandoff) clearAlbumGaplessPreload('track-switch');
     if (localBeatAnalysis.active) cancelLocalBeatAnalysis();
     closeGsapModal(document.getElementById('local-beat-modal'));
@@ -1222,14 +1210,8 @@ async function playQueueAt(idx, opts) {
         clearAudioFadeTimers();
         if (albumGaplessPreviousAudio) albumGaplessPreviousAudio.onended = null;
         audio = opts.preloadedAudio;
-        if (opts.cuefieldAutoMix && typeof claimCuefieldPreparedAudioForPlayback === 'function') {
-          claimCuefieldPreparedAudioForPlayback(audio);
-        }
-        var preparedGraphGain = opts.cuefieldAutoMix && audio.__MOMusicPreparedAudioGraph && audio.__MOMusicPreparedAudioGraph.gainNode
-          ? Number(audio.__MOMusicPreparedAudioGraph.gainNode.gain.value)
-          : NaN;
         albumGaplessAdoptedGain = albumGaplessMixed
-          ? clampRange(isFinite(preparedGraphGain) ? preparedGraphGain : (Number(audio.volume) || 0), 0, 1)
+          ? clampRange(Number(audio.volume) || 0, 0, 1)
           : audioSilentFloor();
         audio.crossOrigin = 'anonymous';
         audio.autoplay = true;
@@ -1274,11 +1256,6 @@ async function playQueueAt(idx, opts) {
       updatePlaybackProgressUi();
       audio.onended = function () {
         if (token !== trackSwitchToken) return;
-        if (this && this.__MOMusicCuefieldEndedRecoveryToken === token) return;
-        if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting) {
-          if (typeof noteCuefieldAutoMixOutgoingEnded === 'function') noteCuefieldAutoMixOutgoingEnded(this, token, currentIdx);
-          return;
-        }
         finalizeListenSession(true);
         if (playAlbumGaplessNextOnEnded(token)) return;
         if (playMode === 'single') setTimeout(function () { playQueueAt(currentIdx, { autoRepeat: true, suppressPlayFailureNotice: true }); }, 0);
@@ -1452,12 +1429,6 @@ async function playQueueAt(idx, opts) {
         safeRenderQueuePanel('play-queue-at');
         scheduleShelfRebuild('play-queue-at', true);
         if (typeof scheduleQueueLyricPrefetch === 'function') scheduleQueueLyricPrefetch(idx, 2400);
-      }
-      if (!qualitySwitch && typeof scheduleCuefieldAutoMixPrepare === 'function') {
-        var cuefieldPrepareDelay = typeof cuefieldAutoMixPostSwitchDelay === 'function'
-          ? cuefieldAutoMixPostSwitchDelay(!!opts.cuefieldAutoMix)
-          : 4200;
-        scheduleCuefieldAutoMixPrepare(token, idx, cuefieldPrepareDelay);
       }
       scheduleAlbumGaplessPreloadForCurrent(token, albumGaplessHandoff ? 'album-gapless-handoff-started' : 'track-started');
       safePlaybackStep('shelf-preview-suppress-end', suppressShelfPreviewForPlaybackSwitch);

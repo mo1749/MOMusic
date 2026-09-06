@@ -158,11 +158,6 @@ const {
   tryCustomSourcesForLyric,
 } = require('./lx-custom-source-engine');
 const localCollection = require('./local-collection');
-const {
-  appendCuefieldFeedback,
-  readCuefieldFeedbackStats,
-} = require('./cuefield/feedback-log');
-const { planCuefieldTransitionFromCache } = require('./cuefield/MOMusic-bridge');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -195,7 +190,6 @@ const UPDATE_WORK_DIR = process.env.MOMusic_UPDATE_DIR || path.join(__dirname, '
 const UPDATE_DOWNLOAD_DIR = process.env.MOMusic_UPDATE_DOWNLOAD_DIR || path.join(UPDATE_WORK_DIR, 'downloads');
 const UPDATE_PATCH_BACKUP_DIR = process.env.MOMusic_PATCH_BACKUP_DIR || path.join(UPDATE_WORK_DIR, 'backups', 'patches');
 const BEATMAP_CACHE_DIR = process.env.MOMusic_BEAT_CACHE_DIR || 'D:\\MOMusicCache\\beatmaps';
-const CUEFIELD_FEEDBACK_FILE = process.env.CUEFIELD_FEEDBACK_FILE || path.join(__dirname, 'data', 'cuefield-feedback.jsonl');
 const LISTEN_SYNC_JOURNAL_FILE = process.env.MOMusic_LISTEN_SYNC_FILE || path.join(__dirname, 'data', 'listen-sync-journal.json');
 const LISTEN_SYNC_JOURNAL_LIMIT = 600;
 const APP_PACKAGE = readPackageInfo();
@@ -6037,59 +6031,6 @@ const server = http.createServer(async (req, res) => {
       reason: !info.allowed ? 'C_DRIVE_DISABLED' : (!info.available ? 'TARGET_DRIVE_UNAVAILABLE' : ''),
       mode: info.allowed && info.available ? 'disk' : 'memory-only',
     });
-    return;
-  }
-
-  // Cuefield only consumes MOMusic's existing local beat-map cache. It never
-  // receives account cookies, song files, or playback URLs on this route.
-  if (pn === '/api/cuefield/transition') {
-    if (req.method !== 'POST') {
-      sendJSON(res, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
-      return;
-    }
-    try {
-      const body = await readRequestBody(req);
-      const plan = planCuefieldTransitionFromCache({
-        fromKey: body.fromKey,
-        toKey: body.toKey,
-        fromLrc: body.fromLrc,
-        toLrc: body.toLrc,
-        exitBias: body.exitBias || 'late',
-        maxEntryTime: Math.max(8, Math.min(32, Number(body.maxEntryTime) || 32)),
-        readBeatMapCache,
-      });
-      sendJSON(res, plan);
-    } catch (err) {
-      sendJSON(res, {
-        ok: false,
-        error: err && (err.code || err.message) || 'CUEFIELD_TRANSITION_FAILED',
-      }, 400);
-    }
-    return;
-  }
-
-  // Feedback remains on this computer under Electron userData. The fan project's
-  // optional remote-feedback module is intentionally not wired into MOMusic.
-  if (pn === '/api/cuefield/feedback') {
-    if (req.method === 'GET') {
-      try {
-        sendJSON(res, { ok: true, stats: readCuefieldFeedbackStats(CUEFIELD_FEEDBACK_FILE) });
-      } catch (err) {
-        sendJSON(res, { ok: false, error: err.message || 'CUEFIELD_FEEDBACK_READ_FAILED' }, 500);
-      }
-      return;
-    }
-    if (req.method === 'POST') {
-      try {
-        const body = await readRequestBody(req);
-        const record = appendCuefieldFeedback(CUEFIELD_FEEDBACK_FILE, body);
-        sendJSON(res, { ok: true, record });
-      } catch (err) {
-        sendJSON(res, { ok: false, error: err.code || err.message || 'CUEFIELD_FEEDBACK_SAVE_FAILED' }, 400);
-      }
-      return;
-    }
-    sendJSON(res, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
     return;
   }
 

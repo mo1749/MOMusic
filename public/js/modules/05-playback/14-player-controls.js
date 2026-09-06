@@ -565,9 +565,6 @@ async function togglePlay() {
       // 一起听：房主广播播放状态
       safePlaybackStep('lt-broadcast-play', function () { if (window._ltBroadcastPlayerAction) window._ltBroadcastPlayerAction('play'); });
     } else {
-      if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting && typeof resetCuefieldAutoMix === 'function') {
-        resetCuefieldAutoMix('manual-pause');
-      }
       if (
         typeof albumGaplessState !== 'undefined'
         && albumGaplessState

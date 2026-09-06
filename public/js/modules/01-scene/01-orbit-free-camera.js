@@ -223,6 +223,10 @@ function defaultOrbitStateForPreset(p) {
   if (typeof HEART_PULSE_PRESET_INDEX !== 'undefined' && p === HEART_PULSE_PRESET_INDEX) {
     return { theta: 0.0, phi: 0.10, radius: 9.0 };
   }
+  if (typeof LAKE_RAINFALL_PRESET_INDEX !== 'undefined' && p === LAKE_RAINFALL_PRESET_INDEX) {
+    // 湖面雨落：相机略抬高俯瞰，让粒子波场占住下半屏
+    return { theta: 0.0, phi: 0.33, radius: 7.3 };
+  }
   if (typeof SONIC_PRESET_INDEX !== 'undefined' && p === SONIC_PRESET_INDEX) {
     return {
       theta: SONIC_ORBIT_BASELINE.theta,

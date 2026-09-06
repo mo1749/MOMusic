@@ -3,6 +3,7 @@ function audioGraphHealthy() {
   return !!(audio && audioReady && audioCtx && audioCtx.state !== 'closed' && source && audioSourceMedia === audio && analyser && beatAnalyser && (gainNode || analysisSinkNode));
 }
 function disconnectAudioGraphNodes(keepSource) {
+  if (typeof resetAudioFxGraphLinks === 'function') resetAudioFxGraphLinks();
   [source, analyser, beatAnalyser, gainNode, analysisSinkNode].forEach(function (node) {
     if (!node) return;
     try { node.disconnect(); } catch (e) { }
@@ -69,7 +70,6 @@ function replaceAudioElementForGraphRecovery(reason, opts) {
 }
 function resetPlaybackAudioGraphForSourceSwitch(reason) {
   if (!audio) return;
-  var preparedGraph = audio.__MOMusicPreparedAudioGraph;
   var previousSourceMedia = audioSourceMedia;
   var sourceUsesCapture = !!(source && source.__MOMusicUsesCapture);
   var mediaElementChanged = !!(source && previousSourceMedia && previousSourceMedia !== audio);
@@ -82,26 +82,6 @@ function resetPlaybackAudioGraphForSourceSwitch(reason) {
     return;
   }
   disconnectAudioGraphNodes(!sourceUsesCapture && !mediaElementChanged);
-  if (
-    preparedGraph
-    && preparedGraph.context
-    && preparedGraph.context.state !== 'closed'
-    && preparedGraph.source
-    && preparedGraph.analyser
-    && preparedGraph.beatAnalyser
-    && preparedGraph.gainNode
-  ) {
-    audioCtx = preparedGraph.context;
-    source = preparedGraph.source;
-    analyser = preparedGraph.analyser;
-    beatAnalyser = preparedGraph.beatAnalyser;
-    gainNode = preparedGraph.gainNode;
-    analysisSinkNode = null;
-    audioSourceMedia = audio;
-    audio.__MOMusicMediaSourceBound = true;
-    preparedGraph.adopted = true;
-    audioReady = true;
-  }
 }
 function initAudio() {
   if (!audio) return false;
@@ -180,8 +160,9 @@ function initAudio() {
   analyser.smoothingTimeConstant = 0.58;
   beatAnalyser.fftSize = BEAT_FFT_SIZE;
   beatAnalyser.smoothingTimeConstant = 0.10;
-  source.connect(analyser);
-  source.connect(beatAnalyser);
+  var fxHead = typeof routeAudioFxSource === 'function' ? routeAudioFxSource(source) : source;
+  fxHead.connect(analyser);
+  fxHead.connect(beatAnalyser);
   if (gainNode) {
     analyser.connect(gainNode);
     gainNode.connect(audioCtx.destination);
@@ -482,7 +463,6 @@ function isBackgroundAudioFadeConstrained() {
 function ensureAudiblePlaybackGain(reason) {
   if (!audio || audio.paused || audio.ended || !audio.src) return false;
   if (targetVolume <= 0.001) return false;
-  if (typeof cuefieldAutoMixExecuting !== 'undefined' && cuefieldAutoMixExecuting) return false;
   if (
     typeof albumGaplessState !== 'undefined'
     && albumGaplessState

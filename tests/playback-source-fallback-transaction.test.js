@@ -75,7 +75,6 @@ function createSandbox(queue, statusOverrides) {
     forcePlaybackControlsInteractive() {},
     clearAudioFadeTimers() {},
     clearAlbumGaplessPreload() { sandbox.albumGaplessClears = (sandbox.albumGaplessClears || 0) + 1; },
-    resetCuefieldAutoMix() { sandbox.cuefieldClears = (sandbox.cuefieldClears || 0) + 1; },
     clearPlaybackResumeWatchdogs() { sandbox.watchdogClears = (sandbox.watchdogClears || 0) + 1; },
     setPlayIcon(value) { sandbox.iconPlaying = value; },
     syncPlaybackStateFromAudioEvent() {},

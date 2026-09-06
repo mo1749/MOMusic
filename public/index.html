@@ -13,7 +13,7 @@
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260905-momusic-1.5.4">
+  <link rel="stylesheet" href="css/index.css?v=20260905-momusic-1.5.5">
   <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
   <link rel="stylesheet" href="css/login-console-style.css?v=20260813-login-saved-glass">
   <link rel="stylesheet" href="css/fx-console-glass.css?v=20260813-fx-console-glass3">
@@ -910,6 +910,35 @@
           <div class="fx-toggle-grid"><div class="fx-toggle on" id="t-heartPulseShowBpm" onclick="toggleFx('heartPulseShowBpm')"><span>显示实时 BPM</span><span class="dot"></span></div></div>
         </div>
       </div>
+      <div class="fx-fold" id="fx-lake-rain-fold">
+        <div class="fx-fold-head" onclick="document.getElementById('fx-lake-rain-fold').classList.toggle('open')">
+          <span class="fx-fold-title"><strong>湖面雨落</strong><small>Lake-Rainfall / 雨滴涟漪</small></span><span class="arrow">▶</span>
+        </div>
+        <div class="fx-fold-body">
+          <div class="fx-section-label" id="fx-lake-rain-section">湖面雨落</div>
+          <div class="fx-section-label" id="lake-rain-color-section">湖水配色</div>
+          <div class="lyric-color-row" id="lake-rain-water-row">
+            <input id="lake-rain-water-picker" class="lyric-color-picker" type="color" value="#0b2437" title="湖水颜色">
+            <div class="fx-color-row-label">湖水颜色<small id="lake-rain-water-value">#0B2437</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetLakeRainfallColor('lakeRainfallWaterColor')">默认</button>
+          </div>
+          <div class="lyric-color-row" id="lake-rain-rain-row">
+            <input id="lake-rain-rain-picker" class="lyric-color-picker" type="color" value="#9fd0e8" title="雨丝颜色">
+            <div class="fx-color-row-label">雨丝颜色<small id="lake-rain-rain-value">#9FD0E8</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetLakeRainfallColor('lakeRainfallRainColor')">默认</button>
+          </div>
+          <div class="lyric-color-row" id="lake-rain-glow-row">
+            <input id="lake-rain-glow-picker" class="lyric-color-picker" type="color" value="#a8e8ff" title="月光辉光">
+            <div class="fx-color-row-label">月光辉光<small id="lake-rain-glow-value">#A8E8FF</small></div>
+            <button class="fx-mini-btn ghost" type="button" onclick="resetLakeRainfallColor('lakeRainfallGlowColor')">默认</button>
+          </div>
+          <div class="fx-slider"><label>雨势</label><input id="fx-lakerainrain" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>风雨斜度</label><input id="fx-lakerainwind" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>涟漪响应</label><input id="fx-lakerainripple" type="range" min="0" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>整体发光</label><input id="fx-lakerainflowglow" type="range" min="0.25" max="2" step="0.05"><output></output></div>
+          <div class="fx-slider"><label>封面倒影</label><input id="fx-lakeraincover" type="range" min="0" max="1" step="0.05"><output></output></div>
+        </div>
+      </div>
       <div class="fx-fold" id="fx-stage-fold">
         <div class="fx-fold-head" onclick="document.getElementById('fx-stage-fold').classList.toggle('open')">
           <span class="fx-fold-title"><strong>3D / 手势</strong><small>歌单架 / 摄像头交互</small></span><span
@@ -1406,12 +1435,18 @@
               <path d="M7 22l-4-4 4-4" />
               <path d="M21 13v2a4 4 0 0 1-4 4H3" />
             </svg></button>
-          <button id="cuefield-automix-btn" class="ctrl-btn" onclick="toggleCuefieldAutoMix()"
-            title="Cuefield AutoMix（实验功能，默认关闭）" aria-pressed="false">
+          <button id="audio-fx-btn" class="ctrl-btn" onclick="toggleAudioFxModal(event)"
+            title="自定义音效" aria-pressed="false">
             <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h4l3 5 3-5h6" />
-              <path d="M4 17h4l3-5 3 5h6" />
-              <path d="M18 4v6M15 7h6" />
+              <path d="M5 4v6" />
+              <path d="M5 16v4" />
+              <path d="M12 4v3" />
+              <path d="M12 13v7" />
+              <path d="M19 4v11" />
+              <path d="M19 21h.01" />
+              <circle cx="5" cy="13" r="2.2" />
+              <circle cx="12" cy="10" r="2.2" />
+              <circle cx="19" cy="17.5" r="2.2" />
             </svg>
           </button>
           <button id="prev-btn" class="ctrl-btn" onclick="prevTrack(true)" title="上一首"><svg width="18" height="18"
@@ -1665,6 +1700,8 @@
             <button id="refresh-qr-btn" class="ml-start" onclick="startSelectedLoginConnection()">开始登录</button>
           </div>
         </div>
+      </div>
+    </div>
 
     <div id="login-easter-unlock-cinematic" class="login-easter-unlock-cinematic" role="button" tabindex="-1"
       aria-hidden="true" aria-label="点击继续" onclick="dismissLoginEasterEggCinematic()">
@@ -1870,14 +1907,36 @@
     </div>
 
     <div id="toast"></div>
-    <div id="cuefield-feedback" aria-live="polite" aria-label="Cuefield AutoMix 反馈">
-      <div class="cuefield-feedback-kicker">CUEFIELD · LOCAL FEEDBACK</div>
-      <div class="cuefield-feedback-title">这次自动过渡顺滑吗？</div>
-      <div id="cuefield-feedback-meta" class="cuefield-feedback-meta"></div>
-      <div class="cuefield-feedback-actions">
-        <button type="button" onclick="submitCuefieldFeedback(1)">顺滑</button>
-        <button type="button" onclick="submitCuefieldFeedback(2)">生硬</button>
-        <button type="button" onclick="submitCuefieldFeedback(3)">不确定</button>
+    <div id="audio-fx-modal" class="audio-fx-overlay" role="dialog" aria-modal="true" aria-label="自定义音效">
+      <div class="modal audio-fx-dialog">
+        <div class="audio-fx-head">
+          <div>
+            <div class="audio-fx-title">自定义音效</div>
+            <div class="audio-fx-subtitle">均衡器 · 低音增强 · 环绕声</div>
+          </div>
+          <button type="button" class="audio-fx-close" onclick="closeAudioFxModal()" aria-label="关闭">✕</button>
+        </div>
+        <div class="audio-fx-master">
+          <button type="button" id="audio-fx-switch" class="audio-fx-switch" role="switch" aria-checked="false"
+            onclick="setAudioFxEnabled(!audioFxState.enabled)"><span class="audio-fx-switch-knob"></span></button>
+          <div class="audio-fx-master-text">
+            <div class="audio-fx-master-label">启用音效</div>
+            <div id="audio-fx-status" class="audio-fx-status">未启用</div>
+          </div>
+          <button type="button" class="audio-fx-reset" onclick="resetAudioFxAll()">重置</button>
+        </div>
+        <div id="audio-fx-presets" class="audio-fx-presets"></div>
+        <div class="audio-fx-section-title">十段均衡器<span class="audio-fx-hint">双击滑杆归零 · ±12dB</span></div>
+        <div id="audio-fx-eq" class="audio-fx-eq"></div>
+        <div class="audio-fx-tune-row">
+          <div class="audio-fx-tune-label">低音增强<span id="audio-fx-bass-value">0dB</span></div>
+          <input id="audio-fx-bass" type="range" min="0" max="12" step="1" value="0" oninput="setAudioFxBass(this.value)">
+        </div>
+        <div class="audio-fx-tune-row">
+          <div class="audio-fx-tune-label">环绕声 · 立体声扩展<span id="audio-fx-width-value">100%</span></div>
+          <input id="audio-fx-width" type="range" min="0" max="200" step="5" value="100" oninput="setAudioFxWidth(this.value)">
+        </div>
+        <div class="audio-fx-footnote">音效仅作用于音乐播放；点击空白处或按 Esc 关闭。</div>
       </div>
     </div>
     <div id="cookie-export-prompt" class="cookie-export-prompt" aria-live="polite">
@@ -1914,9 +1973,6 @@
         </div>
       </div>
     </div>
-
-  </div>
-  </div>
 
   <div id="wallpaper-engine-modal" class="modal-mask" role="dialog" aria-modal="true"
     aria-labelledby="wallpaper-engine-modal-title" onclick="if(event.target===this)closeWallpaperEngineLibrary()">

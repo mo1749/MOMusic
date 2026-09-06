@@ -46,6 +46,7 @@ function bindFxPanel() {
      ['fx-heartpulsespeed', 'heartPulseSpeed'], ['fx-heartpulsebeat', 'heartPulseBeatResponse'], ['fx-heartpulseglow', 'heartPulseGlow'], ['fx-heartpulsegrid', 'heartPulseGrid'], ['fx-heartpulsetrail', 'heartPulseTrail'],
      ['fx-heartpulsetitle', 'heartPulseTitle'], ['fx-heartpulsesubtitle', 'heartPulseSubtitle'],
      ['fx-heartpulsestatus', 'heartPulseStatus'],
+     ['fx-lakerainrain', 'lakeRainfallRain'], ['fx-lakerainwind', 'lakeRainfallWind'], ['fx-lakerainripple', 'lakeRainfallRipple'], ['fx-lakerainflowglow', 'lakeRainfallGlow'], ['fx-lakeraincover', 'lakeRainfallCover'],
     ['fx-shelfsize', 'shelfSize'], ['fx-shelfx', 'shelfOffsetX'], ['fx-shelfy', 'shelfOffsetY'], ['fx-shelfz', 'shelfOffsetZ'], ['fx-shelfangle', 'shelfAngleY'], ['fx-shelfopacity', 'shelfOpacity'], ['fx-shelfbgalpha', 'shelfBgOpacity'],
     ['fx-shelfdetailx', 'shelfDetailOffsetX'], ['fx-shelfdetaily', 'shelfDetailOffsetY'], ['fx-shelfdetailz', 'shelfDetailOffsetZ'], ['fx-shelfdetailscale', 'shelfDetailScale'], ['fx-shelfdetailanglex', 'shelfDetailAngleX'], ['fx-shelfdetailangley', 'shelfDetailAngleY'], ['fx-shelfdetailrowgap', 'shelfDetailRowGap'],
     ['fx-shelfdetailopen', 'shelfDetailOpenDuration'], ['fx-shelfdetailclose', 'shelfDetailCloseDuration'], ['fx-shelfdetailrowtime', 'shelfDetailRowDuration'], ['fx-shelfdetailintro', 'shelfDetailIntroStrength'], ['fx-shelfdetailparallax', 'shelfDetailParallax'],
@@ -276,6 +277,16 @@ function bindFxPanel() {
     if (!picker) return;
     picker.addEventListener('input', function () { setTreeCanopyColor(pair[1], picker.value, true); });
     picker.addEventListener('change', function () { setTreeCanopyColor(pair[1], picker.value); });
+  });
+  [
+    ['lake-rain-water-picker', 'lakeRainfallWaterColor'],
+    ['lake-rain-rain-picker', 'lakeRainfallRainColor'],
+    ['lake-rain-glow-picker', 'lakeRainfallGlowColor']
+  ].forEach(function (pair) {
+    var picker = document.getElementById(pair[0]);
+    if (!picker) return;
+    picker.addEventListener('input', function () { setLakeRainfallColor(pair[1], picker.value, true); });
+    picker.addEventListener('change', function () { setLakeRainfallColor(pair[1], picker.value); });
   });
   // 心跳监护取色器改由预设自身用 document 级事件委托绑定（见 heart-pulse-preset.js），
   // 不再依赖本函数的执行链——避免上游异常导致绑定静默丢失

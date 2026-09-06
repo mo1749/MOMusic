@@ -259,6 +259,16 @@ var FX_CONSOLE_LAYOUT = [
         fxConsoleItem('heart-pulse-content-reset', '恢复默认内容', '标题 副标题 状态 重置'),
         fxConsoleItem('t-heartPulseShowBpm', '实时 BPM', '心跳频率 每分钟节拍数 显示')
       ] },
+      { key: 'lake-rainfall', title: '湖面雨落', hint: '月光湖面的雨势、涟漪、倒影和配色', items: [
+        fxConsoleItem('lake-rain-water-picker', '湖水颜色', '深水基色 自定义颜色'),
+        fxConsoleItem('lake-rain-rain-picker', '雨丝颜色', '雨丝 重雨滴 自定义颜色'),
+        fxConsoleItem('lake-rain-glow-picker', '月光辉光', '月亮 涟漪 溅花 自定义颜色'),
+        fxConsoleItem('fx-lakerainrain', '雨势', '雨丝密度 毛毛雨 倾盆'),
+        fxConsoleItem('fx-lakerainwind', '风雨斜度', '雨丝倾斜 横风'),
+        fxConsoleItem('fx-lakerainripple', '涟漪响应', '波纹强度 节拍波列'),
+        fxConsoleItem('fx-lakerainflowglow', '整体发光', '月光 涟漪 亮度'),
+        fxConsoleItem('fx-lakeraincover', '封面倒影', '专辑封面 湖面倒影 强度')
+      ] },
     ]
   },
   {

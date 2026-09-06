@@ -2058,7 +2058,10 @@ async function loadWallpaperEngineLibrary(force, showNotice) {
 
 async function openWallpaperEngineLibrary() {
   var modal = document.getElementById('wallpaper-engine-modal');
-  if (modal) modal.classList.add('show');
+  if (modal && !modal.classList.contains('show')) {
+    if (typeof openGsapModal === 'function') openGsapModal(modal);
+    else modal.classList.add('show');
+  }
   if (!wallpaperEngineLibrarySnapshot) await loadWallpaperEngineLibrary(false, false);
   else renderWallpaperEngineLibrary();
 }
@@ -2066,7 +2069,10 @@ async function openWallpaperEngineLibrary() {
 function closeWallpaperEngineLibrary() {
   closeWallpaperEngineProjectDetails();
   var modal = document.getElementById('wallpaper-engine-modal');
-  if (modal) modal.classList.remove('show');
+  if (modal) {
+    if (typeof closeGsapModal === 'function') closeGsapModal(modal);
+    else modal.classList.remove('show');
+  }
   clearTimeout(wallpaperEngineSearchRenderTimer);
   wallpaperEngineSearchRenderTimer = 0;
   clearTimeout(wallpaperEnginePreviewScrollTimer);

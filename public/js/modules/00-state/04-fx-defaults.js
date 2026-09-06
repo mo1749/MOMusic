@@ -197,6 +197,14 @@ var fxDefaults = {
   heartPulseShowBpm: true,
   heartPulseStatus: 'SIGNAL STABLE',
   heartPulseWaveform: 'clinical',
+  lakeRainfallWaterColor: '#0b2437',   // 湖水深水基色
+  lakeRainfallRainColor: '#9fd0e8',    // 雨丝/重雨滴颜色
+  lakeRainfallGlowColor: '#a8e8ff',    // 月光/涟漪/溅花辉光色
+  lakeRainfallRain: 1.0,               // 雨势（雨丝密度基数）
+  lakeRainfallWind: 0.8,               // 风雨斜度
+  lakeRainfallRipple: 1.15,            // 涟漪响应强度
+  lakeRainfallGlow: 1.05,              // 整体发光
+  lakeRainfallCover: 0.9,              // 封面倒影强度（整湖铺显专辑封面）
   shelf: 'side',
   shelfPinnedOpen: false,
   shelfCameraMode: 'dynamic',
