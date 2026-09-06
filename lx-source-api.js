@@ -14,8 +14,9 @@ const https = require('https');
 const { makeProxyAgent } = require('./lx-proxy');
 
 // 后端 API (与 render_api.js / MusicFree 插件共用同一后端)
-const LX_API_URL = 'https://lxmusicapi.onrender.com';
-const LX_API_KEY = 'share-v3';
+// 通过环境变量配置，避免密钥硬编码进源码中被提取
+const LX_API_URL = process.env.MOMusic_LX_API_URL || 'https://lxmusicapi.onrender.com';
+const LX_API_KEY = process.env.MOMusic_LX_API_KEY || '';
 const LX_VERSION = '1.6.0';
 const LX_ENV = 'desktop';
 
