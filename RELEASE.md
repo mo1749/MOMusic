@@ -13,4 +13,3 @@
 |------|------|------|
 | Windows | MoMusic-1.5.5-Setup.exe | 安装程序 (NSIS) |
 | Windows | MoMusic-1.5.5-Portable.exe | 便携版 (免安装) |
-| Android | [夸克网盘下载](https://pan.quark.cn/s/bfc02aecf2f6) | 安卓版 APK |
