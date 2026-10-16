@@ -72,6 +72,21 @@ function runNodeSyntaxCheck(files) {
   console.log(`[OK] Checked ${checked} JavaScript files.`);
 }
 
+function runDesktopStartupRegressionCheck() {
+  logStep('Desktop startup restore and Dock lifecycle regression');
+  const result = spawnSync(process.execPath, ['--test',
+    path.join(appRoot, 'tests', 'desktop-startup.test.js'),
+    path.join(appRoot, 'tests', 'dock-runtime-lifecycle.test.js'),
+    path.join(appRoot, 'tests', 'dock-icons.test.js'),
+  ], { cwd: appRoot, encoding: 'utf8' });
+  if (result.status !== 0) {
+    process.stdout.write(result.stdout || '');
+    process.stderr.write(result.stderr || '');
+    fail('desktop startup/Dock lifecycle regression failed');
+  }
+  console.log('[OK] One-time restore, persisted user intent, trusted IPC, setting rollback, and stale Dock work are guarded.');
+}
+
 function runPlaybackAudioGraphRegressionCheck() {
   logStep('Playback audio graph track-switch regression');
   const testFile = path.join(appRoot, 'tests', 'playback-audio-graph-recovery.test.js');
@@ -128,6 +143,25 @@ function runLoginEasterEggGateRegressionCheck() {
     process.stdout.write(result.stdout || '');
     process.stderr.write(result.stderr || '');
     fail(`login easter egg gate regression failed: ${rel(testFile)}`);
+  }
+  process.stdout.write(result.stdout || '');
+}
+
+function runPlatformWebLoginRoutingRegressionCheck() {
+  logStep('Desktop-only login, callback ownership, and input regression');
+  const testFiles = [
+    path.join(appRoot, 'tests', 'platform-web-login-routing.test.js'),
+    path.join(appRoot, 'tests', 'desktop-login-backend-boundary.test.js'),
+    path.join(appRoot, 'tests', 'desktop-only-ui.test.js'),
+  ];
+  const result = spawnSync(process.execPath, ['--test'].concat(testFiles), {
+    cwd: appRoot,
+    encoding: 'utf8'
+  });
+  if (result.status !== 0) {
+    process.stdout.write(result.stdout || '');
+    process.stderr.write(result.stderr || '');
+    fail('desktop-only login and input regression failed');
   }
   process.stdout.write(result.stdout || '');
 }
@@ -751,7 +785,7 @@ function checkDesktopWallpaperModeGuard() {
     || !/getWallpaperModeStatus/.test(preloadText + shellText)
     || !/frameRate:\s*normalizeWallpaperFps\(fx\.wallpaperFps\)/.test(shellText)
     || /wallpaperMode/.test(archiveText)) {
-    fail('experimental wallpaper UI must persist only opacity/FPS, restart disabled, and follow main-process runtime authority');
+    fail('wallpaper FX archives must exclude runtime enable state; startup restoration follows separate main-process settings');
   }
   const forbiddenCursorPaths = [
     'getCursorScreenPoint',
@@ -2171,7 +2205,7 @@ function checkSearchGlassEntranceGuard() {
   const searchBoxSourceMergeCount = (searchBoxFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchPillSourceMergeCount = (searchPillFilterText.match(/<feMergeNode in="SourceGraphic"/g) || []).length;
   const searchBoxFilterMatchesSavedRgbGlass =
-    /css\/index\.css\?v=20260905-momusic-1\.5\.5/.test(indexText) &&
+    (indexText.match(/css\/index\.css\?v=\d{8}-momusic-([^"\s]+)/) || [])[1] === JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')).version &&
     /x="-24%"\s+y="-34%"\s+width="158%"/.test(searchBoxFilterText) &&
     /height="168%"/.test(searchBoxFilterText) &&
     /id="search-box-glass-map"\s+x="-10%"\s+y="-4%"\s+width="120%"\s+height="108%"/.test(searchBoxFilterText) &&
@@ -5136,10 +5170,12 @@ function checkFirstLaunchDefaultsAndSplashGuard() {
 async function main() {
   console.log(`App root: ${appRoot}`);
   runNodeSyntaxCheck(jsCheckFiles());
+  runDesktopStartupRegressionCheck();
   runPlaybackAudioGraphRegressionCheck();
   runPlaybackSourceFallbackTransactionCheck();
   runQQVipEntitlementRegressionCheck();
   runLoginEasterEggGateRegressionCheck();
+  runPlatformWebLoginRoutingRegressionCheck();
   runQishuiProviderDistributionRegressionCheck();
   runSpotifyApiResilienceRegressionCheck();
   runPlatformAccountSyncGuardCheck();

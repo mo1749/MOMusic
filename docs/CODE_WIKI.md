@@ -931,3 +931,71 @@ node listen-together-server.js
 ---
 
 > **文档维护说明**：本文档基于仓库代码结构静态生成。当新增/重构模块时，请同步更新对应章节。版本号统一来源于 `package.json` 的 `version` 字段。
+
+---
+
+## 15. 桌面 Dock 栏（桌面模式子系统，v1.5.5 之后新增）
+
+**系统定位**：完整桌面模式下的屏幕边缘应用启动条（类似 macOS Dock）。独立悬浮窗口实现——完整桌面模式下主窗口被 `SetParent` 嵌入桌面层（z 序底部），Dock 必须独立置顶才能在其他应用窗口之上工作。窗口覆盖主显示器工作区、全透明，非交互区域 `setIgnoreMouseEvents(true,{forward:true})` 鼠标穿透，交互热区由渲染层上报。
+
+### 文件构成
+
+| 文件 | 职责 |
+|------|------|
+| `desktop/dock-runtime.js` | Dock 运行时：窗口生命周期、配置存取、应用扫描、图标提取、运行应用监听、启动器、全屏检测 |
+| `desktop/dock-shared.js` | 纯逻辑（无 electron 依赖）：配置归一化/合并、应用条目去重、拼音匹配、运行快照 diff；供 runtime 与测试共用 |
+| `desktop/dock-preload.js` | Dock 窗口预加载，`contextBridge` 暴露 `window.momusicDock`（ready/hot-rects/commit-layout/action + onEvent） |
+| `public/dock.html` | Dock 窗口页面（全内联 CSS/JS、零 vendor 依赖）：三区布局（应用中心入口/固定应用/运行中应用）、5 套主题、悬停放大（高斯距离场）、右键菜单、自动隐藏（2px 边缘残条唤醒）、拖动贴边/边缘吸附、拖拽排序与拖出移除、应用中心居中柔光玻璃面板（`#app-center` 轻纱压暗 + `.ac-panel` 高透玻璃本体，网格分页/拼音搜索/新装标记/隐藏应用） |
+| `public/js/modules/10-shell/04b-desktop-dock.js` | 控制台侧联动：Dock 开关门控（桌面模式关→置灰+提示）、「Dock 栏设置」卡片显隐、设置控件↔主进程配置同步 |
+| `public/index.html` | `t-desktopDock` 开关（位于 `t-wallpaperMode` 左侧）+ `#dock-settings-controls` 隐藏控件块（组织后被搬运进 `interface:dock-settings` 卡片） |
+| `public/js/modules/07-fx/09-console-workspace.js` | `FX_CONSOLE_LAYOUT` 新增 `desktop-mode` 组的 Dock 开关条目与 `dock-settings` 卡片 |
+
+### 状态机（与桌面模式联动）
+
+```
+桌面模式开 → dockRuntime.handleDesktopModeStatus(enabled) →
+  若 config.enabled（或 persistState 保持的上次状态）→ 创建 Dock 窗口
+桌面模式关 → 强制销毁 Dock 窗口; persistState=false 时同时清除 enabled
+Dock 开关(控制台) → MOMusic-dock-set-enabled → setEnabled → 持久化 + 创建/销毁窗口
+```
+
+- 配置持久化：`userData/dock-config.json`（原子写）；应用缓存 `userData/dock-apps-cache.json`；图标缓存 `userData/dock-icons/*.png`（96px PNG）
+- 应用扫描：PowerShell 一次性脚本（两处开始菜单目录 + 用户/公共桌面 `.lnk` 经 WScript.Shell 解析 + `Get-StartApps` 取 UWP AUMID + AppxManifest 提取 Logo）；按目标+参数去重；`pinyin-pro` 在主进程预计算全拼/首字母（渲染层零开销）
+- 新装监听：常驻 PowerShell `FileSystemWatcher`（`Wait-Event` 轮询输出 CHANGED）→ 防抖重扫 + 10 分钟兜底；`firstSeenAt` 3 天内显示「新」
+- 运行检测：常驻 PowerShell 1.5s 轮询 `EnumWindows`（过滤 cloaked/toolwindow/无标题/自身进程；`ApplicationFrameHost` 经 `GetApplicationUserModelId` 归属 UWP），行协议输出快照，主进程 diff 后推送；前台窗口覆盖屏幕判定全屏
+- 图标提取：`PrivateExtractIcons`（96px）批量 C# 助手；UWP 直接复制 Logo 资源；按需提取 + 内存 dataURL 缓存
+- 窗口操作：一次性 PowerShell user32 助手（focus=恢复+前置 / minimize / close）
+- 应用中心热键：`globalShortcut`（默认 Alt+F，可在设置卡片修改），仅 Dock 开启期间注册
+
+### IPC 通道
+
+| 方向 | 通道 |
+|------|------|
+| 主窗口→主进程 | `MOMusic-dock-set-enabled`、`MOMusic-dock-get-state`、`MOMusic-dock-update-settings`（均过 `isTrustedMainWindowIpc`） |
+| Dock 窗口→主进程 | `MOMusic-dock-ready`、`MOMusic-dock-hot-rects`、`MOMusic-dock-hidden-state`、`MOMusic-dock-commit-layout`、`MOMusic-dock-get-config`、`MOMusic-dock-action`（均过 `isDockWindowIpc`，校验 sender 为 Dock 窗口 webContents） |
+| 主进程→主窗口 | `MOMusic-dock-state`（状态回流给控制台）、`MOMusic-dock-open-settings`（Dock 右键菜单打开设置卡片） |
+| 主进程→Dock 窗口 | `MOMusic-dock-event`（init/config/apps/running/fullscreen/toggle-app-center/display-changed） |
+
+### 已知限制（一期）
+
+- UWP 运行检测依赖 `ApplicationFrameHost` 的 AUMID 回查，个别应用可能不显示运行状态
+- 指向 MSI（advertised shortcut）的快捷方式被过滤
+- Dock 仅显示在主显示器（多显示器选择器为二期）
+- 二期预留：系统托盘嵌入、消息角标、窗口预览、最小化动画、小部件、文件夹堆叠、图标倒影、回收站、多 Dock
+
+### 测试
+
+| 测试文件 | 覆盖 |
+|---------|------|
+| `tests/dock-config-store.test.js` | 配置默认值/钳制/固定列表去重/设置合并守卫（enabled 不可经 settings 篡改） |
+| `tests/dock-apps-dedupe.test.js` | 扫描去重与别名合并/非应用目标过滤/UWP 归一/firstSeenAt 沿用/新装判定/拼音匹配/运行快照 diff |
+
+### 2026-10-14：一期收尾与启动恢复
+
+- `desktop/desktop-startup.js` 独立管理 `userData/desktop-startup.json`：`version:1`、`restoreOnStartup:false`、`lastDesktopEnabled:false`。仅成功的用户开启写 true，显式退出写 false；关闭进程、导航清理及异常恢复不覆盖偏好。
+- preload 新增 `getDesktopStartup()`、`updateDesktopStartup({restoreOnStartup})`、`restoreDesktopStartup()`，对应 `MOMusic-desktop-startup-get/update/restore`，均校验主窗口及主文档来源。更新接口不允许客户端修改 lastDesktopEnabled。
+- `05-startup-bindings` 在 DOM 就绪后消费一次恢复请求，不再启动时发送关闭桌面模式的用户命令。恢复关闭时仍回流真实运行状态；渲染进程重载不再次自动恢复。
+- 自动恢复走现有桌面挂载流程，明确显示图标、解除软件锁定，不额外启动 WE 场景；失败走已有退出流程并报告清理是否确认。Escape 可取消恢复，过期恢复不能清理新用户操作。
+- Dock 的公开 `enabled` 为实际启用状态；`preferredEnabled` 和 `settings.enabled` 为保存偏好。桌面模式关闭时销毁窗口但按 persistState 决定是否保留偏好；persistState=false 时应用重启也不恢复 Dock。
+- 窗口/扫描生命周期隔离旧回调；关闭终止扫描和图标助手，释放常驻助手、快捷键及崩溃重建定时器。空运行快照清空旧应用；设置保存失败回滚，渲染端串行提交并读取保存值。
+- 新增 `tests/desktop-startup.test.js`、`tests/dock-runtime-lifecycle.test.js`，并在全桌面运行时测试覆盖安全恢复；quick-check 包含启动与 Dock 生命周期回归。真实验收边界见 `docs/DOCK_PHASE1_ACCEPTANCE.md`。

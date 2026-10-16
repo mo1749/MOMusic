@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:">
+<title>MOMusic Dock</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif; }
+
+  :root {
+    --dock-icon-size: 48;
+    --dock-icon-gap: 8;
+    --dock-anim: 1;
+    --dock-radius: 18px;
+    --dock-bg: rgba(30, 30, 34, 0.72);
+    --dock-blur: 24px;
+    --dock-border: rgba(255, 255, 255, 0.14);
+    --dock-text: #f2f3f7;
+    --dock-text-dim: rgba(242, 243, 247, 0.55);
+    --dock-hover: rgba(255, 255, 255, 0.12);
+    --dock-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --accent: #00d4c8;
+    /* Q 弹弹簧曲线 (峰值约 6.8% 过冲后回弹收敛), 本体伸缩与图标出入场共用 */
+    --dock-spring: linear(0, 0.402 7.4%, 0.711 11.8%, 0.929 16.2%, 1.019 20.3%, 1.058 24.3%, 1.068 27.3%, 1.065 30.7%, 1.042 36.2%, 1.012 42.7%, 0.992 49.8%, 0.986 57.3%, 0.996 66.5%, 1.002 76.7%, 1);
+  }
+
+  /* ── Dock 本体 (液态玻璃) ── */
+  #dock-strip {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 11px 15px 15px;
+    border-radius: var(--dock-radius);
+    isolation: isolate;
+    background-color: var(--dock-bg, transparent);
+    background-image: var(--glass-grad, none);
+    -webkit-backdrop-filter: blur(var(--dock-blur)) saturate(190%) brightness(1.12);
+    backdrop-filter: blur(var(--dock-blur)) saturate(190%) brightness(1.12);
+    box-shadow:
+      0 26px 60px rgba(0, 0, 0, 0.55),
+      0 8px 20px rgba(0, 0, 0, 0.35),
+      0 1px 0 rgba(255, 255, 255, 0.10) inset,
+      0 -14px 30px rgba(0, 0, 0, 0.18) inset,
+      0 0 0 1px rgba(255, 255, 255, 0.07) inset;
+    transition: box-shadow 0.45s ease, background 0.45s ease;
+    z-index: 10;
+  }
+  body.edge-left #dock-strip, body.edge-right #dock-strip { flex-direction: column; padding: 15px 11px; }
+
+  /* 玻璃描边: 上缘亮、中间收暗、下缘微亮 */
+  #dock-strip::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.10) 30%,
+      rgba(255, 255, 255, 0.02) 55%,
+      rgba(255, 255, 255, 0.06) 82%,
+      rgba(255, 255, 255, 0.26) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 3;
+  }
+  body.edge-left #dock-strip::before {
+    background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.10) 30%,
+      rgba(255, 255, 255, 0.02) 55%,
+      rgba(255, 255, 255, 0.06) 82%,
+      rgba(255, 255, 255, 0.26) 100%);
+  }
+  body.edge-right #dock-strip::before {
+    background: linear-gradient(270deg,
+      rgba(255, 255, 255, 0.62) 0%,
+      rgba(255, 255, 255, 0.10) 30%,
+      rgba(255, 255, 255, 0.02) 55%,
+      rgba(255, 255, 255, 0.06) 82%,
+      rgba(255, 255, 255, 0.26) 100%);
+  }
+
+  /* 顶面大反光, 模拟曲率 */
+  #dock-strip::after {
+    content: "";
+    position: absolute;
+    left: 7%;
+    right: 7%;
+    top: 2px;
+    height: 40%;
+    border-radius: 50% 50% 42% 42% / 100% 100% 46% 46%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 78%);
+    filter: blur(7px);
+    pointer-events: none;
+    z-index: 1;
+  }
+  body.edge-left #dock-strip::after {
+    left: 2px; right: auto; top: 7%; bottom: 7%; height: auto; width: 40%;
+    border-radius: 50% 42% 50% 42% / 46% 46% 100% 100%;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 78%);
+  }
+  body.edge-right #dock-strip::after {
+    right: 2px; left: auto; top: 7%; bottom: 7%; height: auto; width: 40%;
+    border-radius: 42% 50% 42% 50% / 46% 46% 100% 100%;
+    background: linear-gradient(270deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0) 78%);
+  }
+
+  #dock-strip.hot {
+    box-shadow:
+      0 30px 70px rgba(0, 0, 0, 0.6),
+      0 10px 26px rgba(0, 0, 0, 0.38),
+      0 1px 0 rgba(255, 255, 255, 0.16) inset,
+      0 -14px 30px rgba(0, 0, 0, 0.18) inset,
+      0 0 0 1px rgba(255, 255, 255, 0.10) inset;
+  }
+  /* 本体伸缩: 图标数量变化时宽高与位置按弹簧曲线过渡;
+     left/top 与宽高用同一曲线, 线性插值下位置公式 x=(W-w)*ratio 严格成立, 本体从锚点均匀伸缩。
+     必须放在 .dragging 之前, 拖动时 transition:none 优先, 保证跟手 */
+  #dock-strip.animating {
+    transition:
+      width calc(0.55s / var(--dock-anim)) var(--dock-spring),
+      height calc(0.55s / var(--dock-anim)) var(--dock-spring),
+      left calc(0.55s / var(--dock-anim)) var(--dock-spring),
+      top calc(0.55s / var(--dock-anim)) var(--dock-spring);
+  }
+  #dock-strip.dragging { transition: none; }
+
+  /* 主题: 提供玻璃渐变与文字色 (custom 背景 --dock-bg 垫在渐变之下) */
+  body.theme-macos-dark {
+    --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.06) 38%, rgba(255, 255, 255, 0.03) 62%, rgba(255, 255, 255, 0.11) 100%);
+    --dock-border: rgba(255, 255, 255, 0.14); --dock-text: #f2f3f7;
+    --dock-text-dim: rgba(242, 243, 247, 0.55); --dock-hover: rgba(255, 255, 255, 0.12);
+  }
+  body.theme-macos-light {
+    --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.38) 38%, rgba(255, 255, 255, 0.28) 62%, rgba(255, 255, 255, 0.55) 100%);
+    --dock-border: rgba(0, 0, 0, 0.1); --dock-text: #1c1d22;
+    --dock-text-dim: rgba(28, 29, 34, 0.55); --dock-hover: rgba(0, 0, 0, 0.08);
+  }
+  body.theme-glass {
+    --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.07) 38%, rgba(255, 255, 255, 0.03) 62%, rgba(255, 255, 255, 0.13) 100%);
+    --dock-border: rgba(255, 255, 255, 0.18); --dock-text: #f2f3f7;
+    --dock-text-dim: rgba(242, 243, 247, 0.5); --dock-hover: rgba(255, 255, 255, 0.14);
+  }
+  body.theme-clear {
+    --glass-grad: none;
+    --dock-border: rgba(255, 255, 255, 0.1); --dock-text: #ffffff;
+    --dock-text-dim: rgba(255, 255, 255, 0.6); --dock-hover: rgba(255, 255, 255, 0.18);
+  }
+  body.theme-solid {
+    --glass-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.05) 100%);
+    --dock-border: rgba(255, 255, 255, 0.1); --dock-text: #f2f3f7;
+    --dock-text-dim: rgba(242, 243, 247, 0.5); --dock-hover: rgba(255, 255, 255, 0.1);
+  }
+
+  .dock-zone { display: flex; align-items: center; gap: calc(var(--dock-icon-gap) * 1px); min-width: 0; }
+  body.edge-left .dock-zone, body.edge-right .dock-zone { flex-direction: column; }
+
+  .dock-divider {
+    width: 1px; height: calc((var(--dock-icon-size) * 0.62) * 1px);
+    margin: 0 calc((var(--dock-icon-gap) * 0.9) * 1px);
+    background: var(--dock-border); flex: none;
+  }
+  body.edge-left .dock-divider, body.edge-right .dock-divider { width: calc((var(--dock-icon-size) * 0.62) * 1px); height: 1px; margin: calc((var(--dock-icon-gap) * 0.9) * 1px) 0; }
+
+  /* ── 图标槽位 (彩色玻璃瓦片) ── */
+  .dock-icon {
+    position: relative;
+    width: calc(var(--dock-icon-size) * 1px);
+    height: calc(var(--dock-icon-size) * 1px);
+    flex: none;
+    z-index: 2;
+  }
+
+  .dock-tile {
+    position: absolute;
+    inset: 0;
+    border-radius: 27%;
+    display: grid;
+    place-items: center;
+    transform-origin: bottom center;
+    will-change: transform;
+    /* 低饱和同色玻璃底: 真实图标为主体, 透明底图标获得同色玻璃衬底 */
+    background:
+      linear-gradient(178deg,
+        hsl(var(--h, 220) 46% 74% / 0.26) 0%,
+        hsl(var(--h, 220) 50% 58% / 0.32) 46%,
+        hsl(var(--h, 220) 54% 42% / 0.38) 100%);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.40) inset,
+      0 -3px 8px rgba(0, 0, 0, 0.22) inset,
+      0 0 0 1px rgba(255, 255, 255, 0.13) inset,
+      0 10px 20px -6px rgba(0, 0, 0, 0.55),
+      0 2px 4px rgba(0, 0, 0, 0.30);
+    cursor: pointer;
+    transition: filter 0.25s ease;
+  }
+  body.edge-left .dock-tile { transform-origin: left center; }
+  body.edge-right .dock-tile { transform-origin: right center; }
+  body.edge-top .dock-tile { transform-origin: center top; }
+  /* 玻璃穹顶高光: 叠在真实图标上半部, 液态玻璃质感来源 */
+  .dock-tile::before {
+    content: "";
+    position: absolute;
+    left: 7%;
+    right: 7%;
+    top: 5%;
+    height: 46%;
+    border-radius: 50% 50% 46% 46% / 100% 100% 42% 42%;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.38) 0%,
+      rgba(255, 255, 255, 0.10) 58%,
+      rgba(255, 255, 255, 0) 100%);
+    filter: blur(0.5px);
+    pointer-events: none;
+    z-index: 3;
+  }
+  /* 整体弱斜向高光膜 */
+  .dock-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(152deg,
+        rgba(255, 255, 255, 0.20) 0%,
+        rgba(255, 255, 255, 0.06) 26%,
+        rgba(255, 255, 255, 0) 46%,
+        rgba(255, 255, 255, 0.03) 72%,
+        rgba(255, 255, 255, 0.09) 100%);
+    pointer-events: none;
+    z-index: 3;
+  }
+  .dock-tile:hover { filter: brightness(1.08); }
+
+  .dock-tile img {
+    position: relative;
+    z-index: 2;
+    width: 84%;
+    height: 84%;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+    pointer-events: none;
+  }
+  /* 图标缺失占位: 全彩瓦片 + 白色字母 (参考图样式) */
+  .dock-tile .fallback {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      linear-gradient(178deg,
+        hsl(var(--h, 220) 62% 66%) 0%,
+        hsl(var(--h, 220) 60% 52%) 46%,
+        hsl(var(--h, 220) 58% 40%) 100%);
+    color: #fff; font-size: calc((var(--dock-icon-size) * 0.42) * 1px); font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  /* 底部同色反射光晕 */
+  .dock-icon::after {
+    content: "";
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    bottom: calc((var(--dock-icon-size) * -0.30) * 1px);
+    height: calc((var(--dock-icon-size) * 0.28) * 1px);
+    border-radius: 50%;
+    background: hsl(var(--h, 220) 70% 55% / 0.45);
+    filter: blur(11px);
+    opacity: 0.55;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .dock-icon.running::after { opacity: 0.95; }
+  body.edge-left .dock-icon::after {
+    left: auto; right: calc((var(--dock-icon-size) * -0.30) * 1px);
+    top: 12%; bottom: 12%; width: calc((var(--dock-icon-size) * 0.28) * 1px); height: auto;
+  }
+  body.edge-right .dock-icon::after {
+    right: auto; left: calc((var(--dock-icon-size) * -0.30) * 1px);
+    top: 12%; bottom: 12%; width: calc((var(--dock-icon-size) * 0.28) * 1px); height: auto;
+  }
+
+  /* 运行指示点 (发光) */
+  .dock-icon .dot {
+    position: absolute;
+    left: 50%; bottom: calc((var(--dock-icon-size) * -0.20) * 1px);
+    transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.28);
+    transition: background 0.25s ease, box-shadow 0.25s ease;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .dock-icon.running .dot {
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 0 7px rgba(255, 255, 255, 0.7);
+  }
+  body.edge-left .dock-icon .dot {
+    left: auto; right: calc((var(--dock-icon-size) * -0.20) * 1px); bottom: auto;
+    top: 50%; transform: translateY(-50%);
+  }
+  body.edge-right .dock-icon .dot {
+    left: calc((var(--dock-icon-size) * -0.20) * 1px); right: auto; bottom: auto;
+    top: 50%; transform: translateY(-50%);
+  }
+
+  .dock-icon .badge-new {
+    position: absolute; top: -3px; right: -3px;
+    padding: 1px 4px; border-radius: 6px;
+    font-size: 9px; line-height: 1.2; color: #fff;
+    background: #ff5b5b; pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    z-index: 5;
+  }
+  .dock-icon.bouncing .dock-tile > img, .dock-icon.bouncing .dock-tile > .fallback {
+    animation: dock-bounce calc(0.55s / var(--dock-anim)) ease 2;
+  }
+  @keyframes dock-bounce {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(calc((var(--dock-icon-size) * -0.24) * 1px)); }
+    70% { transform: translateY(calc((var(--dock-icon-size) * 0.04) * 1px)); }
+  }
+  /* 新图标入场: 从 0.2 缩放带过冲弹出, 与本体伸长同步 */
+  .dock-icon.entering .dock-tile {
+    animation: dock-icon-in calc(0.5s / var(--dock-anim)) var(--dock-spring) backwards;
+  }
+  @keyframes dock-icon-in {
+    from { transform: scale(0.2); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  /* 移除图标幽灵: 原位缩退淡出, 与本体收缩同步 (幽灵由 JS 克隆到 body, 不拦截事件) */
+  .dock-icon.exiting { pointer-events: none; }
+  .dock-icon.exiting .dock-tile {
+    animation: dock-icon-out calc(0.32s / var(--dock-anim)) ease-in forwards;
+  }
+  @keyframes dock-icon-out {
+    to { transform: scale(0.25); opacity: 0; }
+  }
+  .dock-icon.removing { opacity: 0; transition: opacity 0.3s ease; }
+  .dock-icon.removing .dock-tile { transform: scale(0.4); transition: transform 0.3s ease; }
+
+  .dock-appcenter-btn .dock-tile {
+    background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.42), transparent 28%), linear-gradient(145deg, #8a5cff 0%, #397bff 48%, #18d5c4 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 0 18px rgba(83,123,255,.5);
+  }
+  .dock-appcenter-btn svg { position: relative; z-index: 2; width: 70%; height: 70%; pointer-events: none; color: #fff; filter: drop-shadow(0 2px 3px rgba(22,18,70,.5)); }
+  .dock-appcenter-btn .dock-tile::after { content: ''; position: absolute; inset: 12%; border: 1px solid rgba(255,255,255,.48); border-radius: 35%; transform: rotate(12deg); pointer-events: none; }
+
+  .dock-hint {
+    position: fixed; padding: 4px 10px; border-radius: 8px;
+    background: var(--dock-bg); border: 1px solid var(--dock-border);
+    -webkit-backdrop-filter: blur(var(--dock-blur));
+    color: var(--dock-text); font-size: 12px;
+    pointer-events: none; z-index: 40; white-space: nowrap;
+    box-shadow: var(--dock-shadow);
+  }
+
+  /* ── 应用中心: 居中柔光高透玻璃面板 ── */
+  #app-center {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: center;
+    /* 背景只做轻纱压暗; 全屏模糊砍掉, 玻璃模糊只落在面板自身 (低配省一大截) */
+    background: rgba(8, 9, 12, 0.22);
+    opacity: 0; pointer-events: none;
+    transition: opacity calc(0.22s / var(--dock-anim)) ease;
+  }
+  #app-center.open { opacity: 1; pointer-events: auto; }
+  .ac-panel {
+    position: relative;
+    display: flex; flex-direction: column;
+    width: min(1080px, 90vw);
+    height: min(780px, 88vh);
+    border-radius: 24px;
+    background-color: rgba(18, 20, 28, 0.16);
+    background-image: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.09) 0%,
+      rgba(255, 255, 255, 0.025) 38%,
+      rgba(255, 255, 255, 0.012) 62%,
+      rgba(255, 255, 255, 0.06) 100%);
+    -webkit-backdrop-filter: blur(24px) saturate(1.6) brightness(1.12);
+    backdrop-filter: blur(24px) saturate(1.6) brightness(1.12);
+    box-shadow:
+      0 32px 90px rgba(0, 0, 0, 0.55),
+      0 10px 30px rgba(0, 0, 0, 0.35),
+      0 0 60px rgba(160, 190, 255, 0.10),
+      0 1px 0 rgba(255, 255, 255, 0.14) inset,
+      0 -16px 34px rgba(0, 0, 0, 0.16) inset;
+    overflow: hidden;
+    /* 入场与 Dock 本体同一 Q 弹曲线: 轻微下坠缩小再浮入 */
+    transform: translateY(18px) scale(0.96);
+    transition:
+      transform calc(0.4s / var(--dock-anim)) var(--dock-spring),
+      opacity calc(0.22s / var(--dock-anim)) ease;
+  }
+  #app-center.open .ac-panel { transform: none; }
+  /* 玻璃描边: 与 Dock 本体同款上亮下暗渐变细边 */
+  .ac-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.10) 30%,
+      rgba(255, 255, 255, 0.03) 55%,
+      rgba(255, 255, 255, 0.07) 82%,
+      rgba(255, 255, 255, 0.24) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .ac-search-bar {
+    flex: none;
+    margin: 26px auto 14px;
+    width: min(600px, 88%);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .ac-search-bar input {
+    flex: 1; height: 44px; border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.1);
+    color: #f2f3f7; font-size: 14px; padding: 0 20px;
+    outline: none; user-select: text; -webkit-user-select: text;
+  }
+  .ac-search-bar input::placeholder { color: rgba(242, 243, 247, 0.4); }
+  .ac-search-bar input:focus { border-color: rgba(0, 212, 200, 0.55); }
+  #ac-count { color: rgba(242, 243, 247, 0.5); font-size: 12px; flex: none; }
+  .ac-grid-wrap {
+    flex: 1; min-height: 0;
+    width: 100%;
+    overflow-y: auto;
+    padding: 4px 24px 18px;
+  }
+  .ac-grid-wrap::-webkit-scrollbar { width: 8px; }
+  .ac-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 4px; }
+  .ac-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+  .ac-grid { display: grid; grid-template-columns: repeat(auto-fill, 108px); gap: 14px 10px; justify-content: center; }
+  .ac-item {
+    width: 108px; padding: 10px 6px 8px; border-radius: 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    cursor: pointer; position: relative;
+  }
+  .ac-item:hover { background: rgba(255, 255, 255, 0.1); }
+  .ac-item .thumb {
+    width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+  }
+  .ac-item .thumb img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4)); }
+  .ac-item .thumb .fallback {
+    width: 100%; height: 100%; border-radius: 12px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    display: flex; align-items: center; justify-content: center;
+    color: #f2f3f7; font-size: 20px; font-weight: 600;
+  }
+  .ac-item .name {
+    width: 100%; text-align: center;
+    color: #f2f3f7; font-size: 12px; line-height: 1.35;
+    overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    word-break: break-all;
+  }
+  .ac-item .badge-new {
+    position: absolute; top: 6px; right: 10px;
+    padding: 1px 5px; border-radius: 6px;
+    font-size: 9px; color: #fff; background: #ff5b5b;
+  }
+  .ac-empty { color: rgba(242, 243, 247, 0.45); text-align: center; margin-top: 8vh; font-size: 14px; }
+  .ac-footer {
+    flex: none;
+    margin: 0 26px;
+    padding: 10px 0 6px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(242, 243, 247, 0.5); font-size: 12px;
+  }
+  .ac-footer button {
+    height: 28px; padding: 0 14px; border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f2f3f7; font-size: 12px; cursor: pointer;
+  }
+  .ac-footer button:hover { background: rgba(255, 255, 255, 0.16); }
+
+  /* ── 右键菜单 / Toast ── */
+  #ctx-menu {
+    position: fixed; z-index: 60; min-width: 176px;
+    padding: 6px; border-radius: 12px;
+    background: rgba(16, 18, 24, 0.86);
+    -webkit-backdrop-filter: blur(20px) saturate(1.35);
+    backdrop-filter: blur(20px) saturate(1.35);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+  }
+  #ctx-menu .mi {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 7px 12px; border-radius: 8px;
+    color: #e8eaf2; font-size: 13px; cursor: pointer; white-space: nowrap;
+  }
+  #ctx-menu .mi:hover { background: rgba(255, 255, 255, 0.09); }
+  #ctx-menu .mi.disabled { color: rgba(232, 234, 242, 0.35); cursor: default; }
+  #ctx-menu .mi.disabled:hover { background: transparent; }
+  #ctx-menu .mi .check { color: #00d4c8; font-size: 12px; }
+  #ctx-menu .mi .tag {
+    font-size: 10px; color: rgba(232, 234, 242, 0.4);
+    border: 1px solid rgba(232, 234, 242, 0.2); border-radius: 5px; padding: 0 4px;
+  }
+  #ctx-menu .divider { height: 1px; margin: 5px 8px; background: rgba(255, 255, 255, 0.1); }
+  #ctx-menu .group-label {
+    padding: 6px 12px 3px; color: rgba(232, 234, 242, 0.45);
+    font-size: 11px; white-space: nowrap;
+  }
+  #ctx-menu .mi .win-title { max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+    padding: 9px 18px; border-radius: 20px; z-index: 70;
+    background: rgba(16, 18, 24, 0.9); border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #f2f3f7; font-size: 13px; pointer-events: none;
+    opacity: 0; transition: opacity 0.22s ease;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ── 输入弹窗 (Electron 无 window.prompt, 改名/换图标用自绘面板) ── */
+  #dock-dialog {
+    position: fixed; inset: 0; z-index: 55;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(8, 9, 12, 0.35);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+  #dock-dialog.open { opacity: 1; pointer-events: auto; }
+  .dd-panel {
+    width: min(360px, 86vw); padding: 18px 18px 14px;
+    border-radius: 14px;
+    background: rgba(16, 18, 24, 0.88);
+    -webkit-backdrop-filter: blur(20px) saturate(1.35);
+    backdrop-filter: blur(20px) saturate(1.35);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.45);
+  }
+  .dd-title { color: #f2f3f7; font-size: 14px; margin-bottom: 12px; }
+  .dd-panel input {
+    width: 100%; height: 38px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.1);
+    color: #f2f3f7; font-size: 13px; padding: 0 12px;
+    outline: none; user-select: text; -webkit-user-select: text;
+  }
+  .dd-panel input:focus { border-color: rgba(0, 212, 200, 0.55); }
+  .dd-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .dd-actions button {
+    height: 30px; padding: 0 16px; border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f2f3f7; font-size: 12px; cursor: pointer;
+  }
+  .dd-actions button:hover { background: rgba(255, 255, 255, 0.16); }
+  .dd-actions .primary { background: rgba(0, 212, 200, 0.28); border-color: rgba(0, 212, 200, 0.45); }
+  .dd-actions .primary:hover { background: rgba(0, 212, 200, 0.4); }
+
+  /* 点击水波纹 */
+  .dock-ripple {
+    position: fixed; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+    border-radius: 50%; pointer-events: none; z-index: 50;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.22) 42%, rgba(255, 255, 255, 0) 70%);
+    animation: dock-ripple calc(0.6s / var(--dock-anim)) ease-out forwards;
+  }
+  @keyframes dock-ripple {
+    from { transform: scale(0.6); opacity: 0.95; }
+    to { transform: scale(6.5); opacity: 0; }
+  }
+
+  body.dragging-strip, body.dragging-strip * { cursor: grabbing !important; }
+</style>
+</head>
+<body class="theme-macos-dark edge-bottom">
+  <div id="dock-strip">
+    <div class="dock-zone" id="zone-entry"></div>
+    <div class="dock-divider" id="divider-entry"></div>
+    <div class="dock-zone" id="zone-pinned"></div>
+    <div class="dock-divider" id="divider-running" hidden></div>
+    <div class="dock-zone" id="zone-running"></div>
+  </div>
+
+  <div id="app-center">
+    <div class="ac-panel">
+      <div class="ac-search-bar">
+        <input id="ac-search" type="text" placeholder="搜索应用（支持拼音）" spellcheck="false">
+        <span id="ac-count"></span>
+      </div>
+      <div class="ac-grid-wrap" id="ac-scroll">
+        <div class="ac-grid" id="ac-grid"></div>
+        <div class="ac-empty" id="ac-empty" hidden>没有找到匹配的应用</div>
+      </div>
+      <div class="ac-footer">
+        <span id="ac-hidden-note" hidden></span>
+        <button id="ac-restore-btn" hidden>恢复显示隐藏的应用</button>
+        <span>按 Esc 或点击空白处关闭 · 拖动应用到下方 Dock 固定</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="ctx-menu" hidden></div>
+  <div id="toast"></div>
+  <div id="dock-dialog">
+    <div class="dd-panel">
+      <div class="dd-title" id="dd-title">修改显示名称</div>
+      <input id="dd-input" type="text" spellcheck="false">
+      <div class="dd-actions">
+        <button id="dd-cancel">取消</button>
+        <button id="dd-ok" class="primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+(function () {
+  const api = window.momusicDock;
+  if (!api) return;
+
+  // ── 状态 ──
+  const state = {
+    cfg: null,
+    apps: [],
+    running: [],
+    hiddenAppCount: 0,
+    hidden: false,          // 自动隐藏收起状态
+    appCenterOpen: false,
+    fullscreen: false,
+    icons: new Map(),       // iconKey → dataURL
+    iconRequested: new Set(),
+    iconFailed: new Set(),  // get-icon 返回过空的 key: 重渲染直接用字母占位, icons-ready 到来时解除
+    dragging: false,
+    magnifyRaf: 0,
+    hideTimer: 0,
+    lastRectsKey: '',
+    searchQuery: '',
+    renderedCount: 0,
+    booted: false,          // 首次渲染完成前不播图标出入场动画
+  };
+  const NOW = Date.now();
+  const IS_NEW_MS = 3 * 24 * 60 * 60 * 1000;
+
+  const $ = (id) => document.getElementById(id);
+  const strip = $('dock-strip');
+  const zoneEntry = $('zone-entry');
+  const zonePinned = $('zone-pinned');
+  const zoneRunning = $('zone-running');
+  const dividerRunning = $('divider-running');
+  document.addEventListener('dragover', (e) => { e.preventDefault(); });
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    const paths = files.map((f) => api.getPathForFile(f)).filter(Boolean);
+    if (paths.length) api.action('add-path', { paths });
+  });
+  const appCenter = $('app-center');
+  const acGrid = $('ac-grid');
+  const acSearch = $('ac-search');
+  const acScroll = $('ac-scroll');
+  const acEmpty = $('ac-empty');
+  const acCount = $('ac-count');
+  const acHiddenNote = $('ac-hidden-note');
+  const acRestoreBtn = $('ac-restore-btn');
+  const ctxMenu = $('ctx-menu');
+  const toastEl = $('toast');
+  const ddDialog = $('dock-dialog');
+  const ddTitle = $('dd-title');
+  const ddInput = $('dd-input');
+  const ddOk = $('dd-ok');
+  const ddCancel = $('dd-cancel');
+
+  // ── 工具 ──
+  let toastTimer = 0;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  function iconSizePx() { return Number(state.cfg && state.cfg.iconSize) || 48; }
+  function isVertical() { return state.cfg && (state.cfg.edge === 'left' || state.cfg.edge === 'right'); }
+
+  function fallbackLetter(name) {
+    const ch = String(name || '?').trim();
+    return ch ? ch[0].toUpperCase() : '?';
+  }
+
+  function requestIcon(iconKey, imgEl, name) {
+    if (!iconKey) {
+      showIconFallback(imgEl, name);
+      return;
+    }
+    if (state.icons.has(iconKey)) {
+      applyIconToImg(imgEl, state.icons.get(iconKey));
+      return;
+    }
+    if (state.iconFailed.has(iconKey)) {
+      // 已知失败: 直接占位, 避免重渲染后新节点学不到失败结果而渲染成裸 img
+      showIconFallback(imgEl, name);
+      return;
+    }
+    if (state.iconRequested.has(iconKey)) { showIconFallback(imgEl, name); return; }
+    state.iconRequested.add(iconKey);
+    showIconFallback(imgEl, name);
+    const liveImages = () => Array.from(document.querySelectorAll('[data-icon-key]'))
+      .filter(el => el.dataset.iconKey === iconKey).map(el => el.querySelector('img')).filter(Boolean);
+    api.action('get-icon', { iconKey }).then((res) => {
+      if (res && res.ok && res.dataUrl) {
+        state.icons.set(iconKey, res.dataUrl);
+        applyIconToImg(imgEl, res.dataUrl);
+        liveImages().forEach((img) => {
+          applyIconToImg(img, res.dataUrl);
+        });
+      } else {
+        state.iconFailed.add(iconKey);
+        // 失败同样要修补所有存活节点: 响应期间图标元素可能已被重渲染重建,
+        // 只补闭包里的旧节点会让新节点渲染成破图+alt 文本而非字母占位
+        showIconFallback(imgEl, name);
+        liveImages().forEach((img) => {
+          showIconFallback(img, img.alt || name);
+        });
+      }
+    }).catch(() => {
+      state.iconFailed.add(iconKey);
+      showIconFallback(imgEl, name);
+      liveImages().forEach(img => showIconFallback(img, img.alt || name));
+    }).finally(() => state.iconRequested.delete(iconKey));
+  }
+
+  function applyIconToImg(img, dataUrl) {
+    if (!img) return;
+    img.src = dataUrl;
+    img.style.display = '';
+    const tile = img.parentElement;
+    const fb = tile && tile.querySelector('.fallback');
+    if (fb) fb.remove();
+  }
+
+  function showIconFallback(imgEl, name) {
+    if (!imgEl) return;
+    imgEl.style.display = 'none';
+    const tile = imgEl.parentElement;
+    if (tile && !tile.querySelector('.fallback')) {
+      const fb = document.createElement('div');
+      fb.className = 'fallback';
+      fb.textContent = fallbackLetter(name);
+      tile.appendChild(fb);
+    }
+  }
+
+  // 从图标主色取色相, 驱动瓦片渐变与底部光晕颜色
+  function nameHue(name) {
+    const text = String(name || '');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+    return hash % 360;
+  }
+
+  function hueFromImage(img, slot) {
+    try {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      const canvas = document.createElement('canvas');
+      canvas.width = 16;
+      canvas.height = 16;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, 16, 16);
+      const data = ctx.getImageData(0, 0, 16, 16).data;
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 24) continue;
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        n += 1;
+      }
+      if (!n) return;
+      r /= n;
+      g /= n;
+      b /= n;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const lightness = (max + min) / 510;
+      const delta = max - min;
+      if (delta < 16 || lightness > 0.94 || lightness < 0.06) return;
+      let h;
+      if (max === r) h = ((g - b) / delta) % 6;
+      else if (max === g) h = (b - r) / delta + 2;
+      else h = (r - g) / delta + 4;
+      slot.style.setProperty('--h', String(Math.round(((h * 60) + 360) % 360)));
+    } catch (_) { /* 取色失败保持名称哈希色相 */ }
+  }
+
+  function makeIconEl({ key, iconKey, name, title }) {
+    const el = document.createElement('div');
+    el.className = 'dock-icon';
+    el.dataset.key = key;
+    if (iconKey) el.dataset.iconKey = iconKey;
+    el.title = title || name;
+    el.style.setProperty('--h', String(nameHue(name)));
+    const tile = document.createElement('div');
+    tile.className = 'dock-tile';
+    const img = document.createElement('img');
+    img.alt = name;
+    img.draggable = false;
+    img.addEventListener('load', () => hueFromImage(img, el));
+    tile.appendChild(img);
+    el.appendChild(tile);
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    el.appendChild(dot);
+    requestIcon(iconKey, img, name);
+    return el;
+  }
+
+  // ── 布局与热区 ──
+  // 关键: 窗口覆盖整个工作区, 只能按「光标是否在交互区域上」切换穿透,
+  // 否则全屏透明窗口会吞掉整个屏幕的点击 (卡死表现)。
+  function stripRect() {
+    const r = strip.getBoundingClientRect();
+    return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+  }
+
+  function pointInRect(x, y, r, pad) {
+    const p = pad || 0;
+    return x >= r.left - p && x <= r.right + p && y >= r.top - p && y <= r.bottom + p;
+  }
+
+  function pushHotRects() {
+    const x = state.lastPointerX;
+    const y = state.lastPointerY;
+    const rects = [];
+    // 应用中心与输入弹窗都是全屏面板: 存在即整窗可交互, 否则透明玻璃吞掉全屏点击
+    if (state.appCenterOpen || ddDialog.classList.contains('open')) {
+      rects.push({ left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight });
+    } else {
+      if (!state.hidden && x !== undefined) {
+        const r = stripRect();
+        if (pointInRect(x, y, r, 4)) rects.push(r);
+      }
+      if (!ctxMenu.hidden && x !== undefined) {
+        const r = ctxMenu.getBoundingClientRect();
+        if (pointInRect(x, y, r, 4)) rects.push(r);
+      }
+    }
+    const key = rects.map((r) => `${r.left | 0},${r.top | 0},${r.right | 0},${r.bottom | 0}`).join(';');
+    if (key !== state.lastRectsKey) {
+      state.lastRectsKey = key;
+      api.reportHotRects(rects);
+    }
+  }
+
+  function applyEdgeClass() {
+    const edge = (state.cfg && state.cfg.edge) || 'bottom';
+    document.body.classList.remove('edge-bottom', 'edge-top', 'edge-left', 'edge-right');
+    document.body.classList.add(`edge-${edge}`);
+  }
+
+  function applyThemeVars() {
+    const cfg = state.cfg;
+    if (!cfg) return;
+    document.body.className = document.body.className
+      .replace(/theme-[a-z-]+/g, '')
+      .replace(/edge-(bottom|top|left|right)/g, '');
+    document.body.classList.add(`theme-${cfg.theme || 'macos-dark'}`);
+    applyEdgeClass();
+    document.documentElement.style.setProperty('--dock-icon-size', String(cfg.iconSize));
+    document.documentElement.style.setProperty('--dock-icon-gap', String(cfg.iconGap));
+    document.documentElement.style.setProperty('--dock-anim', String(cfg.animSpeed || 1));
+    document.documentElement.style.setProperty('--dock-radius', `${cfg.custom.radius}px`);
+    // 全透明主题保持通透: 无底色无模糊, 自定义背景颜色/模糊仅作用于其他主题
+    if (cfg.theme === 'clear') {
+      document.documentElement.style.setProperty('--dock-blur', '0px');
+      document.documentElement.style.setProperty('--dock-bg', 'rgba(0, 0, 0, 0.04)');
+    } else {
+      document.documentElement.style.setProperty('--dock-blur', `${cfg.custom.blur}px`);
+      const hex = cfg.custom.bgColor;
+      const opacity = cfg.custom.opacity;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      document.documentElement.style.setProperty('--dock-bg', `rgba(${r}, ${g}, ${b}, ${opacity})`);
+    }
+    strip.style.borderRadius = `${cfg.custom.radius}px`;
+  }
+
+  let stripSizeTimer = 0;
+  let stripNaturalCache = null; // 内容签名 → 自然尺寸, 避免拖拽等高频调用反复克隆测量
+  function stripAnimMs() {
+    const speed = Math.min(2, Math.max(0.4, Number(state.cfg && state.cfg.animSpeed) || 1));
+    return 550 / speed + 180;
+  }
+
+  function naturalContentSig() {
+    return `${zoneEntry.children.length}|${zonePinned.children.length}|${zoneRunning.children.length}|${dividerRunning.hidden ? 0 : 1}|${$('divider-entry').hidden ? 0 : 1}|${(state.cfg && state.cfg.iconSize) || 48}|${(state.cfg && state.cfg.iconGap) || 8}|${(state.cfg && state.cfg.edge) || 'bottom'}`;
+  }
+
+  // 用离屏克隆测量自然尺寸。不能直接清空本体宽度再读 offsetWidth:
+  // 宽度为空时计算值是 auto 而非 px, px↔auto 不可插值, 弹簧过渡会因此失效。
+  // 克隆必须保留 id——#dock-strip 的布局样式 (flex/padding) 全部挂在 id 选择器上
+  function measureStripNatural() {
+    const sig = naturalContentSig();
+    if (stripNaturalCache && stripNaturalCache.sig === sig) return stripNaturalCache.size;
+    const probe = strip.cloneNode(true);
+    probe.style.cssText += ';position:absolute;left:-99999px;top:-99999px;width:auto;height:auto;visibility:hidden;pointer-events:none;';
+    document.body.appendChild(probe);
+    const size = { w: probe.offsetWidth, h: probe.offsetHeight };
+    probe.remove();
+    stripNaturalCache = { sig, size };
+    return size;
+  }
+
+  function positionStrip() {
+    if (!state.cfg) return;
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    // 先加 .animating 再写新宽度: 尺寸变化必须在过渡激活的状态下提交, 顺序反了弹簧失效
+    strip.classList.add('animating');
+    const { w: sw, h: sh } = measureStripNatural();
+    const prevW = strip.style.width;
+    const prevH = strip.style.height;
+    const sizeChanged = prevW !== '' && (parseInt(prevW, 10) !== sw || parseInt(prevH, 10) !== sh);
+    strip.style.width = `${sw}px`;
+    strip.style.height = `${sh}px`;
+    if (sizeChanged) {
+      if (stripSizeTimer) clearTimeout(stripSizeTimer);
+      stripSizeTimer = setTimeout(() => {
+        stripSizeTimer = 0;
+        strip.classList.remove('animating');
+      }, stripAnimMs());
+    } else if (!stripSizeTimer) {
+      // 尺寸未变: 仅在无进行中的伸缩动画时才摘类。
+      // 同一次渲染会连续两次调用本函数 (renderRunning/renderPinned 各一次),
+      // 第二次看到的是第一次已写入的新宽度, 若此处无条件摘类会取消刚启动的过渡。
+      strip.classList.remove('animating');
+    }
+    const margin = Number(state.cfg.margin) || 0;
+    const ratio = Math.min(1, Math.max(0, Number(state.cfg.ratio) || 0.5));
+    let x;
+    let y;
+    switch (state.cfg.edge) {
+      case 'top': x = (W - sw) * ratio; y = margin; break;
+      case 'left': x = margin; y = (H - sh) * ratio; break;
+      case 'right': x = W - sw - margin; y = (H - sh) * ratio; break;
+      default: x = (W - sw) * ratio; y = H - sh - margin;
+    }
+    strip.style.left = `${Math.round(x)}px`;
+    strip.style.top = `${Math.round(y)}px`;
+    strip.__basePos = { x, y, sw, sh };
+    applyHiddenTransform();
+    pushHotRects();
+  }
+
+  function applyHiddenTransform() {
+    const base = strip.__basePos;
+    if (!base) return;
+    const edge = (state.cfg && state.cfg.edge) || 'bottom';
+    const hideAmount = (state.hidden && state.cfg && state.cfg.autoHide && !state.appCenterOpen) ? 1 : 0;
+    if (!hideAmount) {
+      strip.style.transform = '';
+      return;
+    }
+    // 必须完全移出窗口 (+6px 余量): 残留 1-2px 会形成"看得见点不动"的幽灵条
+    const reach = (edge === 'left' || edge === 'right' ? base.sw : base.sh) + (Number(state.cfg.margin) || 0) + 6;
+    let dx = 0;
+    let dy = 0;
+    if (edge === 'bottom') dy = reach;
+    else if (edge === 'top') dy = -reach;
+    else if (edge === 'left') dx = -reach;
+    else dx = reach;
+    strip.style.transform = `translate(${Math.round(dx)}px, ${Math.round(dy)}px)`;
+  }
+
+  function setHidden(hidden) {
+    if (state.hidden === hidden) return;
+    state.hidden = hidden;
+    applyHiddenTransform();
+    api.reportHidden(hidden);
+    pushHotRects();
+    setTimeout(pushHotRects, 340);
+  }
+
+  // ── 渲染 Dock ──
+  function renderEntryZone() {
+    zoneEntry.textContent = '';
+    if (!state.cfg || state.cfg.showAppCenterButton === false) {
+      $('divider-entry').hidden = true;
+      return;
+    }
+    $('divider-entry').hidden = false;
+    const btn = document.createElement('div');
+    btn.className = 'dock-icon dock-appcenter-btn';
+    btn.title = '应用中心';
+    btn.innerHTML = '<div class="dock-tile"><svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="5" y="5" width="7" height="7" rx="2" fill="currentColor"/><rect x="20" y="5" width="7" height="7" rx="2" fill="currentColor"/><rect x="5" y="20" width="7" height="7" rx="2" fill="currentColor"/><rect x="20" y="20" width="7" height="7" rx="2" fill="currentColor"/><path d="M16 11.5 18.3 14.7 22 16l-3.7 1.3L16 20.5l-2.3-3.2L10 16l3.7-1.3L16 11.5Z" fill="#fff" opacity=".96"/></svg></div>';
+    btn.addEventListener('click', () => toggleAppCenter(true));
+    btn.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); showBlankMenu(e.clientX, e.clientY); });
+    zoneEntry.appendChild(btn);
+  }
+
+  function runningAppOf(key) {
+    return state.running.find((app) => app.key === key) || null;
+  }
+
+  function isRunningEntry(entry) {
+    if (!entry) return false;
+    if (entry.type === 'uwp' && entry.aumid) {
+      const family = entry.aumid.split('!')[0].toLowerCase();
+      return state.running.some((app) => app.key === `uwp:${family}`);
+    }
+    if (entry.target) {
+      const target = String(entry.target).toLowerCase();
+      return state.running.some((app) => app.key === `exe:${target}`);
+    }
+    return false;
+  }
+
+  function renderPinned() {
+    // 幽灵矩形必须在清空容器前采集 (脱离 DOM 后 getBoundingClientRect 归零)
+    const prevItems = Array.from(zonePinned.children).map((el) => ({ el, rect: el.getBoundingClientRect() }));
+    const prevKeys = new Set(prevItems.map((item) => item.el.dataset.key));
+    zonePinned.textContent = '';
+    const firstRender = !state.booted;
+    const nextKeys = new Set();
+    const pinned = (state.cfg && state.cfg.pinned) || [];
+    pinned.forEach((entry) => {
+      const key = `pinned:${entry.id}`;
+      nextKeys.add(key);
+      const el = makeIconEl({ key, iconKey: entry.iconKey, name: entry.displayName || entry.name });
+      if (!firstRender && !prevKeys.has(key)) el.classList.add('entering');
+      if (state.cfg.indicator && isRunningEntry(entry)) el.classList.add('running');
+      bindIconEvents(el, { kind: 'pinned', entry });
+      zonePinned.appendChild(el);
+    });
+    if (!firstRender) spawnExitGhosts(prevItems, nextKeys);
+    syncDividers();
+    positionStrip();
+    refreshMagnifyTargets();
+  }
+
+  function renderRunning() {
+    const prevItems = Array.from(zoneRunning.children).map((el) => ({ el, rect: el.getBoundingClientRect() }));
+    const prevKeys = new Set(prevItems.map((item) => item.el.dataset.key));
+    zoneRunning.textContent = '';
+    // 用共享的过滤函数, 保持运行区会话内排序在重渲染后不丢
+    const firstRender = !state.booted;
+    const nextKeys = new Set();
+    runningUnpinnedApps().forEach((app) => {
+      const key = `running:${app.key}`;
+      nextKeys.add(key);
+      const el = makeIconEl({ key, iconKey: app.iconKey, name: app.name });
+      if (!firstRender && !prevKeys.has(key)) el.classList.add('entering');
+      el.classList.add('running');
+      bindIconEvents(el, { kind: 'running', app });
+      zoneRunning.appendChild(el);
+    });
+    if (!firstRender) spawnExitGhosts(prevItems, nextKeys);
+    syncDividers();
+    positionStrip();
+    renderPinnedIndicatorOnly();
+    refreshMagnifyTargets();
+  }
+
+  // 移除的图标以幽灵在原位缩退淡出 (纯视觉), 与本体收缩弹簧同步
+  function spawnExitGhosts(prevItems, nextKeys) {
+    prevItems.forEach(({ el, rect }) => {
+      if (nextKeys.has(el.dataset.key)) return;
+      if (!rect.width || !rect.height) return;
+      const ghost = el.cloneNode(true);
+      ghost.classList.remove('entering');
+      ghost.classList.add('exiting');
+      ghost.style.cssText = `position:fixed;left:${Math.round(rect.left)}px;top:${Math.round(rect.top)}px;width:${Math.round(rect.width)}px;height:${Math.round(rect.height)}px;margin:0;z-index:45;pointer-events:none;`;
+      document.body.appendChild(ghost);
+      setTimeout(() => ghost.remove(), 1000);
+    });
+  }
+
+  function renderPinnedIndicatorOnly() {
+    if (!state.cfg || !state.cfg.indicator) return;
+    zonePinned.querySelectorAll('.dock-icon').forEach((el) => {
+      const entry = findPinnedEntry(el.dataset.key);
+      if (entry && isRunningEntry(entry)) el.classList.add('running');
+      else el.classList.remove('running');
+    });
+  }
+
+  function findPinnedEntry(domKey) {
+    const id = String(domKey || '').replace(/^pinned:/, '');
+    return ((state.cfg && state.cfg.pinned) || []).find((entry) => entry.id === id) || null;
+  }
+
+  function syncDividers() {
+    dividerRunning.hidden = !(zoneRunning.children.length > 0);
+    // 应用中心入口后的分隔线仅在固定区有图标时渲染, 避免固定区为空时两条分割线并排
+    const appCenterShown = !!(state.cfg && state.cfg.showAppCenterButton !== false);
+    $('divider-entry').hidden = !appCenterShown || zonePinned.children.length === 0;
+  }
+
+  // ── 点击行为 ──
+  function activateIcon(ctx) {
+    if (ctx.kind === 'pinned') {
+      const entry = ctx.entry;
+      const running = isRunningEntry(entry);
+      if (!running) {
+        bounceEl(zonePinned.querySelector(`[data-key="pinned:${entry.id}"]`));
+        api.action('launch', { id: entry.id, type: entry.type, target: entry.target, args: entry.args, workdir: entry.workdir, aumid: entry.aumid })
+          .then((res) => { if (res && res.ok === false) { if (res.error === 'TARGET_MISSING') { showMenu(state.lastPointerX || 80, state.lastPointerY || 80, [{ label: '目标不存在，移除图标', action: () => api.action('remove-invalid', { id: entry.id }) }]); } else toast('启动失败'); } });
+        return;
+      }
+      toggleRunningForEntry(entry);
+      return;
+    }
+    // running
+    const app = ctx.app;
+    if (app.foreground) {
+      // 已在前台 → 最小化
+      api.action('minimize-window', { hwnd: pickHwnd(app) });
+    } else {
+      api.action('focus-window', { hwnd: pickHwnd(app) });
+    }
+  }
+
+  function pickHwnd(app) {
+    const wins = app.windows || [];
+    const fg = wins.find((w) => w.foreground);
+    if (fg) return fg.hwnd;
+    const normal = wins.find((w) => !w.minimized);
+    return (normal || wins[0] || {}).hwnd;
+  }
+
+  function toggleRunningForEntry(entry) {
+    let running = null;
+    if (entry.type === 'uwp' && entry.aumid) {
+      const family = entry.aumid.split('!')[0].toLowerCase();
+      running = state.running.find((app) => app.key === `uwp:${family}`);
+    } else if (entry.target) {
+      running = state.running.find((app) => app.key === `exe:${String(entry.target).toLowerCase()}`);
+    }
+    if (!running) {
+      api.action('launch', { id: entry.id, type: entry.type, target: entry.target, args: entry.args, workdir: entry.workdir, aumid: entry.aumid });
+      return;
+    }
+    if (running.foreground) api.action('minimize-window', { hwnd: pickHwnd(running) });
+    else api.action('focus-window', { hwnd: pickHwnd(running) });
+  }
+
+  function bounceEl(el) {
+    if (!el) return;
+    el.classList.remove('bouncing');
+    void el.offsetWidth;
+    el.classList.add('bouncing');
+    setTimeout(() => el.classList.remove('bouncing'), 1300);
+  }
+
+  // ── 图标事件 (点击/右键/拖拽排序与移除) ──
+  function bindIconEvents(el, ctx) {
+    el.addEventListener('click', () => { if (!state.dragging) activateIcon(ctx); });
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showIconMenu(e.clientX, e.clientY, ctx);
+    });
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      startIconDrag(e, el, ctx);
+    });
+  }
+
+  function startIconDrag(e, el, ctx) {
+    if (ctx.kind !== 'pinned' && ctx.kind !== 'running') return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    let ghost = null;
+    const rect = el.getBoundingClientRect();
+    const onMove = (ev) => {
+      if (!dragging && Math.hypot(ev.clientX - startX, ev.clientY - startY) > 6) {
+        dragging = true;
+        state.dragging = true;
+        document.body.classList.add('dragging-strip');
+        ghost = el.cloneNode(true);
+        ghost.style.cssText = `position:fixed;z-index:80;width:${rect.width}px;height:${rect.height}px;left:${rect.left}px;top:${rect.top}px;pointer-events:none;opacity:.85;margin:0;`;
+        document.body.appendChild(ghost);
+        el.classList.add('removing');
+      }
+      if (!dragging) return;
+      ghost.style.left = `${ev.clientX - rect.width / 2}px`;
+      ghost.style.top = `${ev.clientY - rect.height / 2}px`;
+      const target = dropTargetIndex(ev.clientX, ev.clientY, el);
+      highlightDropTarget(target, el);
+    };
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (!dragging) return;
+      state.dragging = false;
+      document.body.classList.remove('dragging-strip');
+      if (ghost) ghost.remove();
+      el.classList.remove('removing');
+      const overStrip = isPointInStrip(ev.clientX, ev.clientY);
+      if (!overStrip && farFromStrip(ev.clientX, ev.clientY)) {
+        // 拖出移除
+        if (ctx.kind === 'pinned') api.action('unpin-app', { id: ctx.entry.id });
+        else if (ctx.kind === 'running') return; // 运行中的应用不因拖出而退出
+        toast('已从 Dock 栏移除');
+      } else {
+        const idx = dropTargetIndex(ev.clientX, ev.clientY, el);
+        if (ctx.kind === 'pinned') {
+          reorderPinned(ctx.entry.id, idx);
+        } else if (ctx.kind === 'running') {
+          reorderRunning(ctx.app && ctx.app.key, idx);
+        }
+        renderPinned();
+        renderRunning();
+      }
+      clearDropHighlight();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  function isPointInStrip(x, y) {
+    const r = strip.getBoundingClientRect();
+    const pad = 24;
+    return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
+  }
+
+  function farFromStrip(x, y) {
+    const r = strip.getBoundingClientRect();
+    return x < r.left - 90 || x > r.right + 90 || y < r.top - 90 || y > r.bottom + 90;
+  }
+
+  function pinnedIconEls() { return Array.from(zonePinned.querySelectorAll('.dock-icon')); }
+
+  function dropTargetIndex(x, y, sourceEl) {
+    const container = sourceEl && sourceEl.closest('.dock-zone') ? sourceEl.closest('.dock-zone') : zonePinned;
+    const els = Array.from(container.querySelectorAll('.dock-icon'));
+    let best = els.length;
+    for (let i = 0; i < els.length; i++) {
+      const r = els[i].getBoundingClientRect();
+      const cx = (r.left + r.right) / 2;
+      const cy = (r.top + r.bottom) / 2;
+      const before = isVertical() ? y < cy : x < cx;
+      if (before) { best = i; break; }
+    }
+    return best;
+  }
+
+  let lastHighlight = null;
+  function highlightDropTarget(index, sourceEl) {
+    clearDropHighlight();
+    const container = sourceEl && sourceEl.closest('.dock-zone') ? sourceEl.closest('.dock-zone') : zonePinned;
+    const els = Array.from(container.querySelectorAll('.dock-icon'));
+    if (index < els.length) {
+      els[index].style.outline = '2px solid rgba(0, 212, 200, 0.7)';
+      lastHighlight = els[index];
+    }
+  }
+  function clearDropHighlight() {
+    if (lastHighlight) { lastHighlight.style.outline = ''; lastHighlight = null; }
+  }
+
+  function reorderPinned(draggedId, targetIndex) {
+    const pinned = (state.cfg && state.cfg.pinned) || [];
+    const from = pinned.findIndex((entry) => entry.id === draggedId);
+    if (from < 0) return;
+    const item = pinned.splice(from, 1)[0];
+    const to = Math.max(0, Math.min(pinned.length, targetIndex > from ? targetIndex - 1 : targetIndex));
+    pinned.splice(to, 0, item);
+    state.cfg.pinned = pinned;
+    api.action('reorder-pinned', { ids: pinned.map((entry) => entry.id) });
+  }
+
+  // 运行区排序: 本次会话内的视觉顺序 (未固定的运行应用), 不写入固定配置
+  function runningUnpinnedApps() {
+    const pinned = (state.cfg && state.cfg.pinned) || [];
+    return state.running.filter((app) => {
+      if (app.key.startsWith('uwp:')) {
+        return !pinned.some((entry) => entry.type === 'uwp'
+          && String(entry.aumid || '').split('!')[0].toLowerCase() === app.key.slice(4));
+      }
+      return !pinned.some((entry) => entry.type !== 'uwp'
+        && String(entry.target || '').toLowerCase() === String(app.exePath || '').toLowerCase());
+    });
+  }
+
+  function reorderRunning(appKey, targetIndex) {
+    if (!appKey) return;
+    const apps = runningUnpinnedApps();
+    const from = apps.findIndex((app) => app.key === appKey);
+    if (from < 0) return;
+    const item = apps.splice(from, 1)[0];
+    const to = Math.max(0, Math.min(apps.length, targetIndex > from ? targetIndex - 1 : targetIndex));
+    apps.splice(to, 0, item);
+    const rest = state.running.filter((app) => !apps.some((a) => a.key === app.key));
+    state.running = apps.concat(rest);
+  }
+
+  // ── 拖动 Dock 本体 (未锁定时) ──
+  strip.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('.dock-icon')) return;
+    if (!state.cfg || state.cfg.locked) return;
+    startStripDrag(e);
+  });
+
+  function startStripDrag(e) {
+    state.dragging = true;
+    strip.classList.remove('animating');
+    if (stripSizeTimer) { clearTimeout(stripSizeTimer); stripSizeTimer = 0; }
+    strip.classList.add('dragging');
+    document.body.classList.add('dragging-strip');
+    let layout = null;
+    const onMove = (ev) => {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const distances = [
+        { edge: 'bottom', d: H - ev.clientY },
+        { edge: 'top', d: ev.clientY },
+        { edge: 'left', d: ev.clientX },
+        { edge: 'right', d: W - ev.clientX },
+      ].sort((a, b) => a.d - b.d);
+      const edge = distances[0].edge;
+      const margin = Math.max(0, Math.min(80, Math.round(distances[0].d - (edge === 'left' || edge === 'right' ? strip.offsetWidth : strip.offsetHeight) / 2)));
+      const vertical = edge === 'left' || edge === 'right';
+      const span = vertical ? H : W;
+      const size = vertical ? strip.offsetHeight : strip.offsetWidth;
+      const along = vertical ? ev.clientY : ev.clientX;
+      const ratio = Math.max(0, Math.min(1, (along - size / 2) / Math.max(1, span - size)));
+      layout = { edge, ratio, margin };
+      if (state.cfg.edge !== edge) {
+        state.cfg.edge = edge;
+        applyEdgeClass();
+      }
+      state.cfg.ratio = ratio;
+      state.cfg.margin = margin;
+      positionStrip();
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      state.dragging = false;
+      strip.classList.remove('dragging');
+      document.body.classList.remove('dragging-strip');
+      if (layout) api.commitLayout(layout);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  // ── 悬停效果 (弹簧插值 + 上浮, 纯 transform, 不改布局; 放大/摆动/弹跳/关闭 四种) ──
+  const MAGNIFY = { sigmaFactor: 0.95, riseFactor: 0.13, lerp: 0.28, swingAmpDeg: 8, swingHz: 2.1 };
+  let magnifyMouse = null; // 相对 dock 主轴的指针坐标
+  let hoverModeApplied = '';
+  const bouncingTimers = new Map();
+
+  function hoverEffectMode() {
+    const v = state.cfg && state.cfg.hoverEffect;
+    return ['magnify', 'swing', 'bounce', 'none'].indexOf(v) >= 0 ? v : 'magnify';
+  }
+
+  function hoverEffectActive() {
+    const mode = hoverEffectMode();
+    if (mode === 'none') return false;
+    if (mode === 'magnify' && state.cfg && state.cfg.magnify && state.cfg.magnify.enabled === false) return false;
+    return true;
+  }
+
+  function resetHoverTiles() {
+    document.querySelectorAll('#dock-strip .dock-tile').forEach((tile) => { tile.style.transform = ''; });
+  }
+
+  function measureMagnify() {
+    const base = strip.getBoundingClientRect();
+    const vertical = isVertical();
+    document.querySelectorAll('#dock-strip .dock-icon').forEach((el) => {
+      const r = el.getBoundingClientRect();
+      el._magnifyCenter = vertical
+        ? (r.top + r.bottom) / 2 - base.top
+        : (r.left + r.right) / 2 - base.left;
+    });
+  }
+
+  function refreshMagnifyTargets() {
+    if (magnifyMouse !== null || state.magnifyRaf) {
+      measureMagnify();
+      magnifyKick();
+    }
+  }
+
+  function magnifyKick() {
+    if (!state.magnifyRaf) state.magnifyRaf = requestAnimationFrame(magnifyFrame);
+  }
+
+  function triggerBounce(el) {
+    if (!el || el.classList.contains('bouncing')) return;
+    el.classList.add('bouncing');
+    const prev = bouncingTimers.get(el);
+    if (prev) clearTimeout(prev);
+    bouncingTimers.set(el, setTimeout(() => {
+      el.classList.remove('bouncing');
+      bouncingTimers.delete(el);
+    }, 1300));
+  }
+
+  function magnifyFrame() {
+    const vertical = isVertical();
+    const edge = (state.cfg && state.cfg.edge) || 'bottom';
+    const base = iconSizePx();
+    const max = (state.cfg && state.cfg.magnify) ? Math.max(1, Number(state.cfg.magnify.max) || 1.6) : 1.6;
+    const gain = max - 1;
+    const sigma = base * MAGNIFY.sigmaFactor;
+    const rise = base * MAGNIFY.riseFactor;
+    const mode = hoverEffectMode();
+    if (mode !== hoverModeApplied) {
+      hoverModeApplied = mode;
+      resetHoverTiles();
+      document.querySelectorAll('#dock-strip .dock-icon').forEach((el) => { el._magnifyCur = 1; });
+    }
+    let alive = false;
+    let nearestEl = null;
+    let nearestDist = Infinity;
+    document.querySelectorAll('#dock-strip .dock-icon').forEach((el) => {
+      if (el._magnifyCenter === undefined || magnifyMouse === null) return;
+      const d = Math.abs(magnifyMouse - el._magnifyCenter);
+      if (d < nearestDist) { nearestDist = d; nearestEl = el; }
+    });
+    document.querySelectorAll('#dock-strip .dock-icon').forEach((el) => {
+      const tile = el.querySelector('.dock-tile');
+      if (!tile) return;
+      const d = (magnifyMouse !== null && el._magnifyCenter !== undefined)
+        ? Math.abs(magnifyMouse - el._magnifyCenter)
+        : Infinity;
+      const proximity = (magnifyMouse !== null) ? Math.exp(-(d * d) / (2 * sigma * sigma)) : 0;
+      if (mode === 'bounce') {
+        // 弹跳模式: 不做形变, 光标掠过的最近图标原地弹跳 (复用启动 bounce 动画)
+        if (nearestEl && el === nearestEl && nearestDist <= base * 1.2) triggerBounce(el);
+        return;
+      }
+      if (mode === 'swing') {
+        // 摆动模式: 以邻近度加权做钟摆式摆动, 不缩放
+        const now = performance.now() / 1000;
+        const deg = Math.sin(now * Math.PI * 2 * MAGNIFY.swingHz + el._magnifyCenter * 0.05)
+          * MAGNIFY.swingAmpDeg * proximity;
+        tile.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+        alive = true;
+        return;
+      }
+      // magnify 模式: 弹簧插值缩放 + 上浮
+      let target = 1;
+      if (magnifyMouse !== null && gain > 0 && el._magnifyCenter !== undefined) {
+        target = 1 + gain * proximity;
+      }
+      let cur = typeof el._magnifyCur === 'number' ? el._magnifyCur : 1;
+      cur += (target - cur) * MAGNIFY.lerp;
+      if (Math.abs(target - cur) < 0.0015) cur = target;
+      else alive = true;
+      el._magnifyCur = cur;
+      const t = gain > 0 ? (cur - 1) / gain : 0;
+      const offset = edge === 'bottom' ? -rise * t : (edge === 'top' ? rise * t : (edge === 'left' ? rise * t : -rise * t));
+      const shift = vertical
+        ? `translateX(${offset.toFixed(2)}px)`
+        : `translateY(${offset.toFixed(2)}px)`;
+      tile.style.transform = `${shift} scale(${cur.toFixed(4)})`;
+    });
+    if (alive || magnifyMouse !== null) {
+      state.magnifyRaf = requestAnimationFrame(magnifyFrame);
+    } else {
+      state.magnifyRaf = 0;
+    }
+  }
+
+  strip.addEventListener('pointerenter', () => {
+    strip.classList.add('hot');
+    if (!hoverEffectActive()) return;
+    measureMagnify();
+    magnifyKick();
+  });
+  strip.addEventListener('pointermove', (e) => {
+    if (!hoverEffectActive()) return;
+    const base = strip.getBoundingClientRect();
+    magnifyMouse = isVertical() ? e.clientY - base.top : e.clientX - base.left;
+    magnifyKick();
+  });
+  strip.addEventListener('pointerleave', () => {
+    strip.classList.remove('hot');
+    magnifyMouse = null;
+    if (hoverEffectActive()) magnifyKick();
+  });
+
+  // ── 点击水波纹 (可在设置中关闭) ──
+  function spawnRipple(x, y) {
+    if (!state.cfg || state.cfg.clickRipple === false) return;
+    const el = document.createElement('div');
+    el.className = 'dock-ripple';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    document.body.appendChild(el);
+    el.addEventListener('animationend', () => el.remove());
+    setTimeout(() => el.remove(), 1500);
+  }
+  strip.addEventListener('pointerdown', (e) => spawnRipple(e.clientX, e.clientY));
+
+  window.addEventListener('pointermove', (e) => {
+    state.lastPointerX = e.clientX;
+    state.lastPointerY = e.clientY;
+    handleRevealHover(e.clientX, e.clientY);
+    pushHotRects();
+  }, { passive: true });
+
+  // ── 自动隐藏 ──
+  function handleRevealHover(x, y) {
+    if (!state.hidden || !state.cfg || !state.cfg.autoHide || state.appCenterOpen) return;
+    if (state.fullscreen && state.cfg.fullscreenHide !== false) return;
+    const base = strip.__basePos;
+    if (!base) return;
+    const edge = state.cfg.edge;
+    let inside = false;
+    // 唤出区 12px: 原值 4px 紧贴工作区边缘(其下就是任务栏), 人手几乎无法命中, Dock 收起后唤不出来
+    if (edge === 'bottom') inside = y >= window.innerHeight - 12 && x >= base.x - 28 && x <= base.x + base.sw + 28;
+    else if (edge === 'top') inside = y <= 12 && x >= base.x - 28 && x <= base.x + base.sw + 28;
+    else if (edge === 'left') inside = x <= 12 && y >= base.y - 28 && y <= base.y + base.sh + 28;
+    else inside = x >= window.innerWidth - 12 && y >= base.y - 28 && y <= base.y + base.sh + 28;
+    if (inside) setHidden(false);
+  }
+
+  function scheduleAutoHide() {
+    if (!state.cfg || !state.cfg.autoHide || state.appCenterOpen || state.dragging) return;
+    if (state.hideTimer) clearTimeout(state.hideTimer);
+    state.hideTimer = setTimeout(() => {
+      state.hideTimer = 0;
+      const r = strip.getBoundingClientRect();
+      // 容差含 margin+14: 光标在条与屏幕边缘的间隙里时不算离开, 否则正要移入就又被收起
+      const pad = (Number(state.cfg.margin) || 0) + 14;
+      const over = state.lastPointerX >= r.left - pad && state.lastPointerX <= r.right + pad
+        && state.lastPointerY >= r.top - pad && state.lastPointerY <= r.bottom + pad;
+      if (!over && !state.appCenterOpen && !ctxMenuOpen()) setHidden(true);
+    }, 320);
+  }
+
+  function ctxMenuOpen() { return !ctxMenu.hidden; }
+
+  strip.addEventListener('pointerleave', () => { scheduleAutoHide(); });
+  document.addEventListener('mouseleave', () => { scheduleAutoHide(); });
+  window.addEventListener('blur', () => { scheduleAutoHide(); hideCtxMenu(); });
+
+  // ── 右键菜单 ──
+  function buildMenuItem(spec) {
+    if (spec.divider) {
+      const div = document.createElement('div');
+      div.className = 'divider';
+      return div;
+    }
+    if (spec.label && spec.header) {
+      const head = document.createElement('div');
+      head.className = 'group-label';
+      head.textContent = spec.label;
+      return head;
+    }
+    const item = document.createElement('div');
+    item.className = 'mi' + (spec.disabled ? ' disabled' : '');
+    const label = document.createElement('span');
+    if (spec.windowTitle) { label.className = 'win-title'; label.textContent = spec.label; label.title = spec.label; }
+    else label.textContent = spec.label;
+    item.appendChild(label);
+    if (spec.check) {
+      const check = document.createElement('span');
+      check.className = 'check';
+      check.textContent = '✓';
+      item.appendChild(check);
+    }
+    if (spec.tag) {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = spec.tag;
+      item.appendChild(tag);
+    }
+    if (!spec.disabled && spec.action) {
+      item.addEventListener('click', () => {
+        hideCtxMenu();
+        spec.action();
+      });
+    }
+    return item;
+  }
+
+  function showMenu(x, y, specs) {
+    state.lastPointerX = x;
+    state.lastPointerY = y;
+    ctxMenu.textContent = '';
+    specs.forEach((spec) => ctxMenu.appendChild(buildMenuItem(spec)));
+    ctxMenu.hidden = false;
+    const mw = ctxMenu.offsetWidth;
+    const mh = ctxMenu.offsetHeight;
+    ctxMenu.style.left = `${Math.min(x, window.innerWidth - mw - 8)}px`;
+    ctxMenu.style.top = `${Math.min(y, window.innerHeight - mh - 8)}px`;
+    pushHotRects();
+  }
+
+  function hideCtxMenu() {
+    if (ctxMenu.hidden) return;
+    ctxMenu.hidden = true;
+    pushHotRects();
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!ctxMenu.hidden && !ctxMenu.contains(e.target)) hideCtxMenu();
+  }, true);
+
+  // ── 输入弹窗 (Electron 不支持 window.prompt; 弹窗期间经 set-app-center-open 机制临时取得键盘焦点) ──
+  let ddOkHandler = null;
+  function showDockDialog(title, value, onOk) {
+    ddTitle.textContent = title;
+    ddInput.value = value || '';
+    ddOkHandler = typeof onOk === 'function' ? onOk : null;
+    ddDialog.classList.add('open');
+    api.action('set-app-center-open', { open: true });
+    setTimeout(() => { try { ddInput.focus(); ddInput.select(); } catch (_) {} }, 80);
+    pushHotRects();
+  }
+  function closeDockDialog() {
+    if (!ddDialog.classList.contains('open')) return;
+    ddDialog.classList.remove('open');
+    ddOkHandler = null;
+    ddInput.blur();
+    api.action('set-app-center-open', { open: false });
+    pushHotRects();
+  }
+  function confirmDockDialog() {
+    const handler = ddOkHandler;
+    const value = ddInput.value.trim();
+    closeDockDialog();
+    if (handler && value) handler(value);
+  }
+  ddOk.addEventListener('click', confirmDockDialog);
+  ddCancel.addEventListener('click', closeDockDialog);
+  ddDialog.addEventListener('pointerdown', (e) => { if (e.target === ddDialog) closeDockDialog(); });
+  ddInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmDockDialog(); }
+  });
+
+  function showIconMenu(x, y, ctx) {
+    const isPinned = ctx.kind === 'pinned';
+    const entry = isPinned ? ctx.entry : null;
+    const app = ctx.kind === 'running' ? ctx.app : runningAppOfEntry(entry);
+    const specs = [];
+    if (isPinned) {
+      specs.push({ label: '从 Dock 栏取消固定', action: () => api.action('unpin-app', { id: entry.id }) });
+    } else {
+      specs.push({ label: '固定在 Dock 栏中', action: () => pinRunningApp(ctx.app) });
+    }
+    specs.push({ divider: true });
+    specs.push({ label: '打开', action: () => activateIcon(ctx.kind === 'pinned' ? { kind: 'pinned', entry } : { kind: 'running', app }) });
+    if (app) {
+      (app.windows || []).forEach((win) => {
+        specs.push({
+          label: `切换：${win.title}`,
+          windowTitle: true,
+          action: () => api.action('focus-window', { hwnd: win.hwnd }),
+        });
+      });
+      if ((app.windows || []).length) {
+        (app.windows || []).forEach((win) => specs.push({ label: `关闭窗口：${win.title}`, action: () => api.action('close-single-window', { hwnd: win.hwnd }) }));
+        specs.push({ label: app.foreground ? '最小化窗口' : '全部最小化', action: () => api.action('minimize-window', { hwnd: pickHwnd(app) }) });
+        specs.push({ label: '退出应用', action: () => api.action('close-window', { id: app.key }) });
+      }
+      specs.push({ divider: true });
+      specs.push({ label: '打开文件位置', action: () => openLocationFor(ctx) });
+      specs.push({ label: '以管理员身份运行', action: () => { api.action('launch-admin', { id: entry ? entry.id : undefined, target: app.exePath, args: '' }); } });
+    } else if (entry) {
+      specs.push({ label: '修改显示名称', action: () => showDockDialog('修改显示名称', entry.displayName || entry.name, (name) => api.action('set-pinned-name', { id: entry.id, name })) });
+      specs.push({ label: '更换图标', action: () => api.action('pick-icon').then((picked) => {
+        if (!picked || !picked.ok || picked.canceled || !picked.path) return null;
+        return api.action('set-pinned-icon', { id: entry.id, path: picked.path });
+      }).then((res) => { if (res && res.ok === false && res.error === 'ICON_MISSING') toast('图标文件不存在'); }) });
+      specs.push({ label: entry.launchAtLogin ? '取消开机自启此应用' : '开机自启此应用', action: () => api.action('set-app-autostart', { id: entry.id, value: !entry.launchAtLogin }) });
+      specs.push({ label: '查看属性', action: () => api.action('show-properties', { id: entry.id }) });
+      specs.push({ label: '打开文件位置', action: () => api.action('open-location', { id: entry.id }) });
+      specs.push({ label: '以管理员身份运行', action: () => api.action('launch-admin', { id: entry.id }) });
+    }
+    showMenu(x, y, specs);
+  }
+
+  function runningAppOfEntry(entry) {
+    if (!entry) return null;
+    if (entry.type === 'uwp' && entry.aumid) {
+      const family = entry.aumid.split('!')[0].toLowerCase();
+      return state.running.find((app) => app.key === `uwp:${family}`) || null;
+    }
+    if (entry.target) {
+      return state.running.find((app) => app.key === `exe:${String(entry.target).toLowerCase()}`) || null;
+    }
+    return null;
+  }
+
+  function openLocationFor(ctx) {
+    const entry = ctx.kind === 'pinned' ? ctx.entry : null;
+    if (entry) { api.action('open-location', { id: entry.id }); return; }
+    if (ctx.app && ctx.app.exePath) {
+      api.action('open-location', { target: ctx.app.exePath });
+    }
+  }
+
+  function pinRunningApp(app) {
+    api.action('pin-app', {
+      entry: {
+        id: app.key,
+        type: app.key.startsWith('uwp:') ? 'uwp' : 'lnk',
+        target: app.exePath || '',
+        args: '',
+        aumid: (app.windows[0] && app.windows[0].aumid) || app.aumid || '',
+        name: app.name,
+        iconKey: app.iconKey,
+      },
+    }).then((res) => {
+      if (res && res.ok) toast(res.added === false ? '已在 Dock 栏中' : '已固定到 Dock 栏');
+    });
+  }
+
+  function showBlankMenu(x, y) {
+    const cfg = state.cfg;
+    const specs = [];
+    specs.push({ label: 'Dock 栏设置', action: () => api.action('open-settings-card', {}) });
+    specs.push({ divider: true });
+    specs.push({ label: cfg.locked ? '解锁 Dock 位置' : '固定 Dock 位置', check: cfg.locked, action: () => api.action('update-settings', { locked: !cfg.locked }) });
+    specs.push({ header: true, label: '屏幕位置' });
+    [['bottom', '底部'], ['top', '顶部'], ['left', '左侧'], ['right', '右侧']].forEach(([value, label]) => {
+      specs.push({ label, check: cfg.edge === value, action: () => api.action('update-settings', { edge: value }) });
+    });
+    specs.push({ label: '自动隐藏', check: cfg.autoHide, action: () => api.action('update-settings', { autoHide: !cfg.autoHide }) });
+    specs.push({ divider: true });
+    specs.push({ header: true, label: '主题' });
+    [['macos-light', 'macOS 浅色'], ['macos-dark', 'macOS 深色'], ['glass', '毛玻璃'], ['clear', '全透明'], ['solid', '纯色']].forEach(([value, label]) => {
+      specs.push({ label, check: cfg.theme === value, action: () => api.action('update-settings', { theme: value }) });
+    });
+    specs.push({ divider: true });
+    specs.push({ label: '添加小部件', disabled: true, tag: '二期' });
+    specs.push({ label: '隐藏 Dock 栏', action: () => api.action('set-enabled', { enabled: false }) });
+    showMenu(x, y, specs);
+  }
+
+  // ── 应用中心 ──
+  function toggleAppCenter(open) {
+    if (open === state.appCenterOpen) return;
+    state.appCenterOpen = open;
+    appCenter.classList.toggle('open', open);
+    if (open) {
+      setHidden(false);
+      renderAppCenter();
+      api.action('set-app-center-open', { open: true });
+      setTimeout(() => { try { acSearch.focus(); } catch (_) {} }, 80);
+    } else {
+      acSearch.value = '';
+      state.searchQuery = '';
+      api.action('set-app-center-open', { open: false });
+    }
+    setTimeout(positionStrip, 60);
+    pushHotRects();
+  }
+
+  function visibleApps() {
+    const q = state.searchQuery.trim().toLowerCase();
+    return state.apps.filter((entry) => {
+      if (!q) return true;
+      if (entry.name && entry.name.toLowerCase().includes(q)) return true;
+      if ((entry.pinyinFull || '').includes(q)) return true;
+      if ((entry.pinyinInitials || '').includes(q)) return true;
+      return (entry.aliases || []).some((alias) => String(alias).toLowerCase().includes(q));
+    });
+  }
+
+  function renderAppCenter() {
+    const list = visibleApps();
+    acEmpty.hidden = list.length > 0;
+    acCount.textContent = `${list.length} 个应用`;
+    acGrid.textContent = '';
+    state.renderedCount = 0;
+    appendAppCenterChunk(list);
+    acScroll.onscroll = () => {
+      if (acScroll.scrollTop + acScroll.clientHeight >= acScroll.scrollHeight - 160) {
+        appendAppCenterChunk(list);
+      }
+    };
+    const hiddenCount = state.hiddenAppCount || 0;
+    acHiddenNote.hidden = hiddenCount === 0;
+    acRestoreBtn.hidden = hiddenCount === 0;
+    acHiddenNote.textContent = `已隐藏 ${hiddenCount} 个应用`;
+  }
+
+  const AC_CHUNK = 80;
+  function appendAppCenterChunk(list) {
+    const start = state.renderedCount;
+    if (start >= list.length) return;
+    const end = Math.min(list.length, start + AC_CHUNK);
+    for (let i = start; i < end; i++) {
+      const entry = list[i];
+      const item = document.createElement('div');
+      item.className = 'ac-item';
+      item.dataset.id = entry.id;
+      if (entry.iconKey) item.dataset.iconKey = entry.iconKey;
+      const thumb = document.createElement('div');
+      thumb.className = 'thumb';
+      const img = document.createElement('img');
+      img.alt = entry.name;
+      img.draggable = false;
+      thumb.appendChild(img);
+      item.appendChild(thumb);
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = entry.name;
+      item.appendChild(name);
+      if (NOW - (entry.firstSeenAt || 0) <= IS_NEW_MS) {
+        const badge = document.createElement('div');
+        badge.className = 'badge-new';
+        badge.textContent = '新';
+        item.appendChild(badge);
+      }
+      requestIcon(entry.iconKey, img, entry.name);
+      item.addEventListener('click', () => {
+        // Launchpad 行为: 从应用中心启动后自动收起 (失败也收起, toast 提示仍可见)
+        toggleAppCenter(false);
+        api.action('launch', { id: entry.id, type: entry.type, target: entry.target, args: entry.args, workdir: entry.workdir, aumid: entry.aumid })
+          .then((res) => {
+            if (res && res.ok === false && res.error === 'TARGET_MISSING') toast('目标不存在，快捷方式已失效');
+          });
+      });
+      item.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showAppCenterMenu(e.clientX, e.clientY, entry);
+      });
+      item.addEventListener('pointerdown', (e) => {
+        if (e.button === 0) startAppCenterDrag(e, item, entry);
+      });
+      acGrid.appendChild(item);
+    }
+    state.renderedCount = end;
+  }
+
+  function showAppCenterMenu(x, y, entry) {
+    const specs = [
+      { label: '固定在 Dock 栏中', action: () => api.action('pin-app', { id: entry.id }).then((res) => { if (res && res.ok) toast(res.added === false ? '已在 Dock 栏中' : '已固定到 Dock 栏'); }) },
+      { divider: true },
+      { label: '打开', action: () => { toggleAppCenter(false); api.action('launch', { id: entry.id }); } },
+      { label: '以管理员身份运行', action: () => api.action('launch-admin', { id: entry.id }) },
+      { label: '打开文件位置', action: () => api.action('open-location', { id: entry.id }) },
+      { label: '卸载应用', action: () => api.action('uninstall-entry', { id: entry.id }) },
+      { divider: true },
+      { label: '从应用中心隐藏', action: () => api.action('hide-app', { id: entry.id }).then(renderAppCenter) },
+    ];
+    showMenu(x, y, specs);
+  }
+
+  function startAppCenterDrag(e, item, entry) {
+    const rect = item.getBoundingClientRect();
+    const ghost = item.cloneNode(true);
+    ghost.style.cssText = `position:fixed;z-index:80;width:${rect.width}px;height:${rect.height}px;left:${rect.left}px;top:${rect.top}px;pointer-events:none;opacity:.85;`;
+    let dragging = false;
+    const onMove = (ev) => {
+      if (!dragging && Math.hypot(ev.clientX - e.clientX, ev.clientY - e.clientY) > 8) {
+        dragging = true;
+        document.body.appendChild(ghost);
+      }
+      if (!dragging) return;
+      ghost.style.left = `${ev.clientX - rect.width / 2}px`;
+      ghost.style.top = `${ev.clientY - rect.height / 2}px`;
+    };
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (!dragging) return;
+      ghost.remove();
+      if (isPointInStrip(ev.clientX, ev.clientY)) {
+        api.action('pin-app', {
+          entry: {
+            id: entry.id,
+            type: entry.type,
+            target: entry.target || '',
+            args: entry.args || '',
+            aumid: entry.aumid || '',
+            name: entry.name,
+            iconKey: entry.iconKey,
+          },
+        }).then((res) => { if (res && res.ok) toast(res.added === false ? '已在 Dock 栏中' : '已固定到 Dock 栏'); });
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }
+
+  acSearch.addEventListener('input', () => {
+    state.searchQuery = acSearch.value;
+    renderAppCenter();
+  });
+  acSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const list = visibleApps();
+      if (list.length) {
+        api.action('launch', { id: list[0].id });
+        toggleAppCenter(false);
+      }
+    }
+  });
+  acRestoreBtn.addEventListener('click', () => {
+    api.action('restore-hidden-apps', {}).then(renderAppCenter);
+  });
+  appCenter.addEventListener('pointerdown', (e) => {
+    if (e.target === appCenter) toggleAppCenter(false);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (ddDialog.classList.contains('open')) closeDockDialog();
+      else if (state.appCenterOpen) toggleAppCenter(false);
+      else hideCtxMenu();
+    }
+  });
+
+  // ── 主进程事件 ──
+  api.onEvent((event) => {
+    const type = event && event.type;
+    if (type === 'init') {
+      applyState(event.config, { apps: event.apps, hiddenCount: event.hiddenCount }, event.running);
+      positionStrip();
+    } else if (type === 'config') {
+      applyState(event.config, null, null);
+    } else if (type === 'apps') {
+      state.iconFailed.clear();
+      applyState(null, { apps: event.apps, hiddenCount: event.hiddenCount }, null);
+      renderPinned();
+      renderRunning();
+      if (state.appCenterOpen) renderAppCenter();
+    } else if (type === 'running') {
+      state.running = Array.isArray(event.apps) ? event.apps : [];
+      renderRunning();
+      renderPinned();
+    } else if (type === 'fullscreen') {
+      state.fullscreen = event.fullscreen === true;
+      if (state.fullscreen && state.cfg && state.cfg.fullscreenHide !== false && state.cfg.autoHide) setHidden(true);
+    } else if (type === 'icons-ready') {
+      const keys = Array.isArray(event.keys) ? event.keys : [];
+      keys.forEach((iconKey) => {
+        state.iconRequested.delete(iconKey);
+        state.iconFailed.delete(iconKey);
+        state.icons.delete(iconKey);
+        requestIcon(iconKey, null, '');
+      });
+    } else if (type === 'toggle-app-center') {
+      toggleAppCenter(!state.appCenterOpen);
+    } else if (type === 'display-changed') {
+      setTimeout(positionStrip, 60);
+    }
+  });
+
+  function applyState(configPayload, apps, running) {
+    if (configPayload && configPayload.settings) {
+      state.cfg = configPayload.settings;
+      applyThemeVars();
+      renderEntryZone();
+    }
+    if (apps && Array.isArray(apps.apps)) {
+      state.apps = apps.apps;
+      state.hiddenAppCount = Number(apps.hiddenCount) || 0;
+    } else if (Array.isArray(apps)) {
+      state.apps = apps;
+    }
+    if (running) state.running = running;
+    if (configPayload && configPayload.settings) {
+      renderPinned();
+      renderRunning();
+    }
+    if (running) renderRunning();
+    if (apps && state.appCenterOpen) renderAppCenter();
+    state.booted = true;
+  }
+
+  // ── 启动 ──
+  api.ready();
+  window.addEventListener('resize', () => {
+    if (stripSizeTimer) { clearTimeout(stripSizeTimer); stripSizeTimer = 0; strip.classList.remove('animating'); }
+    positionStrip();
+  });
+  setTimeout(positionStrip, 50);
+})();
+</script>
+</body>
+</html>

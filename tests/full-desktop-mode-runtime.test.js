@@ -623,6 +623,24 @@ test('desktop icon visibility failure rolls software state back to the acknowled
   assert.deepEqual(calls.iconVisibility, [true], 'watcher was not restored to the previous visibility');
 });
 
+test('startup restoration explicitly shows icons and clears software lock', async () => {
+  const win = new FakeBrowserWindow();
+  const { runtime, calls } = makeRuntime({
+    startDesktopIconWatcher: (_input, _count, watcher) => ({
+      ...watcher,
+      ready: Promise.resolve({ ...watcher.getLastLayout(), desktopIconsVisible: false, iconsVisible: false }),
+    }),
+  });
+  runtime.softwareInteractionLocked = true;
+  const result = await runtime.enable(win, { interactive: true, startupRestore: true });
+  assert.equal(result.ok, true);
+  assert.equal(result.status.interactive, true);
+  assert.equal(result.status.desktopIconsVisible, true);
+  assert.equal(runtime.softwareInteractionLocked, false);
+  assert.deepEqual(calls.iconVisibility, [true]);
+  await runtime.dispose();
+});
+
 test('desktop mode adopts an initially hidden Explorer icon state without forcing it visible', async () => {
   const win = new FakeBrowserWindow();
   let restoredInitialVisibility = null;

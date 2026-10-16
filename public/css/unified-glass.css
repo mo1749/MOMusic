@@ -1,0 +1,473 @@
+/* ================================================================
+   MOMusic 统一液态玻璃规范 (unified-glass.css)
+   ================================================================
+   规范来源：登录卡片液态玻璃 (login-console-style.css v6)。
+   全部页面、弹窗、容器卡片 1:1 复用同一材质，禁止再自定义背景/卡片样式；
+   新增页面默认引用本文件的 token，不另起炉灶。
+
+   材质分层（与登录卡片逐项对应）：
+     1. 底层     backdrop-filter: blur(12px) saturate(1.8) brightness(1.16)
+     2. 面板底色 白色高透明填充 rgba(255,255,255,.10)（90%+ 透明）
+     3. 边框     容器透明（靠内发光白边），控件描边白 .14，悬停 .3
+     4. 光影     内发光 inset 白 + 三层极淡外影（无镜面强反光）
+     5. 圆角     容器 22px / 子卡片 14px / 胶囊控件 999px / 输入框 10px
+     6. 控件     --ml-glass-* 白玻璃系，激活态走 --fc-accent-rgb
+
+   加载顺序：index.css -> listen-together-float-chat.css -> login-console-style.css
+             -> fx-console-glass.css -> custom-source-glass.css
+             -> listen-together-glass.css -> 本文件（必须最后）
+
+   优先级纪律：index.css 存在大量 `html.control-glass-svg-ok #id` 与
+   `#id .child` 形态的 !important 硬编码规则（曾把 FX 控制台/歌单面板钉成
+   90% 黑）。本文件所有规则一律加 `html:root` 前缀取到同等或更高优先级，
+   并依赖本文件最后加载的顺序获胜——新增覆盖时必须保持这一前缀。
+
+   SVG 液态扭曲摘除：登录卡片为纯磨砂档，此处把 *-svg-filter 两个 token
+   重定向到普通 filter，index.css 中所有 html.control-glass-svg-ok 分支
+   无需逐条修改即整体退化为普通磨砂（同时降低低配 GPU 负担）。
+
+   低配降级：所有模糊档位集中在 :root token，低配档只需调低
+   --saved-panel-glass-filter / --ml-glass-blur，不必改任何选择器。
+   ================================================================ */
+
+/* ---- 1. 全局 token：材质唯一来源 ---- */
+html:root {
+  /* SVG 扭曲 -> 普通磨砂（统一为登录卡片档） */
+  --saved-panel-glass-svg-filter: var(--saved-panel-glass-filter);
+  --saved-button-glass-svg-filter: var(--saved-button-glass-filter);
+
+  /* 容器圆角统一为登录卡片 22px（原 50px 仅搜索窗在用） */
+  --saved-panel-glass-radius: 22px;
+
+  /* 黑色高透明液态玻璃：底色 6% 黑（94%+ 透明），暗场景呈黑玻璃纱 */
+  --saved-panel-glass-bg: rgba(0, 0, 0, 0.06);
+  --saved-button-glass-bg: var(--ml-glass-bg);
+  --saved-button-glass-hover-bg: var(--ml-glass-hover-bg);
+
+  /* 去色偏：saturate(0) 完全去色。关键机制：面板自身的 filtered backdrop
+     是全部内部元素（卡片/控件）真实合成的底色——卡片是半透明白渐变直接
+     alpha 叠加，不经过任何滤镜；面板不过零，绿就一定透进卡片 */
+  --saved-panel-glass-filter: blur(12px) saturate(0) brightness(1.05);
+  --saved-button-glass-filter: blur(12px) saturate(0) brightness(1.05);
+
+  /* 登录卡片为参照物：容器底色钉在原 10% 黑，不随全局调整变动 */
+  --ml-glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
+  --ml-glass-hover-bg: rgba(255, 255, 255, 0.1);
+  --ml-glass-border: rgba(255, 255, 255, 0.14);
+  --ml-glass-hover-border: rgba(255, 255, 255, 0.3);
+  --ml-glass-active-bg: rgba(var(--fc-accent-rgb), 0.13);
+  --ml-glass-active-border: rgba(var(--fc-accent-rgb), 0.5);
+  --ml-glass-active-text: #fff;
+  --ml-glass-text: rgba(255, 255, 255, 0.88);
+  /* 控件模糊同样去色：带 backdrop-filter 的祖先（面板）会形成 backdrop 根，
+     控件自己的 backdrop 看不到面板已去色的结果，必须自己去色。
+     saturate(0) = 完全去色，纯绿透进来也只能是灰 */
+  --ml-glass-blur: blur(16px) saturate(0) brightness(1.05);
+  --ml-glass-rest-shadow: 0 8px 26px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --ml-glass-hover-shadow: 0 14px 40px rgba(0, 0, 0, 0.26), 0 0 20px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  /* 输入框 token（= 登录卡片 cookie 输入框材质） */
+  --ml-input-bg: rgba(0, 0, 0, 0.22);
+  --ml-input-border: rgba(255, 255, 255, 0.08);
+  --ml-input-text: rgba(255, 255, 255, 0.82);
+}
+
+/* ---- 2. 遮罩统一：与登录卡片一致，不加暗色纱 ----
+   透明背景仍接收点击（点外部关闭逻辑不受影响） */
+html:root .modal-mask,
+html:root body.immersive-mode .modal-mask,
+html:root #update-modal.modal-mask,
+html:root #wallpaper-engine-modal.modal-mask,
+html:root #home-platform-recommend-mask.modal-mask,
+html:root #listen-together-mask.modal-mask,
+html:root .audio-fx-overlay {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ---- 3. 弹窗容器统一（全部 modal-mask 内的 .modal + 音效弹窗） ----
+   ID 全枚举：压过 index.css 中 `#id .modal` 形态的专属材质规则。
+   登录卡片是参照物：其容器底色在此局部钉回原 10% 黑，不随全局 token 变动 */
+html:root #login-modal .modal.dual-login-modal.momusic-login-modal {
+  --saved-panel-glass-bg: rgba(0, 0, 0, 0.10);
+  --saved-panel-glass-filter: blur(12px) saturate(1.8) brightness(1.16);
+}
+html:root .modal,
+html:root #audio-output-workflow-modal .modal,
+html:root #user-modal .modal,
+html:root #cover-crop-modal .modal,
+html:root #background-crop-modal .modal,
+html:root #collect-modal .modal,
+html:root #local-beat-modal .modal,
+html:root #custom-lyric-modal .modal,
+html:root #track-detail-modal .modal,
+html:root #wallpaper-engine-modal .modal,
+html:root #update-modal .modal,
+html:root #listen-together-mask .modal,
+html:root #home-platform-recommend-mask .modal,
+html:root .home-platform-recommend-modal {
+  background: var(--saved-panel-glass-bg) !important;
+  border: 1px solid transparent !important;
+  border-radius: 22px !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+  /* will-change 含 filter 会提示常驻滤镜层，同样可能使 backdrop-filter 失效 */
+  will-change: opacity, transform;
+}
+
+/* 自定义音效弹窗：不用毛玻璃（明确去 backdrop-filter）。
+   半透明材质在无模糊时会直接透出背后内容，故改近实心深色底；
+   选择器带 ID，压过上一组 html:root .modal 的玻璃材质 */
+html:root #audio-fx-modal .audio-fx-dialog {
+  background: linear-gradient(160deg, rgba(17, 21, 28, 0.98), rgba(9, 12, 17, 0.98)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  will-change: opacity, transform;
+}
+
+/* ---- 4. 应用内主面板 ---- */
+/* 歌单/队列面板 + 搜索窗下拉 + 搜索模式 tabs：
+   压过 index.css 14626 回退块与 15104 钉黑组（含其 svg-ok 变体） */
+html:root #playlist-panel,
+html:root #search-results,
+html:root .search-mode-tabs,
+html:root #fx-panel {
+  background: var(--saved-panel-glass-bg) !important;
+  border-color: transparent !important;
+  border-radius: 22px !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+}
+
+/* 自定义音源面板：材质已在自身 glass 文件 token 化，对齐描边与圆角 */
+html:root .custom-source-panel,
+html:root #desktop-mode-control-panel {
+  background: var(--saved-panel-glass-bg) !important;
+  border: 1px solid transparent !important;
+  border-radius: 22px !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+  backdrop-filter: var(--saved-panel-glass-filter) !important;
+  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important;
+}
+
+/* 歌单面板 sticky 头部 / 工具条：深色渐变 -> 登录卡片内层白玻璃语言 */
+html:root #playlist-panel .playlist-panel-sticky {
+  background: var(--ml-glass-bg) !important;
+  border: 1px solid var(--ml-glass-border) !important;
+  border-top-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 21px 21px 14px 14px !important;
+  backdrop-filter: var(--ml-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ml-glass-blur) !important;
+  box-shadow: var(--ml-glass-rest-shadow) !important;
+}
+html:root #playlist-panel .queue-toolbar {
+  background: var(--ml-glass-bg) !important;
+  border: 1px solid var(--ml-glass-border) !important;
+  border-radius: 14px !important;
+  backdrop-filter: var(--ml-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ml-glass-blur) !important;
+  box-shadow: var(--ml-glass-rest-shadow) !important;
+}
+
+/* 歌单详情容器：原 accent 渐变洗底（强调色偏绿时整片发绿）-> 中性深色 */
+html:root #playlist-panel .pl-inline-detail {
+  background: linear-gradient(180deg, rgba(10, 13, 18, 0.60), rgba(6, 9, 14, 0.45)) !important;
+  border-color: var(--ml-glass-border) !important;
+}
+
+/* 浮层/卡片类容器圆角对齐（材质已走 token） */
+html:root .mini-queue-popover,
+html:root .home-hero,
+html:root .home-card,
+html:root .home-tile,
+html:root .home-mosaic-cell {
+  border-radius: 22px !important;
+}
+
+/* ---- 4b. Home 卡片去 accent 混色：强调色偏绿时卡片/磁贴整片发绿 ----
+   原 bg 用 color-mix(var(--home-accent) 12~13%) 调色，此处换中性深色玻璃；
+   home-sleeve/home-disc 是强调色装饰画，不在此列 */
+html:root .home-card,
+html:root .home-tile,
+html:root .home-mosaic-cell {
+  background: linear-gradient(142deg, rgba(14, 17, 22, 0.55), rgba(7, 9, 13, 0.68)) !important;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+}
+html:root .home-card::before {
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0.06), transparent 38%, rgba(255, 255, 255, 0.03) 74%, transparent),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 38px) !important;
+}
+html:root .home-card:hover,
+html:root .home-tile:hover {
+  border-color: var(--ml-glass-hover-border) !important;
+  box-shadow: var(--ml-glass-hover-shadow) !important;
+}
+html:root .home-hero {
+  border-color: rgba(255, 255, 255, 0.10) !important;
+  box-shadow: var(--saved-panel-glass-shadow) !important;
+}
+html:root .home-hero::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent) !important;
+}
+html:root .home-console-chip {
+  background: var(--ml-glass-bg) !important;
+  border-color: var(--ml-glass-border) !important;
+}
+html:root .home-chip:hover {
+  background: var(--ml-glass-hover-bg) !important;
+  border-color: var(--ml-glass-hover-border) !important;
+}
+
+/* ---- 5. 控件统一：登录卡片白玻璃语言 ---- */
+/* 通用弹窗按钮 -> 胶囊玻璃（与登录卡片 .modal-btn 同款） */
+html:root .modal-btn {
+  border: 1px solid var(--ml-glass-border) !important;
+  border-radius: 999px !important;
+  background: var(--ml-glass-bg) !important;
+  color: var(--ml-glass-text) !important;
+  backdrop-filter: var(--ml-glass-blur);
+  -webkit-backdrop-filter: var(--ml-glass-blur);
+  box-shadow: var(--ml-glass-rest-shadow) !important;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+html:root .modal-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--ml-glass-hover-border) !important;
+  background: var(--ml-glass-hover-bg) !important;
+  color: #fff !important;
+  box-shadow: var(--ml-glass-hover-shadow) !important;
+}
+html:root .modal-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 主按钮 -> 登录卡片亮白玻璃款 */
+html:root .modal-btn.primary {
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)) !important;
+  color: #fff !important;
+  text-shadow: 0 1px 2px rgba(10, 20, 30, 0.4);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24), 0 0 24px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+html:root .modal-btn.primary:hover {
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.09)) !important;
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.28), 0 0 30px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
+}
+html:root .modal-btn.primary:active {
+  transform: translateY(0) scale(0.97);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22), 0 0 16px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 文本输入：弹窗/面板内的文本框统一为登录卡片 cookie 输入材质
+   （排除 range/checkbox/radio/color，FX 滑块与开关不受影响） */
+html:root .modal input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html:root .modal select,
+html:root .modal textarea,
+html:root .qq-cookie-input,
+html:root .custom-lyric-input,
+html:root .cs-import-textarea {
+  background: var(--ml-input-bg) !important;
+  border: 1px solid var(--ml-input-border) !important;
+  border-radius: 10px !important;
+  color: var(--ml-input-text) !important;
+}
+html:root .modal input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):hover,
+html:root .modal textarea:hover,
+html:root .qq-cookie-input:hover,
+html:root .custom-lyric-input:hover,
+html:root .cs-import-textarea:hover {
+  border-color: var(--ml-glass-hover-border) !important;
+}
+
+/* ---- 6. 面板共享控件去深色：登录卡片白玻璃语言 ----
+   index.css 15150 起有一批把共享控件钉成 rgba(0,0,0,.72) 的 !important
+   规则（含 15223 起 #playlist-panel 子级形态），此处整组镜像替换。
+   列表行类不加 backdrop（长列表性能），控件类保持完整磨砂 */
+
+html:root .fx-mini-btn,
+html:root #playlist-panel .fx-mini-btn,
+html:root .fx-toggle,
+html:root .fx-seg button,
+html:root .panel-tab,
+html:root #playlist-panel .panel-tab,
+html:root .preset-card,
+html:root .lyric-color-row,
+html:root .quality-option,
+html:root .search-mode-tabs button,
+html:root .visual-guide-actions button,
+html:root .home-chip,
+html:root .local-beat-tab,
+html:root .search-history-chip,
+html:root .search-result .add-btn,
+html:root .song-action-btn,
+html:root .qi-act button,
+html:root .mini-queue-remove {
+  background: var(--ml-glass-bg) !important;
+  border: 1px solid var(--ml-glass-border) !important;
+  box-shadow: var(--ml-glass-rest-shadow) !important;
+  backdrop-filter: var(--ml-glass-blur) !important;
+  -webkit-backdrop-filter: var(--ml-glass-blur) !important;
+  color: var(--ml-glass-text) !important;
+}
+
+/* 按钮类：胶囊圆角 */
+html:root .fx-mini-btn,
+html:root #playlist-panel .fx-mini-btn,
+html:root .fx-seg button,
+html:root .panel-tab,
+html:root #playlist-panel .panel-tab,
+html:root .home-chip,
+html:root .local-beat-tab,
+html:root .search-history-chip,
+html:root .search-result .add-btn,
+html:root .song-action-btn,
+html:root .qi-act button,
+html:root .mini-queue-remove,
+html:root .search-mode-tabs button,
+html:root .visual-guide-actions button {
+  border-radius: 999px !important;
+}
+
+/* 卡片/行类：子卡圆角 14px */
+html:root .fx-toggle,
+html:root .preset-card,
+html:root .lyric-color-row,
+html:root .quality-option {
+  border-radius: 14px !important;
+}
+
+/* 宽行开关（完整桌面模式等）：卡片级圆角 14px */
+html:root .fx-toggle {
+  border-radius: 14px !important;
+}
+html:root .fx-toggle.on {
+  border-color: var(--ml-glass-active-border) !important;
+  background: var(--ml-glass-active-bg) !important;
+  color: var(--ml-glass-active-text) !important;
+}
+
+/* 悬停统一：白玻璃亮档 */
+html:root .fx-mini-btn:hover,
+html:root #playlist-panel .fx-mini-btn:hover {
+  border-color: var(--ml-glass-hover-border) !important;
+  background: var(--ml-glass-hover-bg) !important;
+  color: #fff !important;
+}
+html:root .fx-mini-btn.active,
+html:root #playlist-panel .fx-mini-btn.active {
+  border-color: var(--ml-glass-active-border) !important;
+  background: var(--ml-glass-active-bg) !important;
+  color: var(--ml-glass-active-text) !important;
+}
+html:root .panel-tab.active,
+html:root #playlist-panel .panel-tab.active {
+  border-color: var(--ml-glass-active-border) !important;
+  background: var(--ml-glass-active-bg) !important;
+  color: var(--ml-glass-active-text) !important;
+}
+
+/* 分段按钮与开关的状态反馈：上方基础组带 !important，index.css 里的
+   :hover / :active / .active 反馈全部不可见，状态必须在同文件以同优先级
+   补齐（最后加载获胜）。选中语言与 .fx-toggle.on 一致：accent 描边 + 微亮底 */
+html:root .fx-seg button:hover {
+  border-color: var(--ml-glass-hover-border) !important;
+  background: var(--ml-glass-hover-bg) !important;
+  color: #fff !important;
+  box-shadow: var(--ml-glass-hover-shadow) !important;
+}
+html:root .fx-seg button:active {
+  transform: scale(0.94);
+}
+html:root .fx-seg button.active {
+  border-color: var(--ml-glass-active-border) !important;
+  background: var(--ml-glass-active-bg) !important;
+  color: var(--ml-glass-active-text) !important;
+  box-shadow: var(--ml-glass-hover-shadow) !important;
+}
+html:root .fx-seg button.active:hover {
+  background: rgba(var(--fc-accent-rgb), 0.2) !important;
+}
+/* 开关悬停/按下：跳过禁用外观的二期占位/门控/开发锁定；on 态悬停是提亮
+   而非改白，避免悬停瞬间丢掉 accent 选中线索 */
+html:root .fx-toggle:not(.on):not(.phase2):not(.dock-gate-locked):not(.dev-locked):hover {
+  border-color: var(--ml-glass-hover-border) !important;
+  background: var(--ml-glass-hover-bg) !important;
+  color: #fff !important;
+}
+html:root .fx-toggle.on:not(.phase2):not(.dock-gate-locked):not(.dev-locked):hover {
+  border-color: rgba(var(--fc-accent-rgb), 0.65) !important;
+  background: rgba(var(--fc-accent-rgb), 0.2) !important;
+}
+html:root .fx-toggle:not(.phase2):not(.dock-gate-locked):not(.dev-locked):active {
+  transform: scale(0.98);
+}
+
+/* 歌单/队列列表行：子卡层级（14px / 白 .14），长列表不加 backdrop */
+html:root .pl-card,
+html:root #playlist-panel .pl-card,
+html:root #playlist-panel .queue-item,
+html:root #playlist-panel .mini-queue-item,
+html:root #playlist-panel .pl-detail-row,
+html:root #playlist-panel .pl-detail-play {
+  background: var(--ml-glass-bg) !important;
+  border: 1px solid var(--ml-glass-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--ml-glass-rest-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html:root #playlist-panel .pl-card:hover,
+html:root #playlist-panel .queue-item:hover,
+html:root #playlist-panel .pl-detail-row:hover {
+  background: var(--ml-glass-hover-bg) !important;
+}
+/* 正在播放/展开态：升级为登录卡片激活参数 */
+html:root #playlist-panel .queue-item.now,
+html:root #playlist-panel .mini-queue-item.now,
+html:root #playlist-panel .pl-card.expanded {
+  border-color: var(--ml-glass-active-border) !important;
+  background: var(--ml-glass-active-bg) !important;
+}
+
+/* ---- 7. 视觉控制台卡片：登录卡片同款白玻璃（无 backdrop-filter！） ----
+   实测矩阵结论：面板 saturate(0) 后，无滤镜的半透明卡片任意 alpha 都不漏绿；
+   但卡片一旦自带 backdrop-filter 就会触发 backdrop 根隔离，
+   原始场景色绕过面板去色直接透出（v9-v12 发绿根因）——严禁再加回 */
+html:root .preset-card,
+html:root .user-archive-slot,
+html:root .user-archive-share-panel {
+  background: var(--ml-glass-bg) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html:root .preset-card:hover,
+html:root .user-archive-slot:hover {
+  background: var(--ml-glass-hover-bg) !important;
+}
+/* 激活卡：accent 标识（当前预设信号） */
+html:root .preset-card.active {
+  background: var(--ml-glass-active-bg) !important;
+  border-color: var(--ml-glass-active-border) !important;
+}
+/* 分组/折叠条（用户存档、恢复与整理等）：恢复轻透明 */
+html:root #fx-panel .fx-console-group,
+html:root #fx-panel .fx-fold {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* 键盘焦点：白色描边（与登录卡片一致） */
+html:root .modal-btn:focus-visible,
+html:root .modal input:focus-visible,
+html:root .modal select:focus-visible,
+html:root .modal textarea:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.65);
+}

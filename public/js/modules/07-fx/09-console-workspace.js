@@ -37,7 +37,38 @@ var FX_CONSOLE_LAYOUT = [
     key: 'interface',
     groups: [
       { key: 'desktop-mode', title: '桌面模式', hint: '完整桌面层开关，Ctrl+Shift+M 快速切换', open: true, items: [
-        fxConsoleItem('t-wallpaperMode', '完整桌面模式', '完整 MOMusic 进入桌面层 Ctrl Shift M 切换操作层 本次启动有效', false)
+        fxConsoleItem('t-desktopDock', 'Dock 栏', 'Dock 应用中心 启动条 固定应用 屏幕边缘', false),
+        fxConsoleItem('t-wallpaperMode', '完整桌面模式', '完整 MOMusic 进入桌面层 Ctrl Shift M 切换操作层', false),
+        fxConsoleItem('t-desktopStartupRestore', '启动时恢复桌面模式', '重启 恢复 桌面 Dock 启动', false)
+      ] },
+      { key: 'dock-settings', title: 'Dock 栏设置', hint: '桌面 Dock 栏的位置、主题与行为（开启 Dock 栏后显示）', open: true, items: [
+        fxConsoleItem('t-dockLock', '固定 Dock 栏', '锁定 位置 拖动', false),
+        fxConsoleItem('t-dockAutoHide', 'Dock 自动隐藏', '收起 贴边 滑出', false),
+        fxConsoleItem('t-dockAlwaysOnTop', 'Dock 始终置顶', '顶层 显示', false),
+        fxConsoleItem('t-dockFullscreenHide', 'Dock 全屏自动隐藏', '视频 游戏 遮挡', false),
+        fxConsoleItem('t-dockPersistState', 'Dock 保持上次状态', '记住 开机 恢复', false),
+        fxConsoleItem('t-dockLaunchAtLogin', 'Dock 开机自动启动', '自启 登录 启动', false),
+        fxConsoleItem('t-dockMagnify', 'Dock 悬停放大', '放大镜 效果 图标', false),
+        fxConsoleItem('seg-dock-hover-effect', 'Dock 悬停动画', '放大 摆动 弹跳 关闭', false),
+        fxConsoleItem('t-dockClickRipple', 'Dock 点击水波纹', '点击 流体 特效', false),
+        fxConsoleItem('t-dockIndicator', 'Dock 运行指示器', '小圆点 运行中', false),
+        fxConsoleItem('t-dockShowAppCenterBtn', 'Dock 应用中心按钮', '显示 入口 启动台', false),
+        fxConsoleItem('i-dock-hotkey', '应用中心快捷键', '快捷键 Alt F 启动台', false),
+        fxConsoleItem('seg-dock-position', 'Dock 屏幕位置', '底部 顶部 左侧 右侧', false),
+        fxConsoleItem('seg-dock-theme', 'Dock 主题', 'macOS 浅色 深色 毛玻璃 全透明 纯色', false),
+        fxConsoleItem('s-dock-margin', 'Dock 边缘距离', '贴边 间距 距离', false),
+        fxConsoleItem('s-dock-iconSize', 'Dock 图标大小', '尺寸 大小', false),
+        fxConsoleItem('s-dock-iconGap', 'Dock 图标间距', '空隙 间隔', false),
+        fxConsoleItem('s-dock-magnifyMax', 'Dock 放大倍数', '倍率 放大', false),
+        fxConsoleItem('s-dock-animSpeed', 'Dock 动画速度', '快慢 速度', false),
+        fxConsoleItem('s-dock-opacity', 'Dock 背景透明', '不透明度 背景', false),
+        fxConsoleItem('s-dock-blur', 'Dock 背景模糊', '毛玻璃 强度 模糊', false),
+        fxConsoleItem('s-dock-radius', 'Dock 圆角大小', '弧度 圆角', false),
+        fxConsoleItem('c-dock-bg', 'Dock 背景颜色', '颜色 自定义 背景', false),
+        fxConsoleItem('t-dockTrayPhase2', 'Dock 系统托盘', '托盘 图标 收纳', false),
+        fxConsoleItem('t-dockBadgePhase2', 'Dock 消息提醒', '微信 QQ 钉钉 角标 弹跳', false),
+        fxConsoleItem('t-dockPreviewPhase2', 'Dock 窗口预览', '缩略图 悬停 预览', false),
+        fxConsoleItem('t-dockMultiPhase2', 'Dock 多 Dock/子 Dock', '多开 子 Dock 预留', false)
       ] },
       { key: 'background', title: '背景媒体', hint: '颜色、封面、图片、视频与 Wallpaper Engine', open: true, items: [
         fxConsoleItem('bg-color-picker', '背景颜色', '纯色 封面取色'),

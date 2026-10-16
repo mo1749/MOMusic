@@ -14,7 +14,11 @@ function openGsapModal(mask) {
     if (panel) {
       window.gsap.fromTo(panel,
         { autoAlpha: 0, y: 26, scale: 0.965, filter: 'blur(12px)' },
-        { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.68, ease: 'expo.out', overwrite: true }
+        { autoAlpha: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: 0.68, ease: 'expo.out', overwrite: true,
+          onComplete: function () {
+            // 动画残留的 filter: blur(0px) 会使元素自身的 backdrop-filter 失效（玻璃突然变实），必须清除
+            window.gsap.set(panel, { clearProps: 'filter' });
+          } }
       );
     }
   } else {

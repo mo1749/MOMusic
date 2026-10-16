@@ -1422,6 +1422,7 @@ function applyWallpaperModeState(force) {
   }).then(function (result) {
     result = result && typeof result === 'object' ? result : { ok: false, enabled: false, error: 'WALLPAPER_RESULT_INVALID' };
     if (operation !== desktopWallpaperRendererOperation) return Object.assign({}, result, { rendererStale: true });
+    if (result.preferenceError && typeof showToast === 'function') showToast('桌面模式已切换，但启动状态保存失败');
     if (result.status) applyDesktopWallpaperRuntimeStatus(result.status);
     else {
       fx.wallpaperMode = result.ok === true && result.enabled === true;

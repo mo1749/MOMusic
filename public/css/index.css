@@ -2901,7 +2901,7 @@ body.empty-home-active .home-visual {
   }
 }
 
-/* 横屏矮屏（手机横屏，宽>760px 但高度受限）：同样用单列 + 可滚动布局，避免内容显示不全且无法滚动 */
+/* 低高度窗口：使用单列和可滚动布局，避免内容显示不全且无法滚动 */
 @media (max-height: 620px) and (min-width: 761px) {
   #empty-home {
     top: 92px;
@@ -7519,8 +7519,7 @@ body.login-guide-active #login-guide-canvas {
   opacity: 1;
   font-size: 24px;
   cursor: text;
-  pointer-events: auto;
-  touch-action: manipulation
+  pointer-events: auto
 }
 
 .login-easter-status {
@@ -8778,8 +8777,7 @@ body.login-guide-active #login-guide-canvas {
   border-radius: 16px;
   background: #07070a;
   box-shadow: 0 18px 60px rgba(0, 0, 0, .44), inset 0 0 0 1px rgba(255, 255, 255, .08);
-  cursor: grab;
-  touch-action: none
+  cursor: grab
 }
 
 .cover-crop-stage.dragging {
@@ -8871,8 +8869,7 @@ body.login-guide-active #login-guide-canvas {
   border-radius: 16px;
   background: #07070a;
   box-shadow: 0 18px 60px rgba(0, 0, 0, .44), inset 0 0 0 1px rgba(255, 255, 255, .08);
-  cursor: grab;
-  touch-action: none
+  cursor: grab
 }
 
 .background-crop-stage.dragging {
@@ -9918,11 +9915,10 @@ body.login-guide-active #login-guide-canvas {
   padding: 20px 22px 16px;
   border-radius: 20px;
   border-color: transparent;
-  background: var(--saved-panel-glass-bg);
+  /* 不用毛玻璃：近实心深色底，无 backdrop-filter（与 unified-glass.css 专属规则一致） */
+  background: linear-gradient(160deg, rgba(17, 21, 28, 0.98), rgba(9, 12, 17, 0.98));
   box-shadow: var(--saved-panel-glass-shadow);
-  backdrop-filter: var(--saved-panel-glass-filter);
-  -webkit-backdrop-filter: var(--saved-panel-glass-filter);
-  will-change: opacity, transform, filter
+  will-change: opacity, transform
 }
 
 .audio-fx-dialog::-webkit-scrollbar { width: 8px; }
@@ -11532,7 +11528,6 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, .1);
   cursor: crosshair;
-  touch-action: none;
   background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)
 }
 
@@ -11552,7 +11547,6 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode {
   height: 14px;
   border-radius: 7px;
   cursor: pointer;
-  touch-action: none;
   background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)
 }
 
@@ -13651,17 +13645,6 @@ html:fullscreen body.desktop-shell #playlist-panel {
   border-radius: 3px
 }
 
-/* 触摸设备：无 hover 的滚动场景下 backdrop-filter 每帧重绘会闪白（低端 WebView），
-   禁用毛玻璃改纯半透明背景；桌面鼠标设备保留毛玻璃。 */
-@media (hover: none), (pointer: coarse) {
-  #playlist-panel {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: rgba(10, 11, 16, .88)
-  }
-}
-
-
 .playlist-panel-sticky {
   position: sticky;
   top: -18px;
@@ -14971,15 +14954,13 @@ html.control-glass-svg-ok #drop-overlay .drop-text {
   -webkit-backdrop-filter: var(--panel-glass-filter) !important;
 }
 
-/* 自定义音效弹窗：强制使用歌词校准/音量浮层同款高透玻璃，
+/* 自定义音效弹窗：不用毛玻璃，近实心深色底替代高透玻璃，
    覆盖上面两条针对 .modal 的统一玻璃规则（panel 玻璃偏深，saved 玻璃高透）。
-   backdrop-filter 不在此覆盖：svg-ok 模式下沿用与歌词校准浮层相同的 .modal 规则 */
+   backdrop-filter 一律不放行，最终材质以 unified-glass.css 专属规则为准 */
 .audio-fx-dialog {
-  background: var(--saved-panel-glass-bg) !important;
+  background: linear-gradient(160deg, rgba(17, 21, 28, 0.98), rgba(9, 12, 17, 0.98)) !important;
   border-color: transparent !important;
-  box-shadow: var(--saved-panel-glass-shadow) !important;
-  backdrop-filter: var(--saved-panel-glass-filter) !important;
-  -webkit-backdrop-filter: var(--saved-panel-glass-filter) !important
+  box-shadow: var(--saved-panel-glass-shadow) !important
 }
 
 .icon-btn:not(.ctrl-btn),
@@ -16029,7 +16010,6 @@ html.control-glass-svg-ok #user-btn.multi-account.external-account-pills:hover {
 .queue-item[data-queue-index],
 .mini-queue-item[data-queue-index],
 .pl-card[data-playlist-index] {
-  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none
 }
@@ -19122,7 +19102,6 @@ body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] .home-card-label {
   align-self: auto;
   opacity: 0.5;
   cursor: grab;
-  touch-action: none;
   border: 0;
   background: transparent;
   box-shadow: none;
@@ -19650,3 +19629,24 @@ body.red-dust-inn-mode .home-card-quick[data-home-tone="mix"] .home-card-label {
   background: rgba(157, 139, 255, 0.08);
   border-color: rgba(157, 139, 255, 0.28);
 }
+
+/* ── Dock 栏设置: 二期预留控件 ── */
+.fx-toggle.phase2 { opacity: 0.45; cursor: not-allowed; }
+.fx-toggle.phase2 .dot { background: rgba(255, 255, 255, 0.25); }
+.fx-toggle.dock-gate-locked { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Dock 栏设置卡片: 过渡与细节 (v2.0.0; scoped 到 dock-settings 组) ──
+   注: 悬停/按下/选中态的可见样式由 unified-glass.css 的状态规则统一负责,
+   此处写无 !important 的状态规则会被其 !important 基础材质压掉, 不要再加回 */
+.fx-toggle[data-fx-console-group="dock-settings"],
+[data-fx-console-group="dock-settings"] .fx-toggle {
+  transition: background .15s ease, border-color .15s ease, transform .1s ease, box-shadow .2s ease;
+}
+[data-fx-console-group="dock-settings"] .fx-toggle.on .dot {
+  transform: scale(1.3);
+}
+[data-fx-console-group="dock-settings"] .fx-seg button {
+  transition: background .15s ease, color .15s ease, transform .1s ease, box-shadow .2s ease;
+}
+[data-fx-console-group="dock-settings"] .fx-slider input[type="range"] { cursor: pointer; }
+[data-fx-console-group="dock-settings"] .fx-text-row input[type="text"]:hover { border-color: rgba(255, 255, 255, .32); }

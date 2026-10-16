@@ -445,7 +445,6 @@ function bindAudioRouteWorkflowPointerEvents(outputList) {
   if (!bindAudioRouteWorkflowPointerEvents._resizeBound) {
     bindAudioRouteWorkflowPointerEvents._resizeBound = true;
     window.addEventListener('resize', function () { requestAnimationFrame(renderAudioRouteWorkflowEdges); });
-    window.addEventListener('orientationchange', function () { requestAnimationFrame(renderAudioRouteWorkflowEdges); });
   }
 }
 function bindAudioRouteSelectionEvents(container) {

@@ -1000,6 +1000,11 @@ class FullDesktopModeRuntime {
       clearWindow: false,
     });
     if (!cleared || cleared.ok !== true) throw new Error(String(cleared && cleared.error || 'DESKTOP_ICON_SHAPE_CLEAR_FAILED'));
+    if (options.startupRestore === true) {
+      this.desktopIconsVisible = true;
+      this.desktopIconsVisibilityExplicit = true;
+      this.softwareInteractionLocked = false;
+    }
     const watcher = this.startIconShapeWatcher(display);
     if (!watcher || !watcher.ready || typeof watcher.ready.then !== 'function') {
       throw new Error('DESKTOP_ICON_LAYER_WATCHER_UNAVAILABLE');
@@ -1670,7 +1675,7 @@ class FullDesktopModeRuntime {
           await this.attachCoexist(win, display);
           this.enabled = true;
           this.interactive = true;
-          await this.enableIconShape(win, display, reason);
+          await this.enableIconShape(win, display, reason, { startupRestore: options.startupRestore === true });
           this.applyInteractive(win, display.bounds);
           await this.ensureIconLayerOrder();
         } else {

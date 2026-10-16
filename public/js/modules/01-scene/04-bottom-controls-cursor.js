@@ -344,7 +344,7 @@ function syncCursorAutoHideMode() {
   }
 }
 
-['mousemove', 'pointermove', 'mousedown', 'wheel', 'touchstart'].forEach(function (type) {
+['mousemove', 'pointermove', 'mousedown', 'wheel'].forEach(function (type) {
   window.addEventListener(type, revealCursorForActivity, { passive: true, capture: true });
 });
 syncCursorAutoHideMode();

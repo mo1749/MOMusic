@@ -443,8 +443,8 @@ function bindPlayerControlAnimations() {
     function canAnimate() {
       return !btn.disabled && !btn.classList.contains('busy');
     }
-    function hoverIn(e) {
-      if (!canAnimate() || (e && e.pointerType === 'touch')) return;
+    function hoverIn() {
+      if (!canAnimate()) return;
       window.gsap.to(btn, { y: -2, scale: isPlay ? 1.07 : 1.08, duration: 0.20, ease: 'power2.out', overwrite: 'auto' });
       if (iconTarget) window.gsap.to(iconTarget, { scale: isPlay ? 1.08 : 1.10, duration: 0.22, ease: 'power2.out', overwrite: 'auto' });
     }
@@ -457,9 +457,9 @@ function bindPlayerControlAnimations() {
       window.gsap.to(btn, { y: 0, scale: isPlay ? 0.91 : 0.90, duration: 0.10, ease: 'power2.out', overwrite: 'auto' });
       if (iconTarget) window.gsap.to(iconTarget, { scale: 0.88, duration: 0.10, ease: 'power2.out', overwrite: 'auto' });
     }
-    function release(e) {
+    function release() {
       if (!canAnimate()) return;
-      var hovered = e && e.pointerType !== 'touch' && btn.matches(':hover');
+      var hovered = btn.matches(':hover');
       window.gsap.to(btn, { y: hovered ? -2 : 0, scale: hovered ? (isPlay ? 1.07 : 1.08) : 1, duration: 0.24, ease: 'back.out(1.9)', overwrite: 'auto' });
       if (iconTarget) window.gsap.to(iconTarget, { scale: hovered ? 1.06 : 1, duration: 0.22, ease: 'back.out(1.8)', overwrite: 'auto' });
     }

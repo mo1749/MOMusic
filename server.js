@@ -129,9 +129,6 @@ const {
   getSpotifyConfig,
   clearSpotifyToken,
   saveSpotifyConfig,
-  exchangeSpotifyOAuthCode,
-  saveSpotifyOAuthToken,
-  buildSpotifyOAuthAuthorizeUrl,
   handleSpotifyStatus,
   handleSpotifySearch,
   handleSpotifyRecommendations,
@@ -463,7 +460,7 @@ function clearAllRuntimeLoginCredentials(reason) {
 }
 
 // ---------- 工具 ----------
-// CORS 白名单: 允许无 Origin(本地客户端/Android)、file:// (Origin 为 null) 与本地主机页面
+// CORS 白名单: 允许无 Origin 的本地客户端、file:// (Origin 为 null) 与本地主机页面
 function isTrustedRequestOrigin(req) {
   const origin = String((req && req.headers && req.headers.origin) || '');
   if (!origin || origin === 'null') return true;
@@ -6170,15 +6167,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (pn === '/api/spotify/oauth/url') {
-    try {
-      const spAuthUrl = buildSpotifyOAuthAuthorizeUrl();
-      sendJSON(res, { ok: true, url: spAuthUrl });
-    } catch (spUrlErr) {
-      sendJSON(res, { ok: false, error: String((spUrlErr && spUrlErr.message) || spUrlErr) });
-    }
-    return;
-  }
   if (pn === '/api/spotify/status') {
     try {
       sendJSON(res, await handleSpotifyStatus());
@@ -8674,15 +8662,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // ---------- 静态资源 ----------
-  // ---------- 手机端授权登录：QQ ptlogin 引导/回调 ----------
-  if (pn === '/api/qq/oauth/start') {
-    const qqCallbackUrl = 'http://127.0.0.1:' + PORT + '/api/qq/oauth/callback';
-    const qqLoginUrl = 'https://xui.ptlogin2.qq.com/cgi-bin/xlogin?appid=716027609&s_url=' +
-      encodeURIComponent(qqCallbackUrl) + '&pt_no_auth=1';
-    sendJSON(res, { ok: true, url: qqLoginUrl, callback: qqCallbackUrl });
-    return;
-  }
   // ---------- 酷狗扫码登录（普通版 + 概念版共用） ----------
   if (pn === '/api/kugou/qr/create' || pn === '/api/kugou-concept/qr/create') {
     const variantKey = pn === '/api/kugou-concept/qr/create' ? 'kugou-concept' : 'kugou';
@@ -8735,7 +8714,7 @@ const server = http.createServer(async (req, res) => {
   if (pn === '/api/qq/qr/check') {
     try {
       if (!qqQrSig) { sendJSON(res, { ok: false, code: 67, message: '二维码未生成，请刷新' }); return; }
-      const u1 = 'http://127.0.0.1:' + PORT + '/api/qq/oauth/callback';
+      const u1 = 'https://y.qq.com/';
       const checkUrl = 'https://ssl.ptlogin2.qq.com/ptqrlogin?u1=' + encodeURIComponent(u1) +
         '&ptqrtoken=' + qqQrToken +
         '&ptqrpin=1&webqq_type=10&remember_uin=1&login2qq=1&aid=10001&u1=' + encodeURIComponent(u1) +
@@ -8778,37 +8757,7 @@ const server = http.createServer(async (req, res) => {
     }
     return;
   }
-  if (pn === '/api/qq/oauth/callback') {
-    const qqQuery = new URL(req.url, 'http://x').searchParams;
-    const clientuin = qqQuery.get('clientuin') || qqQuery.get('login_uin') || qqQuery.get('uin') || '';
-    const clientkey = qqQuery.get('clientkey') || qqQuery.get('key') || '';
-    const qqRawCookie = String(req.headers.cookie || '');
-    let qqOk = false;
-    let qqMsg = 'authorize callback carried no usable session; use manual Cookie in app';
-    try {
-      let cookieStr = '';
-      if (qqRawCookie && qqRawCookie.indexOf('uin=') !== -1 && qqRawCookie.indexOf('skey=') !== -1) {
-        cookieStr = qqRawCookie;
-      } else if (clientuin && clientkey) {
-        cookieStr = 'uin=' + clientuin + '; skey=' + clientkey + '; p_uin=' + clientuin;
-      }
-      if (cookieStr) {
-        saveQQCookie(cookieStr);
-        refreshQQConfiguredCookieStore(true);
-        qqOk = true;
-        qqMsg = 'QQ session saved, return to app';
-      }
-    } catch (qqErr) {
-      qqMsg = String((qqErr && qqErr.message) || qqErr);
-    }
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end('<html><head><meta charset="utf-8"></head><body style="background:#0b0d12;color:#e8f5ff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">' +
-      '<div style="text-align:center;font-size:16px;line-height:1.8">' +
-      (qqOk ? 'QQ session saved, return to MOMusic' : 'QQ auth incomplete, use manual Cookie') +
-      '<br><a href="http://127.0.0.1:' + PORT + '/" style="color:#00f5d4">Back to MOMusic</a></div></body></html>');
-    return;
-  }
-
+  // ---------- 静态资源 ----------
   if (pn === '/favicon.ico') {
     serveStatic(res, path.join(__dirname, 'build', 'icon.ico'));
     return;
@@ -8831,40 +8780,6 @@ server.listen(PORT, HOST, () => {
     });
   }
 });
-
-// ---------- Mobile Spotify OAuth local callback server (reuses desktop 43879 port) ----------
-try {
-  const spotifyCfg = getSpotifyConfig();
-  const spotifyRedirectUri = (spotifyCfg && spotifyCfg.redirectUri) || DEFAULT_SPOTIFY_REDIRECT_URI;
-  const spotifyCbUrl = new URL(spotifyRedirectUri);
-  const spotifyCbPort = Number(spotifyCbUrl.port) || 43879;
-  const spotifyCallbackServer = http.createServer(async function (req2, res2) {
-    try {
-      const q2 = new URL(req2.url, 'http://x').searchParams;
-      const spCode = q2.get('code');
-      const spError = q2.get('error');
-      if (spError || !spCode) {
-        res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=error' });
-        res2.end();
-        return;
-      }
-      const spInfo = await exchangeSpotifyOAuthCode({ code: spCode, redirectUri: spotifyRedirectUri });
-      saveSpotifyOAuthToken(spInfo);
-      res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=ok' });
-      res2.end();
-      console.log('[SpotifyOAuth] token saved via mobile callback');
-    } catch (spErr) {
-      res2.writeHead(302, { Location: 'http://127.0.0.1:' + PORT + '/?spotify_oauth=fail' });
-      res2.end();
-      console.warn('[SpotifyOAuth] callback failed: ' + ((spErr && spErr.message) || spErr));
-    }
-  });
-  spotifyCallbackServer.on('error', function () { /* port busy / not configured: silent */ });
-  spotifyCallbackServer.listen(spotifyCbPort, '127.0.0.1');
-  console.log('[SpotifyOAuth] mobile callback server on port ' + spotifyCbPort);
-} catch (spInitErr) {
-  console.warn('[SpotifyOAuth] callback server init skipped: ' + ((spInitErr && spInitErr.message) || spInitErr));
-}
 
 server.clearAllLoginCredentials = clearAllRuntimeLoginCredentials;
 

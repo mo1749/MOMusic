@@ -6,19 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MOMusic</title>
   <meta name="referrer" content="no-referrer">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Google Fonts 必须异步加载：渲染阻塞式 CSS 在国内网络取回需数秒甚至超时,
+       首绘被阻塞表现为长时间白屏。media=print 不阻塞首绘, onload 后切回 all,
+       字体交换由 URL 里的 display=swap 处理。 -->
   <link
     href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Inter:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700;900&family=UnifrakturCook:wght@700&display=swap"
-    rel="stylesheet">
+    rel="stylesheet" media="print" onload="this.media='all'">
   <script src="vendor/three.r128.min.js"></script>
   <script src="vendor/music-tempo.min.js"></script>
   <script src="vendor/gsap.min.js"></script>
   <script src="js/preload-mode.js"></script>
-  <link rel="stylesheet" href="css/index.css?v=20260905-momusic-1.5.5">
+  <link rel="stylesheet" href="css/index.css?v=20261016-momusic-2.0.0">
   <link rel="stylesheet" href="css/listen-together-float-chat.css?v=20260804-float-chat">
   <link rel="stylesheet" href="css/login-console-style.css?v=20260813-login-saved-glass">
   <link rel="stylesheet" href="css/fx-console-glass.css?v=20260813-fx-console-glass3">
   <link rel="stylesheet" href="css/custom-source-glass.css?v=20260813-custom-source-glass2">
   <link rel="stylesheet" href="css/listen-together-glass.css?v=20260813-listen-together-glass4">
+  <link rel="stylesheet" href="css/unified-glass.css?v=20260927-unified-glass16">
 </head>
 
 <body>
@@ -737,9 +743,64 @@
               title="桌面歌词绑定鼓点电影震动，基础漂浮始终保留"><span>桌面歌词电影震动</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-desktopLyricsHighlight" onclick="toggleFx('desktopLyricsHighlight')"
               title="桌面歌词按播放进度高亮"><span>桌面歌词高亮跟随</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-desktopDock"
+              title="桌面模式 Dock 栏：屏幕边缘的应用启动条（需先开启完整桌面模式）">
+              <span>Dock 栏</span><span class="dot"></span></div>
             <div class="fx-toggle" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')"
               title="把当前完整 MOMusic 放到 Windows 桌面；右上控制器可显示、隐藏桌面图标，Esc 退出">
               <span>完整桌面模式</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-desktopStartupRestore" role="switch" aria-checked="false"
+              title="启动 MoMusic 时恢复上次开启的桌面模式；默认关闭，与开机自动启动独立">
+              <span>启动时恢复桌面模式</span><span class="dot"></span></div>
+          </div>
+          <div id="dock-settings-controls" hidden>
+            <div class="fx-toggle" id="t-dockLock" title="锁定后 Dock 栏不可拖动，位置固定"><span>固定 Dock 栏</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockAutoHide" title="鼠标离开时收起，靠近屏幕边缘再滑出"><span>Dock 自动隐藏</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockAlwaysOnTop" title="Dock 栏始终显示在普通窗口上方"><span>Dock 始终置顶</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockFullscreenHide" title="看视频或玩游戏（全屏）时自动收起，不遮挡画面"><span>全屏自动隐藏</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockPersistState" title="重新开启桌面模式 / 程序重启后，Dock 恢复到上次的开关状态"><span>保持上次状态</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockLaunchAtLogin" title="系统开机后自动运行 MoMusic"><span>开机自动启动</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockMagnify" title="鼠标划过图标时依次放大，类似 macOS 放大镜"><span>悬停放大</span><span class="dot"></span></div>
+            <div class="fx-seg" id="seg-dock-hover-effect"><button data-dock-effect="magnify">放大</button><button data-dock-effect="swing">摆动</button><button data-dock-effect="bounce">弹跳</button><button data-dock-effect="none">关闭</button></div>
+            <div class="fx-toggle" id="t-dockClickRipple" title="点击时显示水波纹"><span>点击水波纹</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockIndicator" title="正在运行的应用图标下方显示小圆点"><span>运行状态指示器</span><span class="dot"></span></div>
+            <div class="fx-toggle" id="t-dockShowAppCenterBtn" title="在 Dock 左侧显示应用中心入口"><span>应用中心按钮</span><span class="dot"></span></div>
+            <div class="fx-text-row"><label for="i-dock-hotkey">应用中心快捷键</label><input id="i-dock-hotkey" type="text" value="Alt+F" maxlength="40" placeholder="例如 Alt+F"></div>
+            <div class="fx-seg" id="seg-dock-position">
+              <button data-dock-pos="bottom">底部</button>
+              <button data-dock-pos="top">顶部</button>
+              <button data-dock-pos="left">左侧</button>
+              <button data-dock-pos="right">右侧</button>
+            </div>
+            <div class="fx-seg" id="seg-dock-theme">
+              <button data-dock-theme="macos-light">浅色</button>
+              <button data-dock-theme="macos-dark">深色</button>
+              <button data-dock-theme="glass">毛玻璃</button>
+              <button data-dock-theme="clear">全透明</button>
+              <button data-dock-theme="solid">纯色</button>
+            </div>
+            <div class="fx-slider"><label>Dock 边缘距离</label><input id="s-dock-margin" type="range" min="0"
+                max="80" step="1"><output></output></div>
+            <div class="fx-slider"><label>Dock 图标大小</label><input id="s-dock-iconSize" type="range" min="28"
+                max="72" step="1"><output></output></div>
+            <div class="fx-slider"><label>Dock 图标间距</label><input id="s-dock-iconGap" type="range" min="0"
+                max="28" step="1"><output></output></div>
+            <div class="fx-slider"><label>Dock 放大倍数</label><input id="s-dock-magnifyMax" type="range" min="1"
+                max="2" step="0.05"><output></output></div>
+            <div class="fx-slider"><label>Dock 动画速度</label><input id="s-dock-animSpeed" type="range" min="0.4"
+                max="2" step="0.05"><output></output></div>
+            <div class="fx-slider"><label>Dock 背景透明</label><input id="s-dock-opacity" type="range" min="0.15"
+                max="1" step="0.01"><output></output></div>
+            <div class="fx-slider"><label>Dock 背景模糊</label><input id="s-dock-blur" type="range" min="0"
+                max="40" step="1"><output></output></div>
+            <div class="fx-slider"><label>Dock 圆角大小</label><input id="s-dock-radius" type="range" min="0"
+                max="32" step="1"><output></output></div>
+            <div class="fx-slider"><label>Dock 背景颜色</label><input id="c-dock-bg" type="color" value="#101318"
+                style="width:52px;height:24px;padding:0;border:none;background:none;cursor:pointer"><output></output></div>
+            <div class="fx-toggle phase2" id="t-dockTrayPhase2" title="二期功能：把系统托盘图标收纳进 Dock 栏"><span>系统托盘显示</span><span class="dot"></span></div>
+            <div class="fx-toggle phase2" id="t-dockBadgePhase2" title="二期功能：微信/QQ/钉钉新消息角标与弹跳"><span>消息提醒</span><span class="dot"></span></div>
+            <div class="fx-toggle phase2" id="t-dockPreviewPhase2" title="二期功能：悬停显示运行中应用的窗口缩略图"><span>窗口预览</span><span class="dot"></span></div>
+            <div class="fx-toggle phase2" id="t-dockMultiPhase2" title="二期功能：多 Dock / 子 Dock"><span>多 Dock / 子 Dock（预留）</span><span class="dot"></span></div>
           </div>
           <div class="fx-section-label">桌面 / 壁纸</div>
           <div class="fx-slider"><label>桌面歌词大小</label><input id="fx-desktoplyricssize" type="range" min="0.72"

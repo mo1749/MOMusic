@@ -100,6 +100,9 @@ contextBridge.exposeInMainWorld('desktopWindow', {
   setWallpaperMode: (enabled, payload) => ipcRenderer.invoke('MOMusic-wallpaper-set-enabled', !!enabled, payload || {}),
   updateWallpaperMode: (payload) => ipcRenderer.invoke('MOMusic-wallpaper-update', payload || {}),
   getWallpaperModeStatus: () => ipcRenderer.invoke('MOMusic-wallpaper-get-status'),
+  getDesktopStartup: () => ipcRenderer.invoke('MOMusic-desktop-startup-get'),
+  updateDesktopStartup: (patch) => ipcRenderer.invoke('MOMusic-desktop-startup-update', patch || {}),
+  restoreDesktopStartup: () => ipcRenderer.invoke('MOMusic-desktop-startup-restore'),
   updateDesktopIconShields: (payload) => ipcRenderer.send('MOMusic-full-desktop-icon-shields', payload || {}),
   setDesktopSoftwareLocked: (locked) => ipcRenderer.invoke('MOMusic-full-desktop-set-software-lock', locked === true),
   setDesktopIconsVisible: (visible) => ipcRenderer.invoke('MOMusic-full-desktop-set-icons-visible', visible !== false),
@@ -116,6 +119,23 @@ contextBridge.exposeInMainWorld('desktopWindow', {
     const listener = (_event, payload) => callback(payload || {});
     ipcRenderer.on('MOMusic-wallpaper-runtime-state', listener);
     return () => ipcRenderer.removeListener('MOMusic-wallpaper-runtime-state', listener);
+  },
+  // ── 桌面模式 Dock 栏 ──
+  setDockEnabled: (enabled) => ipcRenderer.invoke('MOMusic-dock-set-enabled', !!enabled),
+  getDockState: () => ipcRenderer.invoke('MOMusic-dock-get-state'),
+  // Dock 栏设置卡片 (04b-desktop-dock.js) 的局部更新入口; 缺失时卡片所有控件点击静默无效
+  updateDockSettings: (patch) => ipcRenderer.invoke('MOMusic-dock-update-settings', patch || {}),
+  onDockState: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, payload) => callback(payload || {});
+    ipcRenderer.on('MOMusic-dock-state', listener);
+    return () => ipcRenderer.removeListener('MOMusic-dock-state', listener);
+  },
+  onDockOpenSettings: (callback) => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = () => callback();
+    ipcRenderer.on('MOMusic-dock-open-settings', listener);
+    return () => ipcRenderer.removeListener('MOMusic-dock-open-settings', listener);
   },
   onStateChange: (callback) => {
     const listener = (_event, state) => callback(state);

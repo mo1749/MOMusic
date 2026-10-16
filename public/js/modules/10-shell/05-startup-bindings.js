@@ -20,7 +20,13 @@ initializeDesktopCloseBehavior();
 applyStartupAutoplayUi();
 applyControlsAutoHidePreference();
 applyDesktopLyricsState(false);
-applyWallpaperModeState(false);
+// Startup configuration is independent of FX archives. Never send a synthetic
+// "user disabled" command before the main process consumes its saved choice.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeDesktopStartup, { once: true });
+} else {
+  setTimeout(initializeDesktopStartup, 0);
+}
 setShelfMode(fx.shelf);
 if (fx.shelf === 'side') setShelfPinnedOpen(!!fx.shelfPinnedOpen, true, false);
 var restoredPlaybackAtStartup = restoreLastPlaybackSnapshot();

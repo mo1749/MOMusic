@@ -12,6 +12,8 @@ const {
 } = require('./wallpaper-engine-library');
 const { WallpaperEngineRuntime } = require('./wallpaper-engine-runtime');
 const { FullDesktopModeRuntime } = require('./full-desktop-mode-runtime');
+const { DockRuntime } = require('./dock-runtime');
+const { DesktopStartup } = require('./desktop-startup');
 const {
   LoginEasterEggGate,
   LOGIN_EASTER_EGG_GATE_VERSION,
@@ -119,6 +121,7 @@ const STARTUP_STATE_FILE = 'startup-state.json';
 const STARTUP_SERVER_TIMEOUT_MS = 10000;
 const STARTUP_HTTP_TIMEOUT_MS = 8000;
 const STARTUP_NAVIGATION_TIMEOUT_MS = 15000;
+const STARTUP_PLACEHOLDER_FALLBACK_MS = 2500;
 const STARTUP_SHOW_WATCHDOG_MS = 3500;
 const CACHE_SETTINGS_FILE = 'cache-settings.json';
 const LYRIC_CACHE_VERSION = 1;
@@ -148,6 +151,7 @@ app.setName(APP_NAME);
 const STABLE_USER_DATA_PATH = path.join(app.getPath('appData'), APP_NAME);
 fs.mkdirSync(STABLE_USER_DATA_PATH, { recursive: true });
 app.setPath('userData', STABLE_USER_DATA_PATH);
+const desktopStartup = new DesktopStartup(STABLE_USER_DATA_PATH);
 const INITIAL_CACHE_SETTINGS = ensureCacheDirectories(readCacheSettings());
 const loginEasterEggGate = new LoginEasterEggGate({
   userDataPath: STABLE_USER_DATA_PATH,
@@ -176,6 +180,22 @@ const fullDesktopModeRuntime = new FullDesktopModeRuntime({
   beforePassive: ({ win, reason }) => prepareWallpaperEngineProjectPreviewBeforeDesktopEmbedding(win, reason),
   requestReconcile: (reason) => reconcileFullDesktopMode(reason),
   onStatus: (status) => broadcastDesktopWallpaperStatus(status),
+});
+const dockRuntime = new DockRuntime({
+  BrowserWindow,
+  screen,
+  shell,
+  app,
+  globalShortcut,
+  dialog,
+  nativeTempPath: NATIVE_HELPER_TEMP_PATH,
+  userDataPath: STABLE_USER_DATA_PATH,
+  pageUrl: (page) => overlayUrl(page),
+  onMainWindowEvent: (channel, payload) => {
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send(channel, payload);
+    }
+  },
 });
 let wallpaperEngineCaptureSourceId = '';
 let wallpaperEngineCaptureGrant = null;
@@ -790,6 +810,7 @@ function isTrustedWallpaperEngineIpc(event) {
 }
 
 function broadcastDesktopWallpaperStatus(status) {
+  dockRuntime.handleDesktopModeStatus(status || fullDesktopModeRuntime.getStatus('broadcast'));
   if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.webContents || mainWindow.webContents.isDestroyed()) return;
   mainWindow.webContents.send('MOMusic-wallpaper-runtime-state', {
     ...(status || fullDesktopModeRuntime.getStatus('broadcast')),
@@ -797,6 +818,7 @@ function broadcastDesktopWallpaperStatus(status) {
     escapeShortcutRegistered: fullDesktopEscapeRegistered === true,
   });
   if (tray) createOrUpdateTray();
+  // Dock 栏与桌面模式联动: 桌面模式关闭时强制关闭 Dock (见 dock-runtime 状态机)
 }
 
 function wallpaperEngineProvidesDesktopBackdrop() {
@@ -1261,6 +1283,9 @@ function requestFullDesktopEscapeExit(reason = 'escape-key') {
   if (fullDesktopEscapeExitPending
     || (status.enabled !== true && fullDesktopEnablePending !== true)) return false;
   fullDesktopEscapeExitPending = true;
+  try { desktopStartup.beginUserChange(false); } catch (error) {
+    console.warn('[DesktopStartup] Escape preference save failed:', error.message);
+  }
   fullDesktopEnableOperation += 1;
   fullDesktopEnablePending = false;
   const exitOperation = status.enabled === true
@@ -1270,7 +1295,12 @@ function requestFullDesktopEscapeExit(reason = 'escape-key') {
       enabled: false,
       cancelled: true,
     }));
-  Promise.resolve(exitOperation).catch((error) => {
+  Promise.resolve(exitOperation).then((result) => {
+    if (result && result.ok === false) {
+      console.warn('[FullDesktopMode] Escape exit unconfirmed:', result.error || 'FULL_DESKTOP_EXIT_FAILED');
+      writeStartupState('desktop-exit-failed', { desktopExitError: result.error || 'FULL_DESKTOP_EXIT_FAILED' });
+    }
+  }).catch((error) => {
     console.warn('[FullDesktopMode] Escape exit failed:', error && error.message || error);
   }).finally(() => {
     fullDesktopEscapeExitPending = false;
@@ -1430,6 +1460,11 @@ async function toggleFullDesktopModeInteraction(reason = 'interaction-toggled') 
 }
 
 async function disableFullDesktopMode(reason = 'disabled') {
+  if (reason === 'tray-exit-desktop-mode') {
+    try { desktopStartup.beginUserChange(false); } catch (error) {
+      console.warn('[DesktopStartup] tray preference save failed:', error.message);
+    }
+  }
   fullDesktopEnableOperation += 1;
   fullDesktopEnablePending = false;
   fullDesktopModeHostVisibilityTransitionDepth += 1;
@@ -4727,6 +4762,7 @@ function positionWallpaperWindow(reason = 'display-change') {
 async function createWallpaperWindow(payload = {}) {
   const result = await enableFullDesktopMode(mainWindow, {
     interactive: true,
+    startupRestore: payload.reason === 'startup-restore',
     reason: String(payload && payload.reason || 'renderer-enabled'),
   });
   if (result && result.ok === true && result.enabled === true) {
@@ -5740,11 +5776,110 @@ ipcMain.handle('MOMusic-desktop-lyrics-move-by', async (_event, dx, dy) => {
   }
 });
 
+// ── 桌面模式 Dock 栏 IPC ──
+function isDockWindowIpc(event) {
+  try {
+    const dockWindow = dockRuntime ? dockRuntime.window : null;
+    return !!(event && event.sender && dockWindow && !dockWindow.isDestroyed()
+      && event.sender === dockWindow.webContents);
+  } catch (_) {
+    return false;
+  }
+}
+
+ipcMain.handle('MOMusic-dock-set-enabled', async (event, enabled) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DOCK_UNTRUSTED_SENDER' };
+  return dockRuntime.setEnabled(enabled, 'renderer');
+});
+
+ipcMain.handle('MOMusic-dock-get-state', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DOCK_UNTRUSTED_SENDER' };
+  return dockRuntime.publicConfig();
+});
+
+ipcMain.handle('MOMusic-dock-update-settings', async (event, patch) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DOCK_UNTRUSTED_SENDER' };
+  return { ok: true, config: dockRuntime.updateSettings(patch) };
+});
+
+ipcMain.on('MOMusic-dock-ready', (event) => {
+  if (isDockWindowIpc(event)) dockRuntime.handleReady();
+});
+
+ipcMain.on('MOMusic-dock-hot-rects', (event, rects) => {
+  if (isDockWindowIpc(event)) dockRuntime.handleHotRects(rects);
+});
+
+ipcMain.on('MOMusic-dock-hidden-state', (event, hidden) => {
+  if (isDockWindowIpc(event)) dockRuntime.handleHiddenState(hidden);
+});
+
+ipcMain.on('MOMusic-dock-commit-layout', (event, layout) => {
+  if (isDockWindowIpc(event)) dockRuntime.commitLayout(layout);
+});
+
+ipcMain.handle('MOMusic-dock-get-config', async (event) => {
+  if (!isDockWindowIpc(event)) return { ok: false, error: 'DOCK_UNTRUSTED_SENDER' };
+  return { ok: true, config: dockRuntime.publicConfig() };
+});
+
+ipcMain.handle('MOMusic-dock-action', async (event, type, payload) => {
+  if (!isDockWindowIpc(event)) return { ok: false, error: 'DOCK_UNTRUSTED_SENDER' };
+  try {
+    return await dockRuntime.runAction(type, payload);
+  } catch (e) {
+    return { ok: false, error: e.message || 'DOCK_ACTION_FAILED' };
+  }
+});
+
+ipcMain.handle('MOMusic-desktop-startup-get', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DESKTOP_STARTUP_UNTRUSTED_SENDER' };
+  return { ok: true, config: desktopStartup.read() };
+});
+
+ipcMain.handle('MOMusic-desktop-startup-update', async (event, patch) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DESKTOP_STARTUP_UNTRUSTED_SENDER' };
+  try { return { ok: true, config: desktopStartup.update(patch) }; }
+  catch (error) { return { ok: false, error: error.message, config: desktopStartup.read() }; }
+});
+
+ipcMain.handle('MOMusic-desktop-startup-restore', async (event) => {
+  if (!isTrustedMainWindowIpc(event)) return { ok: false, error: 'DESKTOP_STARTUP_UNTRUSTED_SENDER' };
+  if (appQuitting) return { ok: false, attempted: false, error: 'APP_QUITTING' };
+  const result = await desktopStartup.restore({
+    enable: async (isCurrent) => {
+      if (!ensureFullDesktopModeRecoveryTray()) return { ok: false, error: 'DESKTOP_STARTUP_RECOVERY_TRAY_UNAVAILABLE' };
+      const result = await createWallpaperWindow({ reason: 'startup-restore' });
+      if (!isCurrent() || !result || !result.ok || !result.enabled) return result;
+      const icons = await fullDesktopModeRuntime.setDesktopIconsVisible(true, 'startup-restore-icons');
+      if (!icons || icons.ok !== true) return { ok: false, error: icons && icons.error || 'DESKTOP_STARTUP_ICONS_FAILED' };
+      return result;
+    },
+    disable: () => closeWallpaperWindow('startup-restore-failed'),
+    getStatus: () => fullDesktopModeRuntime.getStatus('startup-restore'),
+  });
+  if (result.ok === false) {
+    console.warn('[DesktopStartup] restore failed:', result.error, result.cleanupError || '');
+    writeStartupState('desktop-restore-failed', { desktopRestoreError: result.error, cleanupError: result.cleanupError });
+    if (!result.status || result.status.enabled !== true) focusMainWindow();
+  }
+  return result;
+});
+
 ipcMain.handle('MOMusic-wallpaper-set-enabled', async (event, enabled, payload) => {
   try {
     if (!isTrustedMainWindowIpc(event)) return { ok: false, enabled: false, error: 'WALLPAPER_UNTRUSTED_SENDER' };
-    if (enabled) return await createWallpaperWindow(payload || {});
-    return await closeWallpaperWindow('renderer-disabled');
+    const desired = enabled === true;
+    let preferenceError = '';
+    let version;
+    try { version = desktopStartup.beginUserChange(desired); } catch (error) {
+      version = desktopStartup.intentVersion;
+      preferenceError = error.message;
+    }
+    const result = desired ? await createWallpaperWindow(payload || {}) : await closeWallpaperWindow('renderer-disabled');
+    try { desktopStartup.confirmUserChange(version, desired, result); } catch (error) { preferenceError = error.message; }
+    if (preferenceError) console.warn('[DesktopStartup] user preference save failed:', preferenceError);
+    return { ...result, preferenceError };
   } catch (e) {
     return { ok: false, enabled: false, error: e.message || 'WALLPAPER_FAILED', status: fullDesktopModeRuntime.getStatus('ipc-failed') };
   }
@@ -6326,16 +6461,31 @@ async function createWindowOnce() {
   });
 
   const startupShell = path.join(__dirname, 'startup.html');
-  if (fs.existsSync(startupShell)) {
-    win.loadFile(startupShell).catch((error) => {
+  let startupShellLoadPromise = null;
+  // 常用路径直接加载主页、窗口在首帧就绪后才显示, 不做 startup.html -> index.html
+  // 的跨文档导航: 导航提交瞬间 Chromium 清屏并以白底呈现新文档, 而主页首帧要等
+  // 模块同步拼接脚本执行完, 这段白屏无法靠透明窗口消除。占位页仅在启动迟缓时
+  // 兜底显示; 兜底一旦发起, 必须等它加载完再导航主页(并发导航会把占位页中断成
+  // ERR_ABORTED 并让 loadURL 误判失败, 曾导致启动闪烁)。
+  const placeholderFallbackTimer = setTimeout(() => {
+    if (startupCompleted || win.isDestroyed() || !fs.existsSync(startupShell)) return;
+    writeStartupState('placeholder-fallback', { at: Date.now() });
+    startupShellLoadPromise = win.loadFile(startupShell).catch((error) => {
       if (!/ERR_ABORTED|ERR_FAILED/i.test(String(error && error.message || error))) {
         console.warn('[StartupWindow] startup shell skipped:', error.message || error);
       }
     });
+  }, STARTUP_PLACEHOLDER_FALLBACK_MS);
+  try {
+    await ensureLocalServerStarted();
+    // The fallback only covers server startup. Once main navigation begins it
+    // must not replace the document while synchronous frontend modules load.
+    clearTimeout(placeholderFallbackTimer);
+    if (startupShellLoadPromise) await startupShellLoadPromise;
+    await loadMainWindowWithRetry(win);
+  } finally {
+    clearTimeout(placeholderFallbackTimer);
   }
-
-  await ensureLocalServerStarted();
-  await loadMainWindowWithRetry(win);
   if (win.isDestroyed()) throw new Error('Main BrowserWindow was destroyed after navigation');
   startupCompleted = true;
   showMainWindowSafely(win, 'navigation-complete');
@@ -6389,6 +6539,7 @@ if (!gotSingleInstanceLock) {
     const handleDisplayLayoutChanged = (_event, _display, changedMetrics) => {
       positionDesktopLyricsWindow();
       positionWallpaperWindow(Array.isArray(changedMetrics) ? 'display-metrics-changed' : 'display-layout-changed');
+      dockRuntime.handleDisplayChange();
       if (fullDesktopModeRuntime.getStatus('display-layout-clamp').enabled !== true) {
         ensureMainWindowInsideDisplay(mainWindow);
       }
@@ -6417,6 +6568,7 @@ if (!gotSingleInstanceLock) {
 
   app.on('before-quit', (event) => {
     appQuitting = true;
+    desktopStartup.cancelPending();
     if (appQuitCleanupComplete) return;
     event.preventDefault();
     if (appQuitCleanupPromise) return;
@@ -6426,6 +6578,7 @@ if (!gotSingleInstanceLock) {
     unregisterFullDesktopEscapeShortcut();
     unregisterMOMusicGlobalHotkeys();
     closeDesktopLyricsWindow();
+    dockRuntime.dispose();
     if (localServer && localServer.close) localServer.close();
     stopListenTogether();
     if (tray) {

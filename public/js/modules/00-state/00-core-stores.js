@@ -44,7 +44,6 @@ var dualAccountMode = false;
 var qqCookieBusy = false;
 var kugouCookieBusy = false;
 var kugouConceptCookieBusy = false;
-var qishuiTokenBusy = false;
 var qishuiOAuthBusy = false;
 var spotifyConfigBusy = false;
 var spotifyOAuthBusy = false;
